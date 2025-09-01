@@ -107,6 +107,7 @@ export class CodeGenerator {
   private generateFlowFunction(executionOrder: FlowNode[]): string {
     const flowName = 'generatedFlow';
     const flowBody = this.generateFlowBody(executionOrder);
+    const inputSchema = this.generateInputSchema();
     
     return `// Initialize AI instance
 const ai = genkit({
@@ -116,7 +117,7 @@ const ai = genkit({
 
 export const ${flowName} = ai.defineFlow({
   name: '${flowName}',
-  inputSchema: z.any(),
+  inputSchema: ${inputSchema},
   outputSchema: z.any(),
 }, async (input) => {
   ${flowBody}
@@ -165,13 +166,22 @@ export const ${flowName} = ai.defineFlow({
     const config = node.data.config as InputNodeConfig;
     
     switch (config.inputType) {
-      case 'text':
-        return `const ${outputVar} = typeof ${inputVar} === 'string' ? ${inputVar} : JSON.stringify(${inputVar});`;
-      case 'json':
-        return `const ${outputVar} = typeof ${inputVar} === 'object' ? ${inputVar} : JSON.parse(${inputVar});`;
-      case 'file':
-        return `const ${outputVar} = ${inputVar}; // File input - implement file handling`;
+      case 'static':
+        // Use the static value directly
+        const staticValue = config.staticValue || config.defaultValue || '';
+        return `const ${outputVar} = ${JSON.stringify(staticValue)};`;
+      case 'variable':
+        // Extract the variable from input object
+        const variableName = config.variableName || 'input';
+        if (variableName === 'input') {
+          // Simple case - direct input
+          return `const ${outputVar} = ${inputVar};`;
+        } else {
+          // Extract named variable from input object
+          return `const ${outputVar} = ${inputVar}.${variableName} || ${inputVar};`;
+        }
       default:
+        // Fallback for legacy support
         return `const ${outputVar} = ${inputVar};`;
     }
   }
@@ -236,6 +246,43 @@ export const ${flowName} = ai.defineFlow({
     const config = node.data.config as ConditionNodeConfig;
     
     return `const ${outputVar} = (${config.condition}) ? ${inputVar} : ${inputVar};`;
+  }
+
+  private generateInputSchema(): string {
+    // Extract variables from Input nodes
+    const variables: Array<{ name: string; description?: string }> = [];
+    
+    for (const node of this.nodes) {
+      if (node.data.type === NodeType.INPUT) {
+        const config = node.data.config as InputNodeConfig;
+        if (config.inputType === 'variable' && config.variableName) {
+          variables.push({
+            name: config.variableName,
+            description: config.variableDescription
+          });
+        }
+      }
+    }
+    
+    if (variables.length === 0) {
+      // No variables defined, accept any input
+      return 'z.any()';
+    }
+    
+    if (variables.length === 1 && variables[0].name === 'input') {
+      // Single variable named 'input' - use simple schema
+      return 'z.string()';
+    }
+    
+    // Multiple variables - create object schema
+    const schemaFields = variables.map(variable => {
+      const description = variable.description 
+        ? `.describe("${variable.description.replace(/"/g, '\\"')}");`
+        : '';
+      return `    ${variable.name}: z.string()${description}`;
+    });
+    
+    return `z.object({\n${schemaFields.join(',\n')}\n  })`;
   }
 }
 

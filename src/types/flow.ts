@@ -23,7 +23,13 @@ export interface NodeConfig {
 }
 
 export interface InputNodeConfig extends NodeConfig {
-  inputType: 'text' | 'json' | 'file';
+  inputType: 'static' | 'variable';
+  // For static inputs - the actual value to use
+  staticValue?: string;
+  // For variable inputs - the variable definition
+  variableName?: string;
+  variableDescription?: string;
+  // Legacy support
   defaultValue?: string;
   schema?: string;
 }
@@ -123,3 +129,20 @@ export const AVAILABLE_MODELS = {
   openai: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   anthropic: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
 };
+
+// Variables system types
+export interface FlowVariable {
+  id: string;
+  name: string;
+  description?: string;
+  source: 'input' | 'manual' | 'runtime';
+  sourceNodeId?: string; // ID of the node that defines this variable
+  type?: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  defaultValue?: any;
+}
+
+export interface VariableReference {
+  variableId: string;
+  nodeId: string;
+  field: string; // Which field in the node references this variable
+}

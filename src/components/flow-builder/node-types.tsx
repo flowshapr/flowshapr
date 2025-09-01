@@ -12,9 +12,7 @@ import {
   MODEL_PROVIDERS,
   AVAILABLE_MODELS
 } from '@/types/flow';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+// Using native form elements for cleaner styling inside nodes
 import { 
   FileText, 
   Brain, 
@@ -94,34 +92,76 @@ export function InputNode({ data, selected }: NodeProps) {
     console.log('Config change:', field, value);
   };
   
+  const inputType = config.inputType || 'static';
+  
   return (
     <BaseNode data={nodeData} selected={selected} showTargetHandle={false}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Input Type
           </label>
-          <Select
-            value={config.inputType || 'text'}
-            onValueChange={(value) => handleConfigChange('inputType', value)}
+          <select
+            value={inputType}
+            onChange={(e) => handleConfigChange('inputType', e.target.value)}
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-blue-300 focus:outline-none"
           >
-            <option value="text">Text</option>
-            <option value="json">JSON</option>
-            <option value="file">File</option>
-          </Select>
+            <option value="static">Static Value</option>
+            <option value="variable">Variable</option>
+          </select>
         </div>
         
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Default Value
-          </label>
-          <Input
-            value={config.defaultValue || ''}
-            onChange={(e) => handleConfigChange('defaultValue', e.target.value)}
-            placeholder="Enter default value..."
-            className="text-xs"
-          />
-        </div>
+        {inputType === 'static' ? (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Value
+            </label>
+            <input
+              type="text"
+              value={config.staticValue || config.defaultValue || ''}
+              onChange={(e) => handleConfigChange('staticValue', e.target.value)}
+              placeholder="Enter static value..."
+              className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-blue-300 focus:outline-none"
+            />
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Variable Name
+              </label>
+              <input
+                type="text"
+                value={config.variableName || ''}
+                onChange={(e) => handleConfigChange('variableName', e.target.value)}
+                placeholder="e.g. userInput, apiKey..."
+                className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-blue-300 focus:outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Description (optional)
+              </label>
+              <input
+                type="text"
+                value={config.variableDescription || ''}
+                onChange={(e) => handleConfigChange('variableDescription', e.target.value)}
+                placeholder="Describe this variable..."
+                className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-blue-300 focus:outline-none"
+              />
+            </div>
+          </>
+        )}
+        
+        {/* Show visual indicator for variable inputs */}
+        {inputType === 'variable' && config.variableName && (
+          <div className="flex items-center gap-1 mt-1">
+            <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+            <span className="text-xs text-blue-600 font-mono">
+              ${config.variableName}
+            </span>
+          </div>
+        )}
       </div>
     </BaseNode>
   );
@@ -137,34 +177,36 @@ export function ModelNode({ data, selected }: NodeProps) {
   
   return (
     <BaseNode data={nodeData} selected={selected}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Provider
           </label>
-          <Select
+          <select
             value={config.provider || 'googleai'}
-            onValueChange={(value) => handleConfigChange('provider', value)}
+            onChange={(e) => handleConfigChange('provider', e.target.value)}
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-green-300 focus:outline-none"
           >
             <option value="googleai">Google AI</option>
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
-          </Select>
+          </select>
         </div>
         
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Model
           </label>
-          <Select
+          <select
             value={config.model || 'gemini-1.5-flash'}
-            onValueChange={(value) => handleConfigChange('model', value)}
+            onChange={(e) => handleConfigChange('model', e.target.value)}
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-green-300 focus:outline-none"
           >
             <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
             <option value="gpt-4">GPT-4</option>
             <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-          </Select>
+          </select>
         </div>
         
         <div>
@@ -178,7 +220,7 @@ export function ModelNode({ data, selected }: NodeProps) {
             step="0.1"
             value={config.temperature || 0.7}
             onChange={(e) => handleConfigChange('temperature', parseFloat(e.target.value))}
-            className="w-full"
+            className="w-full h-1 bg-white/80 rounded appearance-none cursor-pointer slider"
           />
         </div>
       </div>
@@ -196,16 +238,17 @@ export function PromptNode({ data, selected }: NodeProps) {
   
   return (
     <BaseNode data={nodeData} selected={selected}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Template
           </label>
-          <Textarea
+          <textarea
             value={config.template || ''}
             onChange={(e) => handleConfigChange('template', e.target.value)}
             placeholder="Enter your prompt template..."
-            className="text-xs min-h-[60px]"
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-purple-300 focus:outline-none resize-none"
+            rows={3}
           />
         </div>
         
@@ -213,11 +256,12 @@ export function PromptNode({ data, selected }: NodeProps) {
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Variables
           </label>
-          <Input
+          <input
+            type="text"
             value={config.variables?.join(', ') || ''}
             onChange={(e) => handleConfigChange('variables', e.target.value.split(', ').filter(Boolean))}
             placeholder="variable1, variable2..."
-            className="text-xs"
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-purple-300 focus:outline-none"
           />
         </div>
       </div>
@@ -235,30 +279,32 @@ export function TransformNode({ data, selected }: NodeProps) {
   
   return (
     <BaseNode data={nodeData} selected={selected}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Language
           </label>
-          <Select
+          <select
             value={config.language || 'javascript'}
-            onValueChange={(value) => handleConfigChange('language', value)}
+            onChange={(e) => handleConfigChange('language', e.target.value)}
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-orange-300 focus:outline-none"
           >
             <option value="javascript">JavaScript</option>
             <option value="typescript">TypeScript</option>
             <option value="python">Python</option>
-          </Select>
+          </select>
         </div>
         
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Code
           </label>
-          <Textarea
+          <textarea
             value={config.code || ''}
             onChange={(e) => handleConfigChange('code', e.target.value)}
-            placeholder="// Transform the data\nreturn data;"
-            className="text-xs min-h-[60px] font-mono"
+            placeholder="// Transform the data&#10;return data;"
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-orange-300 focus:outline-none font-mono resize-none"
+            rows={3}
           />
         </div>
       </div>
@@ -276,31 +322,33 @@ export function OutputNode({ data, selected }: NodeProps) {
   
   return (
     <BaseNode data={nodeData} selected={selected} showSourceHandle={false}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Format
           </label>
-          <Select
+          <select
             value={config.format || 'text'}
-            onValueChange={(value) => handleConfigChange('format', value)}
+            onChange={(e) => handleConfigChange('format', e.target.value)}
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-red-300 focus:outline-none"
           >
             <option value="text">Text</option>
             <option value="json">JSON</option>
             <option value="html">HTML</option>
             <option value="markdown">Markdown</option>
-          </Select>
+          </select>
         </div>
         
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Schema (optional)
           </label>
-          <Textarea
+          <textarea
             value={config.schema || ''}
             onChange={(e) => handleConfigChange('schema', e.target.value)}
             placeholder="Output schema definition..."
-            className="text-xs min-h-[40px]"
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-red-300 focus:outline-none resize-none"
+            rows={2}
           />
         </div>
       </div>
@@ -318,16 +366,17 @@ export function ConditionNode({ data, selected }: NodeProps) {
   
   return (
     <BaseNode data={nodeData} selected={selected}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Condition
           </label>
-          <Input
+          <input
+            type="text"
             value={config.condition || ''}
             onChange={(e) => handleConfigChange('condition', e.target.value)}
             placeholder="data.score > 0.5"
-            className="text-xs font-mono"
+            className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-yellow-300 focus:outline-none font-mono"
           />
         </div>
         
@@ -336,10 +385,11 @@ export function ConditionNode({ data, selected }: NodeProps) {
             <label className="block text-xs font-medium text-gray-700 mb-1">
               True Label
             </label>
-            <Input
+            <input
+              type="text"
               value={config.trueLabel || 'Yes'}
               onChange={(e) => handleConfigChange('trueLabel', e.target.value)}
-              className="text-xs"
+              className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-yellow-300 focus:outline-none"
             />
           </div>
           
@@ -347,10 +397,11 @@ export function ConditionNode({ data, selected }: NodeProps) {
             <label className="block text-xs font-medium text-gray-700 mb-1">
               False Label
             </label>
-            <Input
+            <input
+              type="text"
               value={config.falseLabel || 'No'}
               onChange={(e) => handleConfigChange('falseLabel', e.target.value)}
-              className="text-xs"
+              className="w-full px-2 py-1 text-xs rounded border-0 bg-white/80 focus:bg-white focus:ring-1 focus:ring-yellow-300 focus:outline-none"
             />
           </div>
         </div>

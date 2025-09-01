@@ -5,7 +5,7 @@ import { FlowCanvasWrapper } from './flow-canvas';
 import { Sidebar } from './sidebar';
 import { CodeEditor } from '@/components/code-preview/code-editor';
 import { TestPanel } from '@/components/test-panel/test-panel';
-import { FlowNode, FlowEdge, NodeType, GeneratedCode, ExecutionResult } from '@/types/flow';
+import { FlowNode, FlowEdge, NodeType, GeneratedCode, ExecutionResult, InputNodeConfig, FlowVariable } from '@/types/flow';
 import { generateCode } from '@/lib/code-generator';
 import { generateId, debounce } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,9 @@ import {
   Save, 
   FolderOpen, 
   Download, 
-  Upload
+  Upload,
+  Variable,
+  Settings
 } from 'lucide-react';
 
 interface Flow {
@@ -41,6 +43,110 @@ interface FlowBuilderViewProps {
   };
 }
 
+// Variables Panel Component
+interface VariablesPanelProps {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+function VariablesPanel({ nodes, edges }: VariablesPanelProps) {
+  // Extract variables from Input nodes
+  const extractVariables = (): FlowVariable[] => {
+    const variables: FlowVariable[] = [];
+    
+    nodes.forEach(node => {
+      if (node.data.type === NodeType.INPUT) {
+        const config = node.data.config as InputNodeConfig;
+        if (config.inputType === 'variable' && config.variableName) {
+          variables.push({
+            id: `${node.id}-${config.variableName}`,
+            name: config.variableName,
+            description: config.variableDescription,
+            source: 'input',
+            sourceNodeId: node.id,
+            type: 'string' // Default type
+          });
+        }
+      }
+    });
+    
+    return variables;
+  };
+  
+  const variables = extractVariables();
+  
+  return (
+    <div className="h-full p-4 bg-gray-50">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+          <Variable className="w-5 h-5" />
+          Flow Variables
+        </h3>
+        <p className="text-sm text-gray-600">
+          Variables defined in your flow that can be provided at runtime.
+        </p>
+      </div>
+      
+      <div className="space-y-3">
+        {variables.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Variable className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">
+              No variables defined yet.
+            </p>
+            <p className="text-xs mt-1">
+              Add Input nodes with Variable type to create flow variables.
+            </p>
+          </div>
+        ) : (
+          variables.map((variable) => (
+            <div 
+              key={variable.id} 
+              className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      ${variable.name}
+                    </span>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      {variable.source}
+                    </span>
+                  </div>
+                  {variable.description && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      {variable.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Defined in: {nodes.find(n => n.id === variable.sourceNodeId)?.data.label || 'Unknown'}
+                  </p>
+                </div>
+                <Settings className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {variables.length > 0 && (
+        <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h4 className="text-sm font-medium text-blue-900 mb-2">
+            SDK Usage
+          </h4>
+          <p className="text-xs text-blue-800 mb-2">
+            Call this flow with variables:
+          </p>
+          <code className="text-xs bg-blue-100 p-2 rounded block font-mono text-blue-900">
+            {`await flow.run({ ${variables.map(v => `${v.name}: "value"`).join(', ')} })`}
+          </code>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FlowBuilderView({ 
   selectedFlow, 
   activeView, 
@@ -55,7 +161,7 @@ export function FlowBuilderView({
     errors: [],
   });
   const [isExecuting, setIsExecuting] = useState(false);
-  const [activePanel, setActivePanel] = useState<'code' | 'test'>('code');
+  const [activePanel, setActivePanel] = useState<'code' | 'test' | 'variables'>('code');
   const [panelWidth, setPanelWidth] = useState(384); // Default 384px (w-96)
 
   // Debounced code generation
@@ -309,38 +415,55 @@ export function FlowBuilderView({
               <div className="flex border-b border-gray-200">
                 <button
                   onClick={() => setActivePanel('code')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium ${
                     activePanel === 'code'
                       ? 'bg-white text-gray-900 border-b-2 border-blue-500'
                       : 'bg-gray-50 text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Code Preview
+                  Code
                 </button>
                 <button
                   onClick={() => setActivePanel('test')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium ${
+                  className={`flex-1 px-3 py-2 text-sm font-medium ${
                     activePanel === 'test'
                       ? 'bg-white text-gray-900 border-b-2 border-blue-500'
                       : 'bg-gray-50 text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Test Panel
+                  Test
+                </button>
+                <button
+                  onClick={() => setActivePanel('variables')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium ${
+                    activePanel === 'variables'
+                      ? 'bg-white text-gray-900 border-b-2 border-blue-500'
+                      : 'bg-gray-50 text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Variables
                 </button>
               </div>
               
               <div className="flex-1 overflow-hidden">
-                {activePanel === 'code' ? (
+                {activePanel === 'code' && (
                   <CodeEditor
                     code={generatedCode.code}
                     errors={generatedCode.errors}
                     height="100%"
                   />
-                ) : (
+                )}
+                {activePanel === 'test' && (
                   <TestPanel
                     onExecute={handleExecuteFlow}
                     isExecuting={isExecuting}
                     canExecute={canExecute}
+                  />
+                )}
+                {activePanel === 'variables' && (
+                  <VariablesPanel
+                    nodes={nodes}
+                    edges={edges}
                   />
                 )}
               </div>
@@ -376,8 +499,10 @@ function getDefaultConfig(type: NodeType): any {
   switch (type) {
     case NodeType.INPUT:
       return {
-        inputType: 'text',
-        defaultValue: '',
+        inputType: 'static',
+        staticValue: '',
+        variableName: '',
+        variableDescription: '',
         schema: '',
       };
     case NodeType.MODEL:
