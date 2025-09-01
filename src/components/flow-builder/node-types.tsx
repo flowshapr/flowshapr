@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 const nodeStyles = {
-  base: 'px-4 py-3 rounded-lg border-2 bg-white text-gray-900 min-w-[200px] shadow-lg',
+  base: 'px-4 py-3 rounded-lg border-2 bg-white text-gray-900 min-w-[200px] shadow-lg !outline-none',
   input: 'border-blue-400 bg-blue-50',
   model: 'border-green-400 bg-green-50', 
   prompt: 'border-purple-400 bg-purple-50',
@@ -45,7 +45,7 @@ const nodeIcons = {
 interface BaseNodeProps {
   data: FlowNodeData;
   selected?: boolean;
-  onConfigChange?: (config: any) => void;
+  onConfigChange?: (nodeId: string, config: any) => void;
 }
 
 function BaseNode({ 
@@ -64,7 +64,14 @@ function BaseNode({
   const styleKey = data.type as keyof typeof nodeStyles;
   
   return (
-    <div className={`${nodeStyles.base} ${nodeStyles[styleKey]} ${selected ? 'ring-2 ring-blue-500' : ''}`}>
+    <div 
+      className={`${nodeStyles.base} ${nodeStyles[styleKey]} ${selected ? '!border-blue-500' : ''}`}
+      style={{
+        border: selected ? '2px solid rgb(59 130 246)' : undefined,
+        outline: 'none',
+        boxShadow: selected ? 'none' : undefined
+      }}
+    >
       {showTargetHandle && (
         <Handle type="target" position={Position.Top} className="w-4 h-2 !bg-gray-400 !border-0" />
       )}
@@ -83,13 +90,21 @@ function BaseNode({
   );
 }
 
-export function InputNode({ data, selected }: NodeProps) {
+export function InputNode({ data, selected, id }: NodeProps) {
   const nodeData = data as FlowNodeData;
   const config = nodeData.config as InputNodeConfig;
   
   const handleConfigChange = (field: string, value: any) => {
-    // In a real app, this would update the node's config
-    console.log('Config change:', field, value);
+    // Update the node's config by directly modifying the data
+    // React Flow will handle the re-render automatically
+    const newConfig = { ...config, [field]: value };
+    nodeData.config = newConfig;
+    
+    // Force a re-render by triggering a state change
+    // We'll dispatch a custom event that the parent can listen to
+    window.dispatchEvent(new CustomEvent('nodeConfigChange', {
+      detail: { nodeId: id, field, value, config: newConfig }
+    }));
   };
   
   const inputType = config.inputType || 'static';

@@ -59,6 +59,27 @@ body {
 
 .react-flow__node {
   font-size: 12px;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node.selected {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Override React Flow's default node type styling completely */
+.react-flow__node-input,
+.react-flow__node-default,
+.react-flow__node-output,
+.react-flow__node-group {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  width: auto !important;
+  border: none !important;
+  background-color: transparent !important;
+  text-align: left !important;
 }
 
 .react-flow__controls {

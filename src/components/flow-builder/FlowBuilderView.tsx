@@ -178,6 +178,25 @@ export function FlowBuilderView({
     debouncedGenerateCode(nodes, edges);
   }, [nodes, edges, debouncedGenerateCode]);
 
+  // Listen for node config changes
+  useEffect(() => {
+    const handleNodeConfigChange = (event: CustomEvent) => {
+      const { nodeId, config } = event.detail;
+      setNodes(prevNodes => 
+        prevNodes.map(node => 
+          node.id === nodeId 
+            ? { ...node, data: { ...node.data, config } }
+            : node
+        )
+      );
+    };
+
+    window.addEventListener('nodeConfigChange', handleNodeConfigChange as EventListener);
+    return () => {
+      window.removeEventListener('nodeConfigChange', handleNodeConfigChange as EventListener);
+    };
+  }, []);
+
   const handleNodesChange = useCallback((newNodes: FlowNode[]) => {
     setNodes(newNodes);
   }, []);
