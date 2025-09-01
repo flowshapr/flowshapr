@@ -147,6 +147,38 @@ function VariablesPanel({ nodes, edges }: VariablesPanelProps) {
   );
 }
 
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return 'just now';
+  }
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes === 1) {
+    return '1 minute ago';
+  }
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minutes ago`;
+  }
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours === 1) {
+    return '1 hour ago';
+  }
+  if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  }
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) {
+    return '1 day ago';
+  }
+  return `${diffInDays} days ago`;
+}
+
 export function FlowBuilderView({ 
   selectedFlow, 
   activeView, 
@@ -163,6 +195,57 @@ export function FlowBuilderView({
   const [isExecuting, setIsExecuting] = useState(false);
   const [activePanel, setActivePanel] = useState<'code' | 'test' | 'variables'>('code');
   const [panelWidth, setPanelWidth] = useState(384); // Default 384px (w-96)
+  
+  // Autosave state
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Autosave function
+  const autosaveFlow = useCallback(async (nodes: FlowNode[], edges: FlowEdge[]) => {
+    if (!selectedFlow || nodes.length === 0) return;
+
+    try {
+      setAutosaveStatus('saving');
+      
+      const flowData = {
+        id: selectedFlow.id,
+        nodes,
+        edges,
+        name: selectedFlow.name,
+        description: selectedFlow.description,
+      };
+
+      const response = await fetch('/api/flows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(flowData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setAutosaveStatus('saved');
+      setLastSaved(new Date());
+      
+      // Reset to idle after 2 seconds
+      setTimeout(() => setAutosaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Autosave failed:', error);
+      setAutosaveStatus('error');
+      setTimeout(() => setAutosaveStatus('idle'), 3000);
+    }
+  }, [selectedFlow]);
+
+  // Debounced autosave
+  const debouncedAutosave = useCallback(
+    debounce((nodes: FlowNode[], edges: FlowEdge[]) => {
+      autosaveFlow(nodes, edges);
+    }, 2000), // Auto-save after 2 seconds of inactivity
+    [autosaveFlow]
+  );
 
   // Debounced code generation
   const debouncedGenerateCode = useCallback(
@@ -177,6 +260,13 @@ export function FlowBuilderView({
   useEffect(() => {
     debouncedGenerateCode(nodes, edges);
   }, [nodes, edges, debouncedGenerateCode]);
+
+  // Autosave whenever nodes or edges change
+  useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      debouncedAutosave(nodes, edges);
+    }
+  }, [nodes, edges, debouncedAutosave]);
 
   // Listen for node config changes
   useEffect(() => {
@@ -383,8 +473,37 @@ export function FlowBuilderView({
           </div>
         </div>
 
-        <div className="text-sm text-gray-600">
-          {selectedFlow?.name} - Flow Builder
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            {selectedFlow?.name} - Flow Builder
+          </div>
+          
+          {/* Autosave Status Indicator */}
+          <div className="flex items-center gap-2 text-xs">
+            {autosaveStatus === 'saving' && (
+              <>
+                <div className="w-3 h-3 border border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+                <span className="text-blue-600">Saving...</span>
+              </>
+            )}
+            {autosaveStatus === 'saved' && (
+              <>
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-green-600">Saved</span>
+              </>
+            )}
+            {autosaveStatus === 'error' && (
+              <>
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-red-600">Save failed</span>
+              </>
+            )}
+            {autosaveStatus === 'idle' && lastSaved && (
+              <span className="text-gray-500">
+                Last saved {formatTimeAgo(lastSaved)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       
