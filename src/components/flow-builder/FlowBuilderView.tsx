@@ -207,20 +207,22 @@ export function FlowBuilderView({
     try {
       setAutosaveStatus('saving');
       
-      const flowData = {
-        id: selectedFlow.id,
+      // Use the correct endpoint and data format for saving flow definitions
+      const flowDefinitionData = {
         nodes,
         edges,
-        name: selectedFlow.name,
-        description: selectedFlow.description,
+        metadata: {
+          lastModified: new Date().toISOString(),
+          version: '1.0.0'
+        }
       };
 
-      const response = await fetch('/api/flows', {
+      const response = await fetch(`/api/flows/${selectedFlow.id}/definition`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(flowData),
+        body: JSON.stringify(flowDefinitionData),
       });
 
       if (!response.ok) {
