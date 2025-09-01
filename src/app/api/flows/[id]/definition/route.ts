@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('sessionId');
     
     if (!sessionCookie) {
@@ -18,7 +19,7 @@ export async function POST(
 
     // Forward the request to the backend API
     const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
-    const response = await fetch(`${backendUrl}/api/flows/${params.id}/definition`, {
+    const response = await fetch(`${backendUrl}/api/flows/${id}/definition`, {
       method: 'POST',
       headers: {
         'Cookie': `sessionId=${sessionCookie.value}`,

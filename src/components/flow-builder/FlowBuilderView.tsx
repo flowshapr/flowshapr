@@ -207,7 +207,6 @@ export function FlowBuilderView({
     try {
       setAutosaveStatus('saving');
       
-      // Use the correct endpoint and data format for saving flow definitions
       const flowDefinitionData = {
         nodes,
         edges,
@@ -217,25 +216,48 @@ export function FlowBuilderView({
         }
       };
 
-      const response = await fetch(`/api/flows/${selectedFlow.id}/definition`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(flowDefinitionData),
-      });
+      // First try API save, fall back to localStorage if it fails
+      try {
+        const response = await fetch(`/api/flows/${selectedFlow.id}/definition`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(flowDefinitionData),
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        // API save successful
+        setAutosaveStatus('saved');
+        setLastSaved(new Date());
+      } catch (apiError) {
+        console.warn('API autosave failed, using localStorage:', apiError);
+        
+        // Fallback to localStorage
+        const storageKey = `flow_${selectedFlow.id}`;
+        const flowData = {
+          ...flowDefinitionData,
+          flowInfo: {
+            id: selectedFlow.id,
+            name: selectedFlow.name,
+            description: selectedFlow.description,
+          },
+          savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(storageKey, JSON.stringify(flowData));
+        
+        setAutosaveStatus('saved');
+        setLastSaved(new Date());
       }
-
-      setAutosaveStatus('saved');
-      setLastSaved(new Date());
       
       // Reset to idle after 2 seconds
       setTimeout(() => setAutosaveStatus('idle'), 2000);
     } catch (error) {
-      console.error('Autosave failed:', error);
+      console.error('Autosave failed completely:', error);
       setAutosaveStatus('error');
       setTimeout(() => setAutosaveStatus('idle'), 3000);
     }
@@ -269,6 +291,28 @@ export function FlowBuilderView({
       debouncedAutosave(nodes, edges);
     }
   }, [nodes, edges, debouncedAutosave]);
+
+  // Load flow from localStorage on mount
+  useEffect(() => {
+    if (selectedFlow) {
+      const storageKey = `flow_${selectedFlow.id}`;
+      const savedFlow = localStorage.getItem(storageKey);
+      
+      if (savedFlow) {
+        try {
+          const flowData = JSON.parse(savedFlow);
+          if (flowData.nodes && flowData.edges) {
+            setNodes(flowData.nodes);
+            setEdges(flowData.edges);
+            setLastSaved(new Date(flowData.savedAt || flowData.metadata?.lastModified));
+            console.log('Loaded flow from localStorage:', flowData);
+          }
+        } catch (error) {
+          console.error('Failed to load flow from localStorage:', error);
+        }
+      }
+    }
+  }, [selectedFlow]);
 
   // Listen for node config changes
   useEffect(() => {
