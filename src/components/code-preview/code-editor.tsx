@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
-import { Copy, Download, Maximize2, Minimize2 } from 'lucide-react';
+import { Copy, Download } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -27,7 +27,6 @@ export function CodeEditor({
   onCodeChange,
   errors = []
 }: CodeEditorProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [editor, setEditor] = useState<any>(null);
 
   useEffect(() => {
@@ -107,14 +106,9 @@ export function CodeEditor({
     URL.revokeObjectURL(url);
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
-  const editorHeight = isFullscreen ? 'calc(100vh - 60px)' : '100%';
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg ${isFullscreen ? 'fixed inset-0 z-50' : 'h-full flex flex-col'}`}>
+    <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-900">Generated Code</h3>
@@ -146,31 +140,12 @@ export function CodeEditor({
           >
             <Download className="w-4 h-4" />
           </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleFullscreen}
-            className="gap-1 ml-1"
-          >
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="w-4 h-4" />
-                Exit
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-4 h-4" />
-                Fullscreen
-              </>
-            )}
-          </Button>
         </div>
       </div>
       
       <div className="relative flex-1">
         <Editor
-          height={editorHeight}
+          height="100%"
           language={language}
           value={code}
           onChange={(value) => onCodeChange?.(value)}

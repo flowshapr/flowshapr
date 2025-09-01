@@ -629,7 +629,7 @@ export function FlowBuilderView({
                 </button>
               </div>
               
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden h-full">
                 {activePanel === 'code' && (
                   <CodeEditor
                     code={generatedCode.code}
