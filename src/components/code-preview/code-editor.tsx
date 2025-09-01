@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
-import { Copy, Download, Eye, EyeOff, Maximize2, Minimize2 } from 'lucide-react';
+import { Copy, Download, Maximize2, Minimize2 } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -28,7 +28,6 @@ export function CodeEditor({
   errors = []
 }: CodeEditorProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
   const [editor, setEditor] = useState<any>(null);
 
   useEffect(() => {
@@ -127,51 +126,32 @@ export function CodeEditor({
           )}
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPreview(!showPreview)}
-            className="gap-1"
-          >
-            {showPreview ? (
-              <>
-                <EyeOff className="w-4 h-4" />
-                Hide
-              </>
-            ) : (
-              <>
-                <Eye className="w-4 h-4" />
-                Show
-              </>
-            )}
-          </Button>
-          
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCopyCode}
-            className="gap-1"
+            className="h-8 w-8 p-0"
+            title="Copy code"
           >
             <Copy className="w-4 h-4" />
-            Copy
           </Button>
           
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDownloadCode}
-            className="gap-1"
+            className="h-8 w-8 p-0"
+            title="Download code"
           >
             <Download className="w-4 h-4" />
-            Download
           </Button>
           
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleFullscreen}
-            className="gap-1"
+            className="gap-1 ml-1"
           >
             {isFullscreen ? (
               <>
@@ -188,42 +168,40 @@ export function CodeEditor({
         </div>
       </div>
       
-      {showPreview && (
-        <div className="relative flex-1">
-          <Editor
-            height={editorHeight}
-            language={language}
-            value={code}
-            onChange={(value) => onCodeChange?.(value)}
-            onMount={handleEditorDidMount}
-            options={{
-              readOnly,
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: 'on',
-              roundedSelection: false,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              theme: 'vs',
-              wordWrap: 'on',
-              contextmenu: false,
-              scrollbar: {
-                vertical: 'auto',
-                horizontal: 'auto',
-              },
-            }}
-          />
-          
-          {code.trim() === '' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-90">
-              <div className="text-center text-gray-500">
-                <p className="text-sm">Add nodes to your flow to see generated code</p>
-                <p className="text-xs mt-1">Start by dragging an Input node to the canvas</p>
-              </div>
+      <div className="relative flex-1">
+        <Editor
+          height={editorHeight}
+          language={language}
+          value={code}
+          onChange={(value) => onCodeChange?.(value)}
+          onMount={handleEditorDidMount}
+          options={{
+            readOnly,
+            minimap: { enabled: false },
+            fontSize: 14,
+            lineNumbers: 'on',
+            roundedSelection: false,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            theme: 'vs',
+            wordWrap: 'on',
+            contextmenu: false,
+            scrollbar: {
+              vertical: 'auto',
+              horizontal: 'auto',
+            },
+          }}
+        />
+        
+        {code.trim() === '' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-90">
+            <div className="text-center text-gray-500">
+              <p className="text-sm">Add nodes to your flow to see generated code</p>
+              <p className="text-xs mt-1">Start by dragging an Input node to the canvas</p>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
