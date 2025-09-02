@@ -41,7 +41,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             id: session.user.id,
             email: session.user.email,
             name: session.user.name,
-            image: session.user.image || undefined,
+            image: session.user.image ?? undefined,
             emailVerified: session.user.emailVerified,
           };
           authMethod = 'token';
@@ -59,7 +59,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         try {
           const sessionData = await authService.getSession(sessionId);
           if (sessionData?.user) {
-            user = sessionData.user;
+            user = {
+              id: sessionData.user.id,
+              email: sessionData.user.email,
+              name: sessionData.user.name,
+              image: sessionData.user.image ?? undefined,
+              emailVerified: sessionData.user.emailVerified,
+            };
             authMethod = 'session';
           }
         } catch (error) {
@@ -121,10 +127,18 @@ export async function requireSessionAuth(req: Request, res: Response, next: Next
       throw new UnauthorizedError("Invalid or expired session. Please log in again.");
     }
 
-    req.user = sessionData.user;
+    const user: AuthenticatedUser = {
+      id: sessionData.user.id,
+      email: sessionData.user.email,
+      name: sessionData.user.name,
+      image: sessionData.user.image ?? undefined,
+      emailVerified: sessionData.user.emailVerified,
+    };
+
+    req.user = user;
     req.authMethod = 'session';
     req.context = {
-      user: sessionData.user,
+      user,
     };
 
     next();
@@ -157,11 +171,11 @@ export async function requireTokenAuth(req: Request, res: Response, next: NextFu
       throw new UnauthorizedError("Invalid or expired API token.");
     }
 
-    const user = {
+    const user: AuthenticatedUser = {
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
-      image: session.user.image || undefined,
+      image: session.user.image ?? undefined,
       emailVerified: session.user.emailVerified,
     };
 

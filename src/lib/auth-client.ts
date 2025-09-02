@@ -1,5 +1,39 @@
-// Temporary simple auth client for build compatibility
-const authUrl = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "http://127.0.0.1:3001";
+// Resolve the backend auth base URL with sensible fallbacks
+function resolveAuthUrl(): string {
+  const envUrl =
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.BACKEND_URL;
+
+  if (envUrl) return envUrl.replace(/\/$/, "");
+
+  // Browser fallback: prefer localhost for cookie domain alignment
+  if (typeof window !== "undefined") {
+    const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const host = isLocal ? "localhost" : window.location.hostname;
+    const protocol = window.location.protocol === "https:" ? "https" : "http";
+    const port = isLocal ? 3001 : (window.location.port || 3000); // default dev to 3001
+    return `${protocol}://${host}:${port}`;
+  }
+
+  // Server-side fallback for dev
+  return "http://localhost:3001";
+}
+
+const authUrl = resolveAuthUrl();
+
+// Small helper to avoid hung requests
+async function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+  let timeoutId: any;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("Request timed out")), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export type AuthSession = {
   user: {
@@ -19,19 +53,22 @@ export type AuthSession = {
 export const authClient = {
   signIn: {
     email: async (credentials: { email: string; password: string }) => {
-      console.log("Auth client making request to:", `${authUrl}/api/auth/sign-in/email`);
-      console.log("With credentials:", credentials);
-      const response = await fetch(`${authUrl}/api/auth/sign-in/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-        credentials: 'include', // Include cookies in cross-origin requests
-      });
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
-      const jsonResult = await response.json();
-      console.log("Parsed JSON result:", jsonResult);
-      return jsonResult;
+      try {
+        const url = `${authUrl}/api/auth/sign-in/email`;
+        const resp = await withTimeout(
+          fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+            credentials: 'include',
+            mode: 'cors',
+          })
+        );
+        const data = await resp.json().catch(() => ({}));
+        return resp.ok ? data : { error: data?.error || { message: `Login failed (${resp.status})` } };
+      } catch (err: any) {
+        return { error: { message: err?.message || 'Network error' } };
+      }
     },
     social: async ({ provider, callbackURL }: { provider: string; callbackURL: string }) => {
       window.location.href = `${authUrl}/api/auth/sign-in/${provider}?callbackURL=${encodeURIComponent(callbackURL)}`;
@@ -39,32 +76,41 @@ export const authClient = {
   },
   signUp: {
     email: async (data: { name: string; email: string; password: string }) => {
-      const response = await fetch(`${authUrl}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-      return response.json();
+      try {
+        const resp = await withTimeout(
+          fetch(`${authUrl}/api/auth/sign-up/email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            credentials: 'include',
+            mode: 'cors',
+          })
+        );
+        const json = await resp.json().catch(() => ({}));
+        return resp.ok ? json : { error: json?.error || { message: `Registration failed (${resp.status})` } };
+      } catch (err: any) {
+        return { error: { message: err?.message || 'Network error' } };
+      }
     },
   },
   signOut: async () => {
-    const response = await fetch(`${authUrl}/api/auth/sign-out`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return response.json();
+    try {
+      const resp = await withTimeout(
+        fetch(`${authUrl}/api/auth/sign-out`, { method: 'POST', credentials: 'include', mode: 'cors' })
+      );
+      return resp.json().catch(() => ({}));
+    } catch (err: any) {
+      return { error: { message: err?.message || 'Network error' } };
+    }
   },
   getSession: async (): Promise<AuthSession> => {
     try {
-      const response = await fetch(`${authUrl}/api/auth/session`, {
-        credentials: 'include', // Include cookies to get session
-      });
-      const data = await response.json();
-      console.log("getSession response:", data);
-      return data.data ? data.data : null;
+      const resp = await withTimeout(
+        fetch(`${authUrl}/api/auth/session`, { credentials: 'include', mode: 'cors' })
+      );
+      const data = await resp.json().catch(() => ({}));
+      return data?.data || null;
     } catch (error) {
-      console.error("getSession error:", error);
       return null;
     }
   },

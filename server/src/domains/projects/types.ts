@@ -3,6 +3,7 @@ export interface CreateProjectData {
   description?: string;
   organizationId: string;
   teamId?: string;
+  settings?: Record<string, any>;
 }
 
 export interface UpdateProjectData {

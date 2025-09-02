@@ -32,6 +32,15 @@ export function LoginForm() {
           setError(`Login failed: ${errorMessage}`);
         }
       } else {
+        // Mirror session cookie on frontend domain for server-side proxy routes
+        const sessionId = result?.data?.session?.id;
+        if (sessionId) {
+          try {
+            document.cookie = `sessionId=${sessionId}; Path=/; SameSite=Lax`;
+          } catch (e) {
+            console.warn('Failed to set frontend session cookie:', e);
+          }
+        }
         // Redirect to app
         window.location.href = "/app";
       }

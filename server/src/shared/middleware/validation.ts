@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodSchema, ZodError } from "zod";
+import { ZodSchema, ZodError, z } from "zod";
+import { ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
 
 export class DetailedValidationError extends Error {
   public errors: Record<string, string[]>;
@@ -95,11 +97,11 @@ export function validateBody<T>(schema: ZodSchema<T>) {
   };
 }
 
-export function validateParams<T>(schema: ZodSchema<T>) {
+export function validateParams<T extends ParamsDictionary>(schema: ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       const validatedData = schema.parse(req.params);
-      req.params = validatedData;
+      req.params = validatedData as ParamsDictionary;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -127,11 +129,11 @@ export function validateParams<T>(schema: ZodSchema<T>) {
   };
 }
 
-export function validateQuery<T>(schema: ZodSchema<T>) {
+export function validateQuery<T extends ParsedQs>(schema: ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       const validatedData = schema.parse(req.query);
-      req.query = validatedData;
+      req.query = validatedData as ParsedQs;
       next();
     } catch (error) {
       if (error instanceof ZodError) {

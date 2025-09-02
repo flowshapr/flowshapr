@@ -190,6 +190,38 @@ export class ProjectController {
     }
   }
 
+  // Access Token (API Key) endpoints
+  async listApiKeys(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const keys = await projectService.listApiKeys(id, req.user!.id);
+      res.json({ success: true, data: keys });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: { message: 'Failed to list API keys' } });
+    }
+  }
+
+  async createApiKey(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { name, scopes, rateLimit, expiresAt } = req.body;
+      const created = await projectService.createApiKey(id, { name, scopes, rateLimit, expiresAt }, req.user!.id);
+      res.status(201).json({ success: true, data: created, message: 'API key created' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: { message: 'Failed to create API key' } });
+    }
+  }
+
+  async revokeApiKey(req: Request, res: Response): Promise<void> {
+    try {
+      const { id, keyId } = req.params as any;
+      await projectService.revokeApiKey(id, keyId, req.user!.id);
+      res.json({ success: true, message: 'API key revoked' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: { message: 'Failed to revoke API key' } });
+    }
+  }
+
   async addProjectMember(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;

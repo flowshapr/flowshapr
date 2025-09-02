@@ -2,6 +2,7 @@ import { db } from "../../../infrastructure/database/connection";
 import * as schema from "../../../infrastructure/database/schema";
 import { eq, and, ilike, desc, asc, count } from "drizzle-orm";
 import { ConflictError, NotFoundError } from "../../../shared/utils/errors";
+import { generateId, generateToken, hashToken } from "../../../shared/utils/crypto";
 import { 
   CreateProjectData, 
   UpdateProjectData, 
@@ -167,11 +168,17 @@ export class ProjectService {
 
       return {
         ...project,
+        description: project.description ?? undefined,
+        settings: project.settings ?? undefined,
+        teamId: project.teamId ?? undefined,
         members: members.map(m => ({
           id: m.id,
-          role: m.role,
+          role: m.role as string,
           joinedAt: m.joinedAt,
-          user: m.user,
+          user: {
+            ...m.user,
+            image: m.user.image ?? undefined,
+          },
         })),
         _count: {
           flows: flowCount.count,
@@ -179,7 +186,7 @@ export class ProjectService {
           datasets: datasetCount.count,
           apiKeys: apiKeyCount.count,
         },
-      };
+      } as ProjectWithMembers;
     } catch (error: any) {
       console.error("Get project error:", error);
       throw new Error("Failed to retrieve project.");
@@ -201,7 +208,22 @@ export class ProjectService {
     }
 
     try {
-      let query = db
+      // Build filter conditions
+      const conditions = [eq(schema.projectMember.userId, userId)];
+      
+      if (options.organizationId) {
+        conditions.push(eq(schema.project.organizationId, options.organizationId));
+      }
+
+      if (options.teamId) {
+        conditions.push(eq(schema.project.teamId, options.teamId));
+      }
+
+      if (options.search) {
+        conditions.push(ilike(schema.project.name, `%${options.search}%`));
+      }
+
+      const query = db
         .select({
           id: schema.project.id,
           name: schema.project.name,
@@ -215,32 +237,7 @@ export class ProjectService {
         })
         .from(schema.project)
         .innerJoin(schema.projectMember, eq(schema.projectMember.projectId, schema.project.id))
-        .where(eq(schema.projectMember.userId, userId));
-
-      // Apply filters
-      if (options.organizationId) {
-        query = query.where(and(
-          eq(schema.projectMember.userId, userId),
-          eq(schema.project.organizationId, options.organizationId)
-        ));
-      }
-
-      if (options.teamId) {
-        query = query.where(and(
-          eq(schema.projectMember.userId, userId),
-          eq(schema.project.teamId, options.teamId)
-        ));
-      }
-
-      if (options.search) {
-        query = query.where(and(
-          eq(schema.projectMember.userId, userId),
-          ilike(schema.project.name, `%${options.search}%`)
-        ));
-      }
-
-      // Apply pagination and ordering
-      query = query
+        .where(and(...conditions))
         .orderBy(desc(schema.project.updatedAt))
         .limit(options.limit || 50)
         .offset(options.offset || 0);
@@ -250,6 +247,76 @@ export class ProjectService {
       console.error("Get user projects error:", error);
       throw new Error("Failed to retrieve projects.");
     }
+  }
+
+  // Access Tokens (API Keys)
+  private generateApiKeyId(): string {
+    return `ak_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async listApiKeys(projectId: string, userId: string) {
+    if (!db) throw new Error("Database not available");
+    // Ensure membership
+    const project = await this.getProjectById(projectId, userId);
+    if (!project) throw new NotFoundError("Project not found or access denied");
+
+    const keys = await db
+      .select({
+        id: schema.apiKey.id,
+        name: schema.apiKey.name,
+        prefix: schema.apiKey.prefix,
+        scopes: schema.apiKey.scopes,
+        rateLimit: schema.apiKey.rateLimit,
+        isActive: schema.apiKey.isActive,
+        lastUsedAt: schema.apiKey.lastUsedAt,
+        usageCount: schema.apiKey.usageCount,
+        expiresAt: schema.apiKey.expiresAt,
+        createdAt: schema.apiKey.createdAt,
+      })
+      .from(schema.apiKey)
+      .where(and(eq(schema.apiKey.projectId, projectId), eq(schema.apiKey.isActive, true)));
+    return keys;
+  }
+
+  async createApiKey(projectId: string, data: { name: string; scopes?: string[]; rateLimit?: number; expiresAt?: string }, userId: string) {
+    if (!db) throw new Error("Database not available");
+    const project = await this.getProjectById(projectId, userId);
+    if (!project) throw new NotFoundError("Project not found or access denied");
+
+    const rawToken = `fs_${generateToken()}`;
+    const tokenHash = hashToken(rawToken);
+    const keyId = this.generateApiKeyId();
+    const prefix = rawToken.slice(0, 8);
+
+    const inserted = await db
+      .insert(schema.apiKey)
+      .values({
+        id: keyId,
+        name: data.name,
+        key: tokenHash,
+        prefix,
+        scopes: data.scopes || [],
+        rateLimit: data.rateLimit || null,
+        isActive: true,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        projectId,
+        createdBy: userId,
+      })
+      .returning({ id: schema.apiKey.id, prefix: schema.apiKey.prefix, name: schema.apiKey.name });
+
+    return { id: inserted[0].id, name: inserted[0].name, prefix: inserted[0].prefix, token: rawToken };
+  }
+
+  async revokeApiKey(projectId: string, keyId: string, userId: string) {
+    if (!db) throw new Error("Database not available");
+    const project = await this.getProjectById(projectId, userId);
+    if (!project) throw new NotFoundError("Project not found or access denied");
+
+    await db
+      .update(schema.apiKey)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(schema.apiKey.projectId, projectId), eq(schema.apiKey.id, keyId)));
+    return { success: true };
   }
 
   async updateProject(

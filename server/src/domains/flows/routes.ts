@@ -11,7 +11,8 @@ import {
   updateFlowMemberRoleSchema,
   flowIdSchema,
   flowMemberParamsSchema,
-  flowListQuerySchema
+  flowListQuerySchema,
+  executeFlowSchema
 } from "./validation/schemas";
 
 const router = Router();
@@ -91,6 +92,14 @@ router.delete(
   "/:id/members/:memberId",
   validateParams(flowMemberParamsSchema),
   (req, res) => flowController.removeFlowMember(req, res)
+);
+
+// POST /flows/:id/execute - Execute flow
+router.post(
+  "/:id/execute",
+  validateParams(flowIdSchema),
+  validateBody(executeFlowSchema),
+  (req, res) => flowController.executeFlow(req, res)
 );
 
 export { router as flowRoutes };

@@ -30,12 +30,24 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration with explicit credentials
+// CORS configuration with explicit credentials and flexible origins
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+const envOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-  credentials: true, // Enable cookies in cross-origin requests
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // SSR or same-origin
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  optionsSuccessStatus: 200,
 }));
 
 // Rate limiting

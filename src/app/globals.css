@@ -19,8 +19,9 @@
   --accent-foreground: 222.2 47.4% 11.2%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
+  /* Increase border contrast for better input visibility */
+  --border: 214.3 31.8% 80%;
+  --input: 214.3 31.8% 80%;
   --ring: 222.2 84% 4.9%;
   --radius: 0.5rem;
 }
@@ -92,4 +93,27 @@ body {
 
 .react-flow__minimap {
   background-color: hsl(var(--muted));
+}
+
+/* Ensure visible borders inside flow builder nodes */
+.flow-node input,
+.flow-node select,
+.flow-node textarea {
+  border: 1px solid hsl(var(--border)) !important;
+  background-color: #fff;
+  border-radius: 0.375rem; /* rounded */
+}
+
+.flow-node input:focus,
+.flow-node select:focus,
+.flow-node textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+/* Enlarge React Flow handles (default is ~6px) */
+.flow-node .react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  border-width: 2px !important;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -15,10 +15,12 @@ import {
   Node,
   BackgroundVariant,
   ConnectionMode,
+  updateEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from './node-types';
+import { DeletableEdge } from './edges/DeletableEdge';
 import { FlowNode, FlowEdge, NodeType, FlowNodeData } from '@/types/flow';
 import { generateId } from '@/lib/utils';
 
@@ -28,6 +30,8 @@ interface FlowCanvasProps {
   onNodesChange?: (nodes: FlowNode[]) => void;
   onEdgesChange?: (edges: FlowEdge[]) => void;
   onAddNode?: (type: NodeType, position?: { x: number; y: number }) => void;
+  viewport?: { x: number; y: number; zoom: number };
+  onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
 
 const initialNodes: FlowNode[] = [];
@@ -38,13 +42,16 @@ export function FlowCanvas({
   edges: externalEdges, 
   onNodesChange,
   onEdgesChange,
-  onAddNode
+  onAddNode,
+  viewport,
+  onViewportChange
 }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState(externalNodes || initialNodes);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState(externalEdges || initialEdges);
+  const edgeTypes = { deletable: DeletableEdge } as const;
 
   // Sync external state with internal state
   useEffect(() => {
@@ -59,9 +66,19 @@ export function FlowCanvas({
     }
   }, [externalEdges, setEdges]);
 
+  // Apply incoming viewport from parent when available
+  useEffect(() => {
+    if (reactFlowInstance && viewport) {
+      try {
+        // setViewport({ x, y, zoom }, options)
+        reactFlowInstance.setViewport(viewport, { duration: 0 });
+      } catch {}
+    }
+  }, [viewport, reactFlowInstance]);
+
   const onConnect = useCallback(
     (params: Connection) => {
-      const newEdge = addEdge(params, edges);
+      const newEdge = addEdge({ ...params, type: 'deletable', animated: false, updatable: true }, edges);
       setEdges(newEdge);
       onEdgesChange?.(newEdge);
     },
@@ -120,33 +137,62 @@ export function FlowCanvas({
     });
   }, [edges, onEdgesChangeInternal, onEdgesChange]);
 
+  const handleEdgeUpdate = useCallback((oldEdge: any, connection: any) => {
+    setEdges((eds) => updateEdge(oldEdge, { ...connection, type: oldEdge.type || 'deletable', animated: false, updatable: true }, eds));
+  }, [setEdges]);
+
+  const handleEdgeDelete = useCallback((id: string) => {
+    setEdges((eds) => eds.filter((e) => e.id !== id));
+  }, [setEdges]);
+
+  const displayEdges = useMemo(() => (
+    edges.map((e: any) => ({
+      ...e,
+      type: e.type || 'deletable',
+      animated: false,
+      updatable: true,
+      data: { ...(e.data || {}), onDelete: handleEdgeDelete },
+    }))
+  ), [edges, handleEdgeDelete]);
+
   return (
     <div className="flex-1 h-full" ref={reactFlowWrapper}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
-        onInit={setReactFlowInstance}
+        onEdgeUpdate={handleEdgeUpdate}
+        onInit={(instance) => {
+          setReactFlowInstance(instance);
+          // Initialize viewport if provided
+          if (viewport) {
+            try {
+              instance.setViewport(viewport, { duration: 0 });
+            } catch {}
+          }
+        }}
+        onMoveEnd={(_, vp) => {
+          // vp: { x, y, zoom }
+          onViewportChange?.(vp as any);
+        }}
         onDrop={onDrop}
         onDragOver={onDragOver}
         nodeTypes={nodeTypes}
-        connectionMode={ConnectionMode.Loose}
+        edgeTypes={edgeTypes}
+        connectionMode={ConnectionMode.Strict}
+        connectionLineType="step"
         fitView
         attributionPosition="bottom-left"
         defaultEdgeOptions={{
-          type: 'smoothstep',
-          animated: true,
-          style: { 
-            strokeWidth: 3,
-            stroke: '#8b5cf6',
-          },
+          type: 'deletable',
+          animated: false,
+          updatable: true,
+          style: { strokeWidth: 2, stroke: '#8b5cf6' },
+          data: { onDelete: handleEdgeDelete },
         }}
-        connectionLineStyle={{ 
-          strokeWidth: 3, 
-          stroke: '#8b5cf6' 
-        }}
+        connectionLineStyle={{ strokeWidth: 2, stroke: '#8b5cf6', strokeDasharray: '6 3' }}
       >
         <Controls />
         <MiniMap 
@@ -169,10 +215,8 @@ function getNodeColor(type: NodeType): string {
   switch (type) {
     case NodeType.INPUT:
       return '#3b82f6';
-    case NodeType.MODEL:
+    case NodeType.AGENT:
       return '#10b981';
-    case NodeType.PROMPT:
-      return '#8b5cf6';
     case NodeType.TRANSFORM:
       return '#f59e0b';
     case NodeType.OUTPUT:

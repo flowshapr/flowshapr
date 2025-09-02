@@ -142,6 +142,7 @@ export class FlowService {
         updatedAt: schema.flow.updatedAt,
         publishedAt: schema.flow.publishedAt,
         createdBy: schema.flow.createdBy,
+        projectId: schema.flow.projectId,
         slug: schema.project.slug,
         organizationId: schema.project.organizationId,
         teamId: schema.project.teamId,
@@ -163,7 +164,15 @@ export class FlowService {
       return null;
     }
 
-    return result[0] as Flow;
+    // Convert null to undefined for optional fields
+    return {
+      ...result[0],
+      description: result[0].description ?? undefined,
+      teamId: result[0].teamId ?? undefined,
+      publishedAt: result[0].publishedAt ?? undefined,
+      metadata: result[0].metadata ?? undefined,
+      config: result[0].config ?? undefined,
+    } as Flow;
   }
 
   async getUserFlows(
@@ -179,38 +188,6 @@ export class FlowService {
     if (!db) {
       throw new Error("Database connection not available");
     }
-
-    let query = db
-      .select({
-        id: schema.flow.id,
-        name: schema.flow.name,
-        alias: schema.flow.alias,
-        description: schema.flow.description,
-        version: schema.flow.version,
-        isLatest: schema.flow.isLatest,
-        status: schema.flow.status,
-        nodes: schema.flow.nodes,
-        edges: schema.flow.edges,
-        metadata: schema.flow.metadata,
-        config: schema.flow.config,
-        createdAt: schema.flow.createdAt,
-        updatedAt: schema.flow.updatedAt,
-        publishedAt: schema.flow.publishedAt,
-        createdBy: schema.flow.createdBy,
-        slug: schema.project.slug,
-        organizationId: schema.project.organizationId,
-        teamId: schema.project.teamId,
-        memberRole: schema.projectMember.role,
-      })
-      .from(schema.flow)
-      .innerJoin(schema.project, eq(schema.flow.projectId, schema.project.id))
-      .innerJoin(
-        schema.projectMember,
-        and(
-          eq(schema.projectMember.projectId, schema.project.id),
-          eq(schema.projectMember.userId, userId)
-        )
-      );
 
     // Apply filters
     const conditions = [];
@@ -234,14 +211,57 @@ export class FlowService {
       );
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    const baseQuery = db
+      .select({
+        id: schema.flow.id,
+        name: schema.flow.name,
+        alias: schema.flow.alias,
+        description: schema.flow.description,
+        version: schema.flow.version,
+        isLatest: schema.flow.isLatest,
+        status: schema.flow.status,
+        nodes: schema.flow.nodes,
+        edges: schema.flow.edges,
+        metadata: schema.flow.metadata,
+        config: schema.flow.config,
+        createdAt: schema.flow.createdAt,
+        updatedAt: schema.flow.updatedAt,
+        publishedAt: schema.flow.publishedAt,
+        createdBy: schema.flow.createdBy,
+        projectId: schema.flow.projectId,
+        slug: schema.project.slug,
+        organizationId: schema.project.organizationId,
+        teamId: schema.project.teamId,
+        memberRole: schema.projectMember.role,
+      })
+      .from(schema.flow)
+      .innerJoin(schema.project, eq(schema.flow.projectId, schema.project.id))
+      .innerJoin(
+        schema.projectMember,
+        and(
+          eq(schema.projectMember.projectId, schema.project.id),
+          eq(schema.projectMember.userId, userId)
+        )
+      );
 
-    return await query
+    const queryWithConditions = conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
+
+    const results = await queryWithConditions
       .orderBy(desc(schema.flow.updatedAt))
       .limit(options.limit)
       .offset(options.offset);
+
+    // Convert null to undefined for optional fields
+    return results.map(result => ({
+      ...result,
+      description: result.description ?? undefined,
+      teamId: result.teamId ?? undefined,
+      publishedAt: result.publishedAt ?? undefined,
+      metadata: result.metadata ?? undefined,
+      config: result.config ?? undefined,
+    })) as Flow[];
   }
 
   async updateFlow(
@@ -293,6 +313,7 @@ export class FlowService {
       }
     }
 
+    // Update both project and flow tables
     await db
       .update(schema.project)
       .set({
@@ -301,7 +322,16 @@ export class FlowService {
         description: updateData.description,
         updatedAt: new Date(),
       })
-      .where(eq(schema.project.id, flowId));
+      .where(eq(schema.project.id, existingFlow.projectId));
+
+    await db
+      .update(schema.flow)
+      .set({
+        name: updateData.name || existingFlow.name,
+        description: updateData.description,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.flow.id, flowId));
 
     const updatedFlow = await this.getFlowById(flowId, userId);
     if (!updatedFlow) {
@@ -324,7 +354,11 @@ export class FlowService {
       throw new ForbiddenError("Only flow owners can delete flows");
     }
 
-    await db.delete(schema.project).where(eq(schema.project.id, flowId));
+    // Get projectId first
+    const projectId = (flow as any).projectId;
+    if (projectId) {
+      await db.delete(schema.project).where(eq(schema.project.id, projectId));
+    }
   }
 
   // Flow definition methods
@@ -351,14 +385,14 @@ export class FlowService {
     }
 
     await db
-      .update(schema.project)
+      .update(schema.flow)
       .set({
         nodes: definition.nodes,
         edges: definition.edges,
         metadata: { ...flow.metadata, ...definition.metadata },
         updatedAt: new Date(),
       })
-      .where(eq(schema.project.id, flowId));
+      .where(eq(schema.flow.id, flowId));
 
     const updatedFlow = await this.getFlowById(flowId, userId);
     if (!updatedFlow) {
@@ -405,24 +439,24 @@ export class FlowService {
 
       // Update current flow
       await db
-        .update(schema.project)
+        .update(schema.flow)
         .set({
           version: options.version,
           status: "published",
           publishedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(schema.project.id, flowId));
+        .where(eq(schema.flow.id, flowId));
     } else {
       // Just publish current version
       await db
-        .update(schema.project)
+        .update(schema.flow)
         .set({
           status: "published",
           publishedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(schema.project.id, flowId));
+        .where(eq(schema.flow.id, flowId));
     }
 
     const updatedFlow = await this.getFlowById(flowId, userId);

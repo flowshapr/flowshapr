@@ -69,6 +69,17 @@ export const saveFlowDefinitionSchema = z.object({
   metadata: z.any().optional(),
 });
 
+// Execute flow schema (request body)
+export const executeFlowSchema = z.object({
+  input: z.any(),
+  nodes: z.array(flowNodeSchema).optional(),
+  edges: z.array(flowEdgeSchema).optional(),
+  metadata: z.any().optional(),
+  connections: z.array(z.object({ id: z.string(), name: z.string(), provider: z.string(), apiKey: z.string().optional() })).optional(),
+});
+
+export type ExecuteFlowRequest = z.infer<typeof executeFlowSchema>;
+
 // Publish flow schema
 export const publishFlowSchema = z.object({
   version: versionSchema.optional(),
@@ -98,24 +109,18 @@ export const updateFlowMemberRoleSchema = z.object({
 
 // Flow ID param schema
 export const flowIdSchema = z.object({
-  params: z.object({
-    id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid flow ID"),
-  }),
+  id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid flow ID"),
 });
 
 // Member ID param schema
 export const memberIdSchema = z.object({
-  params: z.object({
-    memberId: z.string().regex(/^[a-f0-9]{32}$/, "Invalid member ID"),
-  }),
+  memberId: z.string().regex(/^[a-f0-9]{32}$/, "Invalid member ID"),
 });
 
 // Combined flow and member ID schema
 export const flowMemberParamsSchema = z.object({
-  params: z.object({
-    id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid flow ID"),
-    memberId: z.string().regex(/^[a-f0-9]{32}$/, "Invalid member ID"),
-  }),
+  id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid flow ID"),
+  memberId: z.string().regex(/^[a-f0-9]{32}$/, "Invalid member ID"),
 });
 
 // Query schemas

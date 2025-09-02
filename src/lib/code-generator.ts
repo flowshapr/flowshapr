@@ -5,7 +5,7 @@ import {
   GeneratedCode, 
   ValidationError,
   InputNodeConfig,
-  ModelNodeConfig,
+  AgentNodeConfig,
   PromptNodeConfig,
   TransformNodeConfig,
   OutputNodeConfig,
@@ -53,28 +53,38 @@ export class CodeGenerator {
   private getExecutionOrder(): FlowNode[] {
     const visited = new Set<string>();
     const order: FlowNode[] = [];
-    
+
+    // Prefer explicit start node if marked
+    const explicitStart = this.nodes.find(n => (n.data as any)?.isStart === true);
+    if (explicitStart) {
+      this.traverseNode(explicitStart, visited, order);
+      return order;
+    }
+
+    // Fallback to INPUT-based start as before
     const inputNodes = this.nodes.filter(n => n.type === NodeType.INPUT);
-    
     if (inputNodes.length === 0) {
+      // If no inputs, start from the first node to allow freeform flows
+      if (this.nodes.length > 0) {
+        this.traverseNode(this.nodes[0], visited, order);
+        return order;
+      }
       this.errors.push({
-        message: 'Flow must have at least one input node',
+        message: 'Flow must contain at least one node',
         severity: 'error',
       });
       return [];
     }
-
     if (inputNodes.length > 1) {
+      // With no explicit start, enforce a single input to avoid ambiguity
       this.errors.push({
-        message: 'Flow can only have one input node',
+        message: 'Flow can only have one input node (or set a Start node)',
         severity: 'error',
       });
       return [];
     }
-
     const startNode = inputNodes[0];
     this.traverseNode(startNode, visited, order);
-    
     return order;
   }
 
@@ -104,6 +114,7 @@ export class CodeGenerator {
     return imports.join('\n');
   }
 
+
   private generateFlowFunction(executionOrder: FlowNode[]): string {
     const flowName = 'generatedFlow';
     const flowBody = this.generateFlowBody(executionOrder);
@@ -120,6 +131,9 @@ export const ${flowName} = ai.defineFlow({
   inputSchema: ${inputSchema},
   outputSchema: z.any(),
 }, async (input) => {
+  // Shared context: accessible to prompts and transforms
+  const ctx: any = { input };
+  const v = (p: string) => p.split('.').reduce((o: any, k: string) => (o == null ? undefined : o[k]), ctx);
   ${flowBody}
 });`;
   }
@@ -134,6 +148,15 @@ export const ${flowName} = ai.defineFlow({
       
       const statement = this.generateNodeStatement(node, currentVar, nextVar);
       statements.push(statement);
+      // expose step output to context for later nodes/templates
+      statements.push(`ctx['${nextVar}'] = ${nextVar};`);
+      // Also expose input variable names (if defined on Input node)
+      if (node.data.type === NodeType.INPUT) {
+        const cfg: any = node.data.config;
+        if (cfg?.inputType === 'variable' && cfg?.variableName && cfg.variableName !== 'input') {
+          statements.push(`ctx['${cfg.variableName}'] = ${nextVar};`);
+        }
+      }
       
       currentVar = nextVar;
     }
@@ -147,17 +170,24 @@ export const ${flowName} = ai.defineFlow({
     switch (node.data.type) {
       case NodeType.INPUT:
         return this.generateInputStatement(node, inputVar, outputVar);
-      case NodeType.MODEL:
-        return this.generateModelStatement(node, inputVar, outputVar);
-      case NodeType.PROMPT:
-        return this.generatePromptStatement(node, inputVar, outputVar);
+      case NodeType.AGENT:
+        return this.generateAgentStatement(node, inputVar, outputVar);
       case NodeType.TRANSFORM:
         return this.generateTransformStatement(node, inputVar, outputVar);
       case NodeType.OUTPUT:
         return this.generateOutputStatement(node, inputVar, outputVar);
       case NodeType.CONDITION:
         return this.generateConditionStatement(node, inputVar, outputVar);
+      // Legacy node type support by string value
       default:
+        // Handle legacy saved nodes that may use raw string types
+        const legacyType = (node as any)?.data?.type as string;
+        if (legacyType === 'model') {
+          return this.generateLegacyModelStatement(node, inputVar, outputVar);
+        }
+        if (legacyType === 'prompt') {
+          return this.generateLegacyPromptStatement(node, inputVar, outputVar);
+        }
         return `const ${outputVar} = ${inputVar}; // Unknown node type`;
     }
   }
@@ -186,23 +216,80 @@ export const ${flowName} = ai.defineFlow({
     }
   }
 
-  private generateModelStatement(node: FlowNode, inputVar: string, outputVar: string): string {
-    const config = node.data.config as ModelNodeConfig;
+  private generateAgentStatement(node: FlowNode, inputVar: string, outputVar: string): string {
+    const config = node.data.config as AgentNodeConfig;
     
-    const modelCall = `await ai.generate({
-    model: '${config.provider}/${config.model}',
-    prompt: ${inputVar},
-    config: {
-      temperature: ${config.temperature || 0.7},
-      maxOutputTokens: ${config.maxOutputTokens || 1000},
-    },
-  })`;
+    // Build the prompt based on configuration
+    let prompt = '';
+    if (config.promptType === 'static') {
+      const systemPrompt = config.systemPrompt || '';
+      const userPrompt = config.userPrompt || '';
+      
+      if (systemPrompt && userPrompt) {
+        prompt = `[\n    { role: 'system', content: ${this.processTemplate(systemPrompt)} },\n    { role: 'user', content: ${this.processTemplate(userPrompt)} }\n  ]`;
+      } else if (systemPrompt) {
+        prompt = `[\n    { role: 'system', content: ${this.processTemplate(systemPrompt)} },\n    { role: 'user', content: ${inputVar} }\n  ]`;
+      } else if (userPrompt) {
+        prompt = this.processTemplate(userPrompt);
+      } else {
+        prompt = inputVar;
+      }
+    } else {
+      // Library prompts - TODO: implement when prompt library is ready
+      prompt = inputVar;
+    }
     
-    return `const ${outputVar}Response = ${modelCall};
-  const ${outputVar} = ${outputVar}Response.text();`;
+    // Build provider-specific configuration
+    const modelConfig = this.buildModelConfig(config);
+    
+    const modelCall = `await ai.generate({\n    model: '${config.provider}/${config.model}',\n    prompt: ${prompt},\n    config: ${modelConfig}\n  })`;
+    
+    return `const ${outputVar}Response = ${modelCall};\n  const ${outputVar} = ${outputVar}Response.text();`;
+  }
+  
+  private processTemplate(template: string): string {
+    // Replace {{path}} with ${v("path")} using the shared context (ctx)
+    const replaced = template.replace(/\{\{\s*([\w$.]+)\s*\}\}/g, (_m, p1) => `\${v("${p1}")}`);
+    return '`' + replaced + '`';
+  }
+  
+  private buildModelConfig(config: AgentNodeConfig): string {
+    const configObj: any = {
+      temperature: config.temperature || 0.7,
+    };
+    
+    // Add provider-specific parameters
+    if (config.maxTokens) {
+      if (config.provider === 'googleai') {
+        configObj.maxOutputTokens = config.maxTokens;
+      } else {
+        configObj.maxTokens = config.maxTokens;
+      }
+    }
+    
+    if (config.topP) configObj.topP = config.topP;
+    if (config.topK) configObj.topK = config.topK;
+    if (config.topKAnthropic) configObj.topK = config.topKAnthropic;
+    if (config.frequencyPenalty) configObj.frequencyPenalty = config.frequencyPenalty;
+    if (config.presencePenalty) configObj.presencePenalty = config.presencePenalty;
+    if (config.candidateCount) configObj.candidateCount = config.candidateCount;
+    if (config.stopSequences && config.stopSequences.length > 0) {
+      configObj.stopSequences = config.stopSequences;
+    }
+    
+    return JSON.stringify(configObj, null, 4).replace(/\n/g, '\n    ');
+  }
+  
+  // Legacy support methods for migration
+  private generateLegacyModelStatement(node: FlowNode, inputVar: string, outputVar: string): string {
+    const config = node.data.config as any; // Legacy config
+    
+    const modelCall = `await ai.generate({\n    model: '${config.provider}/${config.model}',\n    prompt: ${inputVar},\n    config: {\n      temperature: ${config.temperature || 0.7},\n      maxOutputTokens: ${config.maxOutputTokens || 1000},\n    }\n  })`;
+    
+    return `const ${outputVar}Response = ${modelCall};\n  const ${outputVar} = ${outputVar}Response.text();`;
   }
 
-  private generatePromptStatement(node: FlowNode, inputVar: string, outputVar: string): string {
+  private generateLegacyPromptStatement(node: FlowNode, inputVar: string, outputVar: string): string {
     const config = node.data.config as PromptNodeConfig;
     
     // Simple template replacement for now
@@ -215,16 +302,16 @@ export const ${flowName} = ai.defineFlow({
     const config = node.data.config as TransformNodeConfig;
     
     // For safety, we'll wrap user code in a try-catch
-    return `const ${outputVar} = (() => {
+    return `const ${outputVar} = ((data, __ctx) => {
     try {
-      const data = ${inputVar};
+      const ctx = __ctx; // access flow context
       ${config.code}
       return data;
     } catch (error) {
       console.error('Transform error:', error);
-      return ${inputVar};
+      return data;
     }
-  })();`;
+  })(${inputVar}, ctx);`;
   }
 
   private generateOutputStatement(node: FlowNode, inputVar: string, outputVar: string): string {

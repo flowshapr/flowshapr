@@ -151,7 +151,7 @@ function validateNode(node: FlowNode): ValidationError[] {
       }
       break;
     
-    case NodeType.MODEL:
+    case NodeType.AGENT:
       if (!node.data.config.provider) {
         errors.push({
           message: 'Model node must specify provider',
@@ -162,16 +162,6 @@ function validateNode(node: FlowNode): ValidationError[] {
       if (!node.data.config.model) {
         errors.push({
           message: 'Model node must specify model',
-          nodeId: node.id,
-          severity: 'error',
-        });
-      }
-      break;
-    
-    case NodeType.PROMPT:
-      if (!node.data.config.template) {
-        errors.push({
-          message: 'Prompt node must have a template',
           nodeId: node.id,
           severity: 'error',
         });

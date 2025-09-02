@@ -23,13 +23,17 @@ export { pool };
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
-  console.log("Closing database connection pool...");
-  await pool.end();
+  if (pool) {
+    console.log("Closing database connection pool...");
+    await pool.end();
+  }
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  console.log("Closing database connection pool...");
-  await pool.end();
+  if (pool) {
+    console.log("Closing database connection pool...");
+    await pool.end();
+  }
   process.exit(0);
 });

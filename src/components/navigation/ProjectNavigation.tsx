@@ -11,7 +11,7 @@ import {
   BarChart3
 } from 'lucide-react';
 
-export type ProjectView = 'flows' | 'prompts' | 'traces' | 'datasets' | 'api-keys' | 'analytics' | 'settings';
+export type ProjectView = 'flows' | 'prompts' | 'traces' | 'datasets' | 'access-tokens' | 'connections' | 'analytics' | 'settings';
 
 interface ProjectNavigationProps {
   isCollapsed?: boolean;
@@ -54,10 +54,16 @@ export function ProjectNavigation({
       description: 'Training and test data'
     },
     {
-      id: 'api-keys' as ProjectView,
+      id: 'access-tokens' as ProjectView,
       icon: Key,
-      label: 'API Keys',
-      description: 'Manage API access'
+      label: 'Access Tokens',
+      description: 'Tokens for SDK/API access'
+    },
+    {
+      id: 'connections' as ProjectView,
+      icon: Database,
+      label: 'Connections',
+      description: 'Provider & external keys'
     },
     {
       id: 'analytics' as ProjectView,

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { flowService } from "../services/FlowService";
+import { FlowExecutor } from "../services/FlowExecutor";
 import { ConflictError, NotFoundError } from "../../../shared/utils/errors";
 
 export class FlowController {
@@ -347,6 +348,35 @@ export class FlowController {
           }
         });
       }
+    }
+  }
+
+  async executeFlow(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params as any;
+      const { input, nodes, edges, metadata, connections } = req.body || {};
+      let flowDef: any = { nodes, edges, metadata };
+      if (!nodes || !edges) {
+        const flow = await flowService.getFlowById(id, req.user!.id);
+        if (!flow) {
+          res.status(404).json({ success: false, error: { message: 'Flow not found' } });
+          return;
+        }
+        flowDef = { nodes: flow.nodes, edges: flow.edges, metadata: flow.metadata };
+      }
+      if (connections) {
+        flowDef.connections = connections;
+      }
+      const executor = new FlowExecutor();
+      const result = await executor.execute(flowDef, input);
+      if (!result.success) {
+        res.status(400).json(result);
+        return;
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error('Execute flow error:', error);
+      res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });
     }
   }
 

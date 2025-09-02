@@ -113,6 +113,28 @@ export const projectListQuerySchema = z.object({
   }),
 });
 
+// Access token schemas
+export const createApiKeySchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid project ID"),
+  }),
+  body: z.object({
+    name: nameSchema,
+    scopes: z.array(z.string()).default([]),
+    rateLimit: z.number().min(1).max(10000).optional(),
+    expiresAt: z.string().datetime().optional(),
+  }),
+});
+
+export const apiKeyIdParamsSchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid project ID"),
+    keyId: z.string().regex(/^[a-f0-9_\-]{10,}$/i, "Invalid key ID"),
+  }),
+});
+
+export type CreateApiKeyRequest = z.infer<typeof createApiKeySchema>;
+
 // Type exports
 export type CreateProjectRequest = z.infer<typeof createProjectSchema>;
 export type UpdateProjectRequest = z.infer<typeof updateProjectSchema>;

@@ -12,8 +12,7 @@ import {
 
 const nodeIcons = {
   [NodeType.INPUT]: FileText,
-  [NodeType.MODEL]: Brain,
-  [NodeType.PROMPT]: MessageSquare,
+  [NodeType.AGENT]: Brain,
   [NodeType.TRANSFORM]: Code,
   [NodeType.OUTPUT]: Download,
   [NodeType.CONDITION]: GitBranch,
@@ -21,8 +20,7 @@ const nodeIcons = {
 
 const nodeColors = {
   [NodeType.INPUT]: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
-  [NodeType.MODEL]: 'bg-green-50 border-green-200 hover:bg-green-100',
-  [NodeType.PROMPT]: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
+  [NodeType.AGENT]: 'bg-green-50 border-green-200 hover:bg-green-100',
   [NodeType.TRANSFORM]: 'bg-orange-50 border-orange-200 hover:bg-orange-100',
   [NodeType.OUTPUT]: 'bg-red-50 border-red-200 hover:bg-red-100',
   [NodeType.CONDITION]: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100',
@@ -97,12 +95,10 @@ function getNodeDescription(type: NodeType): string {
   switch (type) {
     case NodeType.INPUT:
       return 'Define flow input data';
-    case NodeType.MODEL:
-      return 'AI model inference';
-    case NodeType.PROMPT:
-      return 'Text prompt template';
+    case NodeType.AGENT:
+      return 'AI agent with integrated prompts';
     case NodeType.TRANSFORM:
-      return 'Data transformation';
+      return 'Function (JavaScript)';
     case NodeType.OUTPUT:
       return 'Flow output format';
     case NodeType.CONDITION:

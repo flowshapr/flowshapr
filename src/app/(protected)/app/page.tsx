@@ -12,7 +12,7 @@ export default function FlowBuilderApp() {
       id: "user_1756749003851_v6sdy99q9kf",
       name: "Marcel Folaron", 
       email: "marcel@leantime.io",
-      image: null,
+      // image is optional in AppLayout props; omit when unknown
       emailVerified: true
     },
     session: {
@@ -28,6 +28,7 @@ export default function FlowBuilderApp() {
     slug: "sample-ai-flow",
     description: "A sample flow for UI development",
     organizationId: "org_1",
+    projectId: "proj_1",
     memberRole: "owner"
   };
 

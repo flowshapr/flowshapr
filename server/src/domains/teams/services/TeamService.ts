@@ -12,6 +12,10 @@ export class TeamService {
     organizationId: string;
     createdBy: string;
   }): Promise<Team> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     // Check if user has admin role in the organization
     await this.checkOrganizationAdminAccess(data.organizationId, data.createdBy);
 
@@ -49,6 +53,10 @@ export class TeamService {
   }
 
   async getTeamById(id: string): Promise<Team | null> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const result = await db
       .select()
       .from(team)
@@ -59,6 +67,10 @@ export class TeamService {
   }
 
   async getOrganizationTeams(organizationId: string): Promise<Team[]> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     return await db
       .select()
       .from(team)
@@ -66,6 +78,10 @@ export class TeamService {
   }
 
   async getUserTeams(userId: string): Promise<Team[]> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     return await db
       .select({
         id: team.id,
@@ -85,6 +101,10 @@ export class TeamService {
     data: Partial<Pick<Team, "name" | "description">>,
     userId: string
   ): Promise<Team> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const existingTeam = await this.getTeamById(id);
     if (!existingTeam) {
       throw new NotFoundError("Team not found");
@@ -102,6 +122,10 @@ export class TeamService {
   }
 
   async deleteTeam(id: string, userId: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const existingTeam = await this.getTeamById(id);
     if (!existingTeam) {
       throw new NotFoundError("Team not found");
@@ -119,6 +143,10 @@ export class TeamService {
     role: TeamMemberRole,
     addedBy: string
   ): Promise<TeamMember> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const existingTeam = await this.getTeamById(teamId);
     if (!existingTeam) {
       throw new NotFoundError("Team not found");
@@ -161,6 +189,10 @@ export class TeamService {
   }
 
   async removeTeamMember(teamId: string, userId: string, removedBy: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     // Check if removing user has admin access
     await this.checkTeamAdminAccess(teamId, removedBy);
 
@@ -195,6 +227,10 @@ export class TeamService {
     role: TeamMemberRole,
     updatedBy: string
   ): Promise<TeamMember> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     // Check if updating user has admin access
     await this.checkTeamAdminAccess(teamId, updatedBy);
 
@@ -231,6 +267,10 @@ export class TeamService {
   }
 
   async getTeamMembers(teamId: string): Promise<Array<TeamMember & { user: { id: string; name: string; email: string; image?: string | null } }>> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     return await db
       .select({
         id: teamMember.id,
@@ -252,6 +292,10 @@ export class TeamService {
   }
 
   private async checkTeamAdminAccess(teamId: string, userId: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const member = await db
       .select()
       .from(teamMember)
@@ -294,6 +338,10 @@ export class TeamService {
   }
 
   private async checkOrganizationAdminAccess(organizationId: string, userId: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     // Check if user is organization owner
     const orgOwner = await db
       .select()

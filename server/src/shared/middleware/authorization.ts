@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from '@casl/ability';
-import { defineAbilitiesFor, getUserContext, Actions, Subjects, checkAbility } from '../authorization/abilities';
+import { defineAbilitiesFor, getUserContext, Actions, Subjects, checkAbility, UserContext } from '../authorization/abilities';
 import { db } from '../../infrastructure/database/connection';
 import * as schema from '../../infrastructure/database/schema';
+import { user } from '../../infrastructure/database/schema';
 import { eq, and } from 'drizzle-orm';
 import { UnauthorizedError } from '../utils/errors';
 
@@ -11,7 +12,7 @@ declare global {
   namespace Express {
     interface Request {
       ability?: ReturnType<typeof defineAbilitiesFor>;
-      userContext?: Awaited<ReturnType<typeof getUserContext>>;
+      userContext?: UserContext | null;
     }
   }
 }
@@ -123,7 +124,6 @@ async function getUserCompleteContext(userId: string) {
     const userOrganizations = await db
       .select({
         organizationId: schema.organization.id,
-        role: 'owner' as const
       })
       .from(schema.organization)
       .where(eq(schema.organization.ownerId, userId));
@@ -150,24 +150,47 @@ async function getUserCompleteContext(userId: string) {
     const ownedProjects = await db
       .select({
         projectId: schema.project.id,
-        role: 'owner' as const
       })
       .from(schema.project)
       .where(eq(schema.project.createdBy, userId));
 
     // Combine project memberships and ownerships
     const allProjectRoles = [
-      ...projectMemberships.map(p => ({ projectId: p.projectId, role: p.role })),
-      ...ownedProjects.map(p => ({ projectId: p.projectId, role: p.role }))
+      ...projectMemberships.map(p => ({ 
+        projectId: p.projectId as string, 
+        role: p.role as string 
+      })),
+      ...ownedProjects.map(p => ({ 
+        projectId: p.projectId, 
+        role: 'owner' 
+      }))
     ];
+
+    // Get user info
+    const [userInfo] = await db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
+
+    if (!userInfo) {
+      return null;
+    }
 
     return {
       user: { 
-        id: userId,
-        organizationId: userOrganizations[0]?.organizationId // Assuming user belongs to one org for now
-      } as any,
-      organizationRole: userOrganizations[0]?.role,
-      teamRoles: teamMemberships.map(t => ({ teamId: t.teamId, role: t.role })),
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        image: userInfo.image ?? undefined,
+        emailVerified: userInfo.emailVerified
+      },
+      organizationId: userOrganizations[0]?.organizationId,
+      organizationRole: userOrganizations.length > 0 ? 'owner' : undefined,
+      teamRoles: teamMemberships.map(t => ({ 
+        teamId: t.teamId as string, 
+        role: t.role as string 
+      })),
       projectRoles: allProjectRoles
     };
   } catch (error) {
@@ -199,6 +222,10 @@ export function requireProjectAccess(action: Actions = 'read') {
       }
 
       // Load project to verify it exists
+      if (!db) {
+        throw new Error('Database not available');
+      }
+      
       const project = await db
         .select()
         .from(schema.project)

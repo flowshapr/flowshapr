@@ -9,7 +9,9 @@ import {
   updateProjectMemberRoleSchema,
   projectIdSchema,
   projectMemberParamsSchema,
-  projectListQuerySchema
+  projectListQuerySchema,
+  createApiKeySchema,
+  apiKeyIdParamsSchema,
 } from "./validation/schemas";
 
 const router = Router();
@@ -77,3 +79,22 @@ router.delete(
 );
 
 export { router as projectRoutes };
+
+// Access Tokens (API Keys)
+router.get(
+  "/:id/api-keys",
+  validate(projectIdSchema),
+  (req, res) => projectController.listApiKeys(req, res)
+);
+
+router.post(
+  "/:id/api-keys",
+  validate(createApiKeySchema),
+  (req, res) => projectController.createApiKey(req, res)
+);
+
+router.delete(
+  "/:id/api-keys/:keyId",
+  validate(apiKeyIdParamsSchema),
+  (req, res) => projectController.revokeApiKey(req, res)
+);

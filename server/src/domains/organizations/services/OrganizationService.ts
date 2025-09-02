@@ -12,6 +12,10 @@ export class OrganizationService {
     description?: string;
     ownerId: string;
   }): Promise<Organization> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const slug = data.slug || generateSlug(data.name);
     
     // Check if slug already exists
@@ -61,6 +65,10 @@ export class OrganizationService {
   }
 
   async getOrganizationById(id: string): Promise<Organization | null> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const result = await db
       .select()
       .from(organization)
@@ -71,6 +79,10 @@ export class OrganizationService {
   }
 
   async getOrganizationBySlug(slug: string): Promise<Organization | null> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const result = await db
       .select()
       .from(organization)
@@ -81,6 +93,10 @@ export class OrganizationService {
   }
 
   async getUserOrganizations(userId: string): Promise<Organization[]> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     // Get organizations where user is owner
     const ownedOrgs = await db
       .select()
@@ -118,6 +134,10 @@ export class OrganizationService {
     data: Partial<Pick<Organization, "name" | "description" | "logoUrl">>,
     userId: string
   ): Promise<Organization> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const org = await this.getOrganizationById(id);
     if (!org) {
       throw new NotFoundError("Organization not found");
@@ -136,6 +156,10 @@ export class OrganizationService {
   }
 
   async deleteOrganization(id: string, userId: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const org = await this.getOrganizationById(id);
     if (!org) {
       throw new NotFoundError("Organization not found");
@@ -149,6 +173,10 @@ export class OrganizationService {
   }
 
   async transferOwnership(organizationId: string, newOwnerId: string, currentOwnerId: string): Promise<void> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
     const org = await this.getOrganizationById(organizationId);
     if (!org) {
       throw new NotFoundError("Organization not found");

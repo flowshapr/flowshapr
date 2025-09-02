@@ -15,6 +15,7 @@ export interface Flow {
   createdAt: Date;
   updatedAt: Date;
   publishedAt?: Date;
+  projectId: string;
   organizationId: string;
   teamId?: string;
   createdBy: string;
