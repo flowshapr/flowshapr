@@ -2,6 +2,8 @@ import { Router } from "express";
 import { flowController } from "./controllers/FlowController";
 import { validateBody, validateParams } from "../../shared/middleware/validation";
 import { requireAuth } from "../../shared/middleware/auth";
+import { requireScope, rateLimitToken } from "../../shared/middleware/scope";
+import { eq } from 'drizzle-orm';
 import {
   createFlowSchema,
   updateFlowSchema,
@@ -99,7 +101,49 @@ router.post(
   "/:id/execute",
   validateParams(flowIdSchema),
   validateBody(executeFlowSchema),
+  rateLimitToken(),
+  requireScope('execute_flow'),
   (req, res) => flowController.executeFlow(req, res)
+);
+
+// GET /flows/:id/traces - List traces for a flow
+router.get(
+  "/:id/traces",
+  validateParams(flowIdSchema),
+  async (req, res) => {
+    try {
+      const { db } = await import("../../infrastructure/database/connection");
+      const schema = await import("../../infrastructure/database/schema");
+      const flowId = (req.params as any).id;
+      const rows = await (db as any).select({
+        id: (schema as any).trace.id,
+        executionId: (schema as any).trace.executionId,
+        status: (schema as any).trace.status,
+        duration: (schema as any).trace.duration,
+        createdAt: (schema as any).trace.createdAt,
+      }).from((schema as any).trace).where(eq((schema as any).trace.flowId, flowId)).orderBy((schema as any).trace.createdAt);
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to list traces' } });
+    }
+  }
+);
+
+// GET /flows/:id/traces/:executionId - Get a trace
+router.get(
+  "/:id/traces/:executionId",
+  async (req, res) => {
+    try {
+      const { db } = await import("../../infrastructure/database/connection");
+      const schema = await import("../../infrastructure/database/schema");
+      const execId = (req.params as any).executionId;
+      const rows = await (db as any).select().from((schema as any).trace).where(eq((schema as any).trace.executionId, execId)).limit(1);
+      if (!rows || rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Trace not found' } });
+      res.json({ success: true, data: rows[0] });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to get trace' } });
+    }
+  }
 );
 
 export { router as flowRoutes };

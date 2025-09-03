@@ -264,7 +264,7 @@ function TraceCard({ trace, traceIndex, isExpanded, onToggle }: TraceCardProps) 
             <ChevronRight className="w-3 h-3" />
           )}
           <span className="text-xs font-medium">
-            {trace.nodeId} ({trace.duration}ms)
+            {trace.nodeTitle || trace.nodeId} ({trace.duration}ms)
           </span>
           {trace.error && (
             <AlertCircle className="w-3 h-3 text-red-500" />

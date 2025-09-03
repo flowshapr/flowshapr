@@ -24,17 +24,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ user, children }: AppLayoutProps) {
-  // Initialize with mock flow for UI development
-  const mockFlow = {
-    id: "flow_1",
-    name: "Sample AI Flow",
-    slug: "sample-ai-flow",
-    description: "A sample flow for UI development",
-    organizationId: "org_1",
-    memberRole: "owner"
-  };
-  
-  const [selectedFlow, setSelectedFlow] = useState<Flow | undefined>(mockFlow);
+  const [selectedFlow, setSelectedFlow] = useState<Flow | undefined>(undefined);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<ProjectView>('flows');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -78,7 +68,7 @@ export function AppLayout({ user, children }: AppLayoutProps) {
       // Refresh the flow list by triggering a re-fetch (could be improved with state management)
       window.location.reload();
     } catch (error) {
-      console.error('Failed to create flow:', error);
+      console.warn('Failed to create flow:', error);
       alert('Failed to create flow. Please try again.');
     }
   };

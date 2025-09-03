@@ -38,7 +38,7 @@ export function CreateFlowModal({
       setDescription('');
       onClose();
     } catch (error) {
-      console.error('Failed to create flow:', error);
+      console.warn('Failed to create flow:', error);
     } finally {
       setIsSubmitting(false);
     }

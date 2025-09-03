@@ -179,14 +179,20 @@ export function FlowBuilderView({
   const [panelWidth, setPanelWidth] = useState(384); // Default 384px (w-96)
   const [apiKeys, setApiKeys] = useState<{ googleai?: string; openai?: string; anthropic?: string }>({});
   const [connections, setConnections] = useState<Array<{ id: string; name: string; provider: 'googleai'|'openai'|'anthropic'; apiKey: string; isActive: boolean }>>([]);
+  const [prompts, setPrompts] = useState<any[]>([]);
+  const [flowLoading, setFlowLoading] = useState(false);
+  const flowVersionRef = React.useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Autosave state
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Autosave function
-  const autosaveFlow = useCallback(async (nodes: FlowNode[], edges: FlowEdge[]) => {
+  const autosaveFlow = useCallback(async (nodes: FlowNode[], edges: FlowEdge[], version?: number) => {
     if (!selectedFlow || nodes.length === 0) return;
+    if (flowLoading) return;
+    if (version !== undefined && version !== flowVersionRef.current) return;
 
     try {
       setAutosaveStatus('saving');
@@ -249,13 +255,13 @@ export function FlowBuilderView({
       setAutosaveStatus('error');
       setTimeout(() => setAutosaveStatus('idle'), 3000);
     }
-  }, [selectedFlow, viewport, startNodeId, apiKeys]);
+  }, [selectedFlow, viewport, startNodeId, apiKeys, flowLoading]);
 
   // Debounced autosave
   const debouncedAutosave = useCallback(
-    debounce((nodes: FlowNode[], edges: FlowEdge[]) => {
-      autosaveFlow(nodes, edges);
-    }, 2000), // Auto-save after 2 seconds of inactivity
+    debounce((nodes: FlowNode[], edges: FlowEdge[], version: number) => {
+      autosaveFlow(nodes, edges, version);
+    }, 2000),
     [autosaveFlow]
   );
 
@@ -271,52 +277,79 @@ export function FlowBuilderView({
 
   // Generate code whenever nodes or edges change
   useEffect(() => {
+    if (isDragging || flowLoading) return;
     debouncedGenerateCode(nodes, edges, startNodeId);
-  }, [nodes, edges, startNodeId, debouncedGenerateCode]);
+  }, [nodes, edges, startNodeId, debouncedGenerateCode, isDragging, flowLoading]);
 
   // Autosave whenever nodes or edges change
   useEffect(() => {
+    if (isDragging || flowLoading) return;
     if (nodes.length > 0 || edges.length > 0) {
-      debouncedAutosave(nodes, edges);
+      debouncedAutosave(nodes, edges, flowVersionRef.current);
     }
-  }, [nodes, edges, debouncedAutosave]);
+  }, [nodes, edges, debouncedAutosave, isDragging, flowLoading]);
 
-  // Load flow from localStorage on mount
+  // Load flow from backend when selectedFlow changes; fallback to localStorage
   useEffect(() => {
-    if (selectedFlow) {
-      const storageKey = `flow_${selectedFlow.id}`;
-      const savedFlow = localStorage.getItem(storageKey);
-      
-      if (savedFlow) {
-        try {
+    const load = async () => {
+      if (!selectedFlow) return;
+      setFlowLoading(true);
+      flowVersionRef.current += 1;
+      // clear global resources to avoid cross-flow bleed
+      try {
+        (window as any).__connections = [];
+        window.dispatchEvent(new CustomEvent('connectionsChange', { detail: [] }));
+        (window as any).__prompts = [];
+        window.dispatchEvent(new CustomEvent('promptsChange', { detail: [] }));
+      } catch {}
+      try {
+        const resp = await fetch(`/api/flows/${selectedFlow.id}`, { cache: 'no-store' });
+        if (resp.ok) {
+          const json = await resp.json();
+          const flow = json?.data;
+          if (flow?.nodes && flow?.edges) {
+            setNodes(flow.nodes);
+            setEdges(flow.edges);
+            if (flow.metadata?.startNodeId) setStartNodeId(flow.metadata.startNodeId);
+            if (flow.metadata?.viewport && typeof flow.metadata.viewport.zoom === 'number') {
+              setViewport({ x: flow.metadata.viewport.x || 0, y: flow.metadata.viewport.y || 0, zoom: flow.metadata.viewport.zoom });
+            }
+            if (flow.metadata?.connections) setConnections(flow.metadata.connections);
+            if (flow.metadata?.apiKeys) setApiKeys(flow.metadata.apiKeys);
+            setFlowLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load flow from backend, falling back to localStorage');
+      }
+      // fallback to localStorage
+      try {
+        const storageKey = `flow_${selectedFlow.id}`;
+        const savedFlow = localStorage.getItem(storageKey);
+        if (savedFlow) {
           const flowData = JSON.parse(savedFlow);
           if (flowData.nodes && flowData.edges) {
             setNodes(flowData.nodes);
             setEdges(flowData.edges);
             setLastSaved(new Date(flowData.savedAt || flowData.metadata?.lastModified));
-            if (flowData.metadata?.startNodeId) {
-              setStartNodeId(flowData.metadata.startNodeId);
-            }
-            // Restore viewport if available
+            if (flowData.metadata?.startNodeId) setStartNodeId(flowData.metadata.startNodeId);
             const vp = flowData.metadata?.viewport || flowData.viewport;
-            if (vp && typeof vp.zoom === 'number') {
-              setViewport({ x: vp.x || 0, y: vp.y || 0, zoom: vp.zoom });
-            }
-            // Restore API keys
-            if (flowData.metadata?.apiKeys) {
-              setApiKeys(flowData.metadata.apiKeys);
-            }
-            if (flowData.metadata?.connections) {
-              setConnections(flowData.metadata.connections);
-            }
-            console.log('Loaded flow from localStorage:', flowData);
+            if (vp && typeof vp.zoom === 'number') setViewport({ x: vp.x || 0, y: vp.y || 0, zoom: vp.zoom });
+            if (flowData.metadata?.apiKeys) setApiKeys(flowData.metadata.apiKeys);
+            if (flowData.metadata?.connections) setConnections(flowData.metadata.connections);
           }
-        } catch (error) {
-          console.error('Failed to load flow from localStorage:', error);
         }
+      } catch (err) {
+        console.error('Failed to load flow state:', err);
       }
-    }
-  }, [selectedFlow]);
+      setFlowLoading(false);
+    };
+    // Clear current graph before loading new one
+    setNodes([]);
+    setEdges([]);
+    load();
+  }, [selectedFlow?.id]);
 
   // Listen for node config changes
   useEffect(() => {
@@ -391,14 +424,27 @@ export function FlowBuilderView({
         edges,
         metadata: { startNodeId, viewport },
         connections,
+        projectId: selectedFlow.projectId,
       };
-      const resp = await fetch(`/api/flows/${selectedFlow.id}/execute`, {
+      let resp = await fetch(`/api/flows/${selectedFlow.id}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       let json: any = null;
       try { json = await resp.json(); } catch { /* fall back */ }
+      if (!resp.ok && resp.status === 401) {
+        // Fallback: call backend directly with credentials (browser will send cookies)
+        const backendUrl = (process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
+        resp = await fetch(`${backendUrl}/api/flows/${selectedFlow.id}/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          credentials: 'include',
+          mode: 'cors',
+        });
+        try { json = await resp.json(); } catch { /* ignore */ }
+      }
       if (!resp.ok) {
         const msg = json?.error?.message || json?.message || `Execution failed (${resp.status})`;
         throw new Error(msg);
@@ -526,6 +572,7 @@ export function FlowBuilderView({
     (window as any).__flowVars = computedVars;
     (window as any).__apiKeys = apiKeys;
     (window as any).__connections = connections;
+    (window as any).__projectId = selectedFlow?.projectId || '';
     window.dispatchEvent(new CustomEvent('apiKeysChange', { detail: apiKeys }));
   }, [computedVars]);
 
@@ -538,6 +585,23 @@ export function FlowBuilderView({
     (window as any).__connections = connections;
     window.dispatchEvent(new CustomEvent('connectionsChange', { detail: connections }));
   }, [connections]);
+
+  // Load prompts for project and expose globally
+  useEffect(() => {
+    const loadPrompts = async () => {
+      const pid = selectedFlow?.projectId;
+      if (!pid) return;
+      try {
+        const resp = await fetch(`/api/projects/${pid}/prompts`, { cache: 'no-store' });
+        const json = await resp.json();
+        const arr = json?.data || [];
+        setPrompts(arr);
+        (window as any).__prompts = arr;
+        window.dispatchEvent(new CustomEvent('promptsChange', { detail: arr }));
+      } catch {}
+    };
+    loadPrompts();
+  }, [selectedFlow?.projectId]);
 
   // Optional: keyboard delete support (when canvas is focused)
   useEffect(() => {
@@ -565,7 +629,7 @@ export function FlowBuilderView({
           <div className="max-w-xl space-y-6">
             <h2 className="text-lg font-semibold text-gray-900">Access Tokens</h2>
             <p className="text-sm text-gray-600">Project-scoped tokens for Flowshapr SDK/API access. Create and revoke tokens below.</p>
-            <AccessTokensPanel projectId={selectedFlow?.projectId || ''} />
+            <AccessTokensPanel projectId={selectedFlow?.projectId || ''} flowId={selectedFlow?.id || ''} />
           </div>
         </div>
       );
@@ -630,6 +694,12 @@ export function FlowBuilderView({
         </div>
       );
     }
+    if (activeView === 'traces') {
+      return <TracesPanel flowId={selectedFlow?.id || ''} />;
+    }
+    if (activeView === 'prompts') {
+      return <PromptsPanel projectId={selectedFlow?.projectId || ''} />;
+    }
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
@@ -639,6 +709,17 @@ export function FlowBuilderView({
           <p className="text-gray-600">
             This view is coming soon. Currently showing the flow builder.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeView === 'flows' && flowLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-gray-600">
+          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          <div className="text-sm">Loading flow…</div>
         </div>
       </div>
     );
@@ -762,6 +843,7 @@ export function FlowBuilderView({
             onAddNode={handleAddNode}
             viewport={viewport}
             onViewportChange={setViewport}
+            onDraggingChange={setIsDragging}
           />
             </div>
             
@@ -859,12 +941,250 @@ export function FlowBuilderView({
   );
 }
 
-function AccessTokensPanel({ projectId }: { projectId: string }) {
+function TracesPanel({ flowId }: { flowId: string }) {
+  const [list, setList] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    if (!flowId) return;
+    setLoading(true);
+    try {
+      const resp = await fetch(`/api/flows/${flowId}/traces`, { cache: 'no-store' });
+      const json = await resp.json();
+      setList((json?.data || []).reverse());
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, [flowId]);
+
+  const open = async (execId: string) => {
+    const resp = await fetch(`/api/flows/${flowId}/traces/${execId}`);
+    const json = await resp.json();
+    setSelected(json?.data || null);
+    setSelectedNodeIndex(0);
+  };
+
+  const nodeTraces = (selected?.nodeTraces || []) as any[];
+  const selectedNode = nodeTraces[selectedNodeIndex];
+
+  return (
+    <div className="flex-1 h-full flex">
+      {/* Left column: executions table */}
+      <div className="w-[320px] border-r border-gray-200 flex flex-col">
+        <div className="h-12 flex items-center justify-between px-3 border-b">
+          <div className="text-sm font-medium">Executions</div>
+          <button className="text-xs text-blue-600" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-white border-b">
+              <tr className="text-left text-gray-600">
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Duration</th>
+                <th className="px-3 py-2">Started</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.length === 0 && (
+                <tr><td className="px-3 py-3 text-gray-500" colSpan={3}>No traces yet.</td></tr>
+              )}
+              {list.map((t: any) => (
+                <tr key={t.executionId} className={`hover:bg-gray-50 cursor-pointer ${selected?.executionId === t.executionId ? 'bg-blue-50' : ''}`} onClick={() => open(t.executionId)}>
+                  <td className="px-3 py-2 capitalize">{t.status}</td>
+                  <td className="px-3 py-2">{t.duration}ms</td>
+                  <td className="px-3 py-2">{new Date(t.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Right column: trace tree + details */}
+      <div className="flex-1 grid grid-cols-12 h-full">
+        {/* Tree */}
+        <div className="col-span-5 border-r border-gray-200 flex flex-col">
+          <div className="h-12 flex items-center px-3 border-b text-sm font-medium">Trace Tree</div>
+          <div className="flex-1 overflow-auto p-3">
+            {!selected && <div className="text-sm text-gray-500">Select an execution to view the trace</div>}
+            {selected && (
+              <ol className="space-y-2">
+                {nodeTraces.map((nt, i) => (
+                  <li key={i}>
+                    <button
+                      className={`w-full text-left px-3 py-2 rounded border ${i === selectedNodeIndex ? 'bg-white border-blue-300' : 'bg-gray-50 border-transparent hover:bg-white'}`}
+                      onClick={() => setSelectedNodeIndex(i)}
+                    >
+                      <div className="text-xs font-medium">{nt.nodeTitle || nt.nodeId}</div>
+                      <div className="text-[11px] text-gray-500">{nt.nodeType} · {nt.duration}ms</div>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+        {/* Details */}
+        <div className="col-span-7 flex flex-col">
+          <div className="h-12 flex items-center justify-between px-3 border-b">
+            <div className="text-sm font-medium">Trace Details</div>
+            {selected && <div className="text-xs text-gray-500">{selected.status} · {selected.duration}ms · {new Date(selected.createdAt).toLocaleString?.() || ''}</div>}
+          </div>
+          <div className="flex-1 overflow-auto p-3 space-y-3">
+            {!selected && <div className="text-sm text-gray-500">Select an execution to see details</div>}
+            {selected && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Execution Input</label>
+                  <pre className="text-xs bg-gray-50 p-2 rounded border overflow-x-auto">{JSON.stringify(selected.input, null, 2)}</pre>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Execution Output</label>
+                  <pre className="text-xs bg-gray-50 p-2 rounded border overflow-x-auto">{JSON.stringify(selected.output, null, 2)}</pre>
+                </div>
+                {selectedNode && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Node: {selectedNode.nodeTitle || selectedNode.nodeId}</div>
+                    <div>
+                      <div className="text-[11px] text-gray-600">Node Input</div>
+                      <pre className="text-[11px] bg-white p-2 rounded border overflow-x-auto">{JSON.stringify(selectedNode.input, null, 2)}</pre>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-600">Node Output</div>
+                      <pre className="text-[11px] bg-white p-2 rounded border overflow-x-auto">{JSON.stringify(selectedNode.output, null, 2)}</pre>
+                    </div>
+                    {selectedNode.error && <div className="text-[11px] text-red-600">{selectedNode.error}</div>}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PromptsPanel({ projectId }: { projectId: string }) {
+  const [list, setList] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState<{ name: string; description?: string; variables: string; template: string }>({ name: '', description: '', variables: '', template: '' });
+
+  const load = async () => {
+    if (!projectId) return;
+    setLoading(true);
+    try {
+      const resp = await fetch(`/api/projects/${projectId}/prompts`, { cache: 'no-store' });
+      const json = await resp.json();
+      const items = json?.data || [];
+      setList(items);
+      try {
+        (window as any).__prompts = items;
+        window.dispatchEvent(new CustomEvent('promptsChange', { detail: items }));
+      } catch {}
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, [projectId]);
+
+  const resetForm = () => setForm({ name: '', description: '', variables: '', template: '' });
+
+  const select = (p: any) => {
+    setSelected(p);
+    setForm({ name: p.name, description: p.description || '', variables: (p.variables || []).join(', '), template: p.template || '' });
+  };
+
+  const save = async () => {
+    if (!projectId) return;
+    const payload = { name: form.name.trim(), description: form.description?.trim() || '', variables: form.variables.split(',').map(s => s.trim()).filter(Boolean), template: form.template };
+    if (selected) {
+      const resp = await fetch(`/api/projects/${projectId}/prompts/${selected.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const json = await resp.json();
+      if (resp.ok) { await load(); select(json.data); }
+    } else {
+      const resp = await fetch(`/api/projects/${projectId}/prompts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const json = await resp.json();
+      if (resp.ok) { await load(); select(json.data); }
+    }
+  };
+
+  const del = async () => {
+    if (!projectId || !selected) return;
+    const resp = await fetch(`/api/projects/${projectId}/prompts/${selected.id}`, { method: 'DELETE' });
+    if (resp.ok) { setSelected(null); resetForm(); await load(); }
+  };
+
+  const exportPrompt = async () => {
+    if (!projectId || !selected) return;
+    const resp = await fetch(`/api/projects/${projectId}/prompts/${selected.id}/export`);
+    const text = await resp.text();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${selected.name}.prompt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <div className="flex-1 h-full flex">
+      <div className="w-[320px] border-r border-gray-200 flex flex-col">
+        <div className="h-12 flex items-center justify-between px-3 border-b">
+          <div className="text-sm font-medium">Prompts</div>
+          <button className="text-xs text-blue-600" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <button className="w-full text-left p-3 border-b hover:bg-gray-50" onClick={() => { setSelected(null); resetForm(); }}>+ New Prompt</button>
+          {list.map((p: any) => (
+            <button key={p.id} className={`w-full text-left p-3 hover:bg-gray-50 ${selected?.id === p.id ? 'bg-blue-50' : ''}`} onClick={() => select(p)}>
+              <div className="text-sm font-medium">{p.name}</div>
+              <div className="text-xs text-gray-500">{p.description || 'No description'}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 flex flex-col">
+        <div className="h-12 flex items-center justify-between px-3 border-b">
+          <div className="text-sm font-medium">{selected ? 'Edit Prompt' : 'New Prompt'}</div>
+          <div className="flex items-center gap-2">
+            {selected && <button className="text-sm text-red-600" onClick={del}>Delete</button>}
+            {selected && <button className="text-sm text-gray-600" onClick={exportPrompt}>Export .prompt</button>}
+            <button className="px-3 py-1.5 bg-blue-600 text-white rounded" onClick={save}>Save</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-3 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+            <input className="w-full px-3 py-2 border border-gray-300 rounded" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+            <input className="w-full px-3 py-2 border border-gray-300 rounded" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Variables (comma-separated)</label>
+            <input className="w-full px-3 py-2 border border-gray-300 rounded" value={form.variables} onChange={e => setForm({ ...form, variables: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Template</label>
+            <textarea className="w-full h-[300px] font-mono px-3 py-2 border border-gray-300 rounded" value={form.template} onChange={e => setForm({ ...form, template: e.target.value })} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccessTokensPanel({ projectId, flowId }: { projectId: string, flowId: string }) {
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState('execute_flow');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [limitToFlow, setLimitToFlow] = useState(true);
 
   const load = async () => {
     if (!projectId) return;
@@ -882,10 +1202,11 @@ function AccessTokensPanel({ projectId }: { projectId: string }) {
 
   const create = async () => {
     if (!projectId || !name.trim()) return;
+    const scoped = limitToFlow && flowId ? `${scopes},flow:${flowId}` : scopes;
     const resp = await fetch(`/api/projects/${projectId}/api-keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), scopes: scopes.split(',').map(s => s.trim()).filter(Boolean) }),
+      body: JSON.stringify({ name: name.trim(), scopes: scoped.split(',').map(s => s.trim()).filter(Boolean) }),
     });
     const json = await resp.json();
     if (resp.ok) {
@@ -909,6 +1230,9 @@ function AccessTokensPanel({ projectId }: { projectId: string }) {
           <input className="px-3 py-2 border border-gray-300 rounded" placeholder="Scopes (comma-separated)" value={scopes} onChange={(e) => setScopes(e.target.value)} />
           <button className="px-3 py-2 bg-blue-600 text-white rounded" onClick={create} disabled={!name.trim()}>Create Token</button>
         </div>
+        <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+          <input type="checkbox" checked={limitToFlow} onChange={e => setLimitToFlow(e.target.checked)} /> Limit to this flow
+        </label>
         {createdToken && (
           <div className="mt-3 text-xs">
             <div className="font-medium text-green-700">Token created. Copy it now — it will be shown only once:</div>
@@ -918,8 +1242,8 @@ function AccessTokensPanel({ projectId }: { projectId: string }) {
       </div>
       <div className="border rounded divide-y">
         {loading && <div className="p-3 text-sm text-gray-500">Loading…</div>}
-        {!loading && list.length === 0 && <div className="p-3 text-sm text-gray-500">No tokens yet.</div>}
-        {list.map((k: any) => (
+        {!loading && list.filter((k: any) => !limitToFlow || (k.scopes || []).includes(`flow:${flowId}`)).length === 0 && <div className="p-3 text-sm text-gray-500">No tokens yet.</div>}
+        {list.filter((k: any) => !limitToFlow || (k.scopes || []).includes(`flow:${flowId}`)).map((k: any) => (
           <div key={k.id} className="p-3 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">{k.name} <span className="text-xs text-gray-500">({k.prefix}…)</span></div>

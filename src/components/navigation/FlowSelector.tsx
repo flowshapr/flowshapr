@@ -51,7 +51,7 @@ export function FlowSelector({
         }
       }
     } catch (error) {
-      console.error('Failed to fetch flows:', error);
+      console.warn('Failed to fetch flows:', error);
     } finally {
       setLoading(false);
     }

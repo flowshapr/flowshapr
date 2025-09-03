@@ -15,7 +15,6 @@ import {
   Node,
   BackgroundVariant,
   ConnectionMode,
-  updateEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -32,6 +31,7 @@ interface FlowCanvasProps {
   onAddNode?: (type: NodeType, position?: { x: number; y: number }) => void;
   viewport?: { x: number; y: number; zoom: number };
   onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
+  onDraggingChange?: (dragging: boolean) => void;
 }
 
 const initialNodes: FlowNode[] = [];
@@ -44,7 +44,8 @@ export function FlowCanvas({
   onEdgesChange,
   onAddNode,
   viewport,
-  onViewportChange
+  onViewportChange,
+  onDraggingChange
 }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
@@ -137,10 +138,6 @@ export function FlowCanvas({
     });
   }, [edges, onEdgesChangeInternal, onEdgesChange]);
 
-  const handleEdgeUpdate = useCallback((oldEdge: any, connection: any) => {
-    setEdges((eds) => updateEdge(oldEdge, { ...connection, type: oldEdge.type || 'deletable', animated: false, updatable: true }, eds));
-  }, [setEdges]);
-
   const handleEdgeDelete = useCallback((id: string) => {
     setEdges((eds) => eds.filter((e) => e.id !== id));
   }, [setEdges]);
@@ -163,7 +160,10 @@ export function FlowCanvas({
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
-        onEdgeUpdate={handleEdgeUpdate}
+        
+        onNodeDragStart={() => onDraggingChange?.(true)}
+        onNodeDrag={() => onDraggingChange?.(true)}
+        onNodeDragStop={() => onDraggingChange?.(false)}
         onInit={(instance) => {
           setReactFlowInstance(instance);
           // Initialize viewport if provided

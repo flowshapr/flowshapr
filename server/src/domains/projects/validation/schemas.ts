@@ -135,6 +135,33 @@ export const apiKeyIdParamsSchema = z.object({
 
 export type CreateApiKeyRequest = z.infer<typeof createApiKeySchema>;
 
+// Prompt schemas
+export const createPromptSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+  body: z.object({
+    name: nameSchema,
+    description: descriptionSchema,
+    template: z.string().min(1, 'Template is required'),
+    variables: z.array(z.string()).default([]),
+    metadata: z.record(z.any()).optional(),
+  }),
+});
+
+export const updatePromptSchema = z.object({
+  params: z.object({ id: z.string().min(1), promptId: z.string().min(1) }),
+  body: z.object({
+    name: nameSchema.optional(),
+    description: descriptionSchema,
+    template: z.string().min(1).optional(),
+    variables: z.array(z.string()).optional(),
+    metadata: z.record(z.any()).optional(),
+  }),
+});
+
+export const promptIdParamsSchema = z.object({
+  params: z.object({ id: z.string().min(1), promptId: z.string().min(1) }),
+});
+
 // Type exports
 export type CreateProjectRequest = z.infer<typeof createProjectSchema>;
 export type UpdateProjectRequest = z.infer<typeof updateProjectSchema>;

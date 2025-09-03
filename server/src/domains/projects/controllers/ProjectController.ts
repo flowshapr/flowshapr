@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { projectService } from "../services/ProjectService";
+import { eq } from "drizzle-orm";
 import { ConflictError, NotFoundError } from "../../../shared/utils/errors";
 
 export class ProjectController {
@@ -187,6 +188,102 @@ export class ProjectController {
           }
         });
       }
+    }
+  }
+
+  // Prompts CRUD
+  async listPrompts(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { db } = await import("../../../infrastructure/database/connection");
+      const schema = await import("../../../infrastructure/database/schema");
+      const rows = await (db as any).select({
+        id: (schema as any).prompt.id,
+        name: (schema as any).prompt.name,
+        description: (schema as any).prompt.description,
+        template: (schema as any).prompt.template,
+        variables: (schema as any).prompt.variables,
+        metadata: (schema as any).prompt.metadata,
+        createdAt: (schema as any).prompt.createdAt,
+      }).from((schema as any).prompt).where(eq((schema as any).prompt.projectId, id));
+      res.json({ success: true, data: rows });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to list prompts' } });
+    }
+  }
+
+  async createPrompt(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { name, description, template, variables, metadata } = req.body;
+      const { db } = await import("../../../infrastructure/database/connection");
+      const schema = await import("../../../infrastructure/database/schema");
+      const promptId = `prm_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const inserted = await (db as any).insert((schema as any).prompt).values({
+        id: promptId,
+        name,
+        description: description || null,
+        template,
+        variables: variables || [],
+        metadata: metadata || {},
+        projectId: id,
+        createdBy: req.user!.id,
+      }).returning();
+      res.status(201).json({ success: true, data: inserted[0] });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to create prompt' } });
+    }
+  }
+
+  async updatePrompt(req: Request, res: Response): Promise<void> {
+    try {
+      const { id, promptId } = req.params as any;
+      const updates: any = { ...req.body, updatedAt: new Date() };
+      const { db } = await import("../../../infrastructure/database/connection");
+      const schema = await import("../../../infrastructure/database/schema");
+      await (db as any).update((schema as any).prompt).set(updates).where(((schema as any).prompt.id as any).eq(promptId));
+      const rows = await (db as any).select().from((schema as any).prompt).where(((schema as any).prompt.id as any).eq(promptId)).limit(1);
+      res.json({ success: true, data: rows[0] });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to update prompt' } });
+    }
+  }
+
+  async deletePrompt(req: Request, res: Response): Promise<void> {
+    try {
+      const { id, promptId } = req.params as any;
+      const { db } = await import("../../../infrastructure/database/connection");
+      const schema = await import("../../../infrastructure/database/schema");
+      await (db as any).delete((schema as any).prompt).where(((schema as any).prompt.id as any).eq(promptId));
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to delete prompt' } });
+    }
+  }
+
+  async exportPromptDotprompt(req: Request, res: Response): Promise<void> {
+    try {
+      const { id, promptId } = req.params as any;
+      const { db } = await import("../../../infrastructure/database/connection");
+      const schema = await import("../../../infrastructure/database/schema");
+      const rows = await (db as any).select().from((schema as any).prompt).where(((schema as any).prompt.id as any).eq(promptId)).limit(1);
+      if (!rows || rows.length === 0) {
+        res.status(404).json({ success: false, error: { message: 'Prompt not found' } });
+        return;
+      }
+      const p = rows[0];
+      // Generate .prompt (dotprompt) content
+      const header = [
+        `name: ${p.name}`,
+        p.description ? `description: ${p.description}` : undefined,
+        p.variables && p.variables.length ? `input: [${p.variables.map((v: string) => `{ name: ${v} }`).join(', ')}]` : undefined,
+      ].filter(Boolean).join('\n');
+      const content = `${header}\n---\n${p.template}`;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${p.name}.prompt"`);
+      res.send(content);
+    } catch (e) {
+      res.status(500).json({ success: false, error: { message: 'Failed to export prompt' } });
     }
   }
 

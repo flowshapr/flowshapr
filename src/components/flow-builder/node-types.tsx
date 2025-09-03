@@ -305,6 +305,7 @@ export function AgentNode({ data, selected, id }: NodeProps) {
     { provider: 'anthropic', isActive: true, hasApiKey: false }
   ]);
   const [connections, setConnections] = React.useState<Array<{ id: string; name: string; provider: string }>>([]);
+  const [prompts, setPrompts] = React.useState<Array<{ id: string; name: string; template?: string }>>([]);
 
   React.useEffect(() => {
     const conns = ((window as any).__connections || []) as Array<{ id: string; name: string; provider: string }>;
@@ -325,7 +326,19 @@ export function AgentNode({ data, selected, id }: NodeProps) {
       ]);
     };
     window.addEventListener('connectionsChange', handler as EventListener);
-    return () => window.removeEventListener('connectionsChange', handler as EventListener);
+    const ph = (ev: any) => {
+      const arr = ev?.detail || (window as any).__prompts || [];
+      setPrompts(arr.map((p: any) => ({ id: p.id, name: p.name, template: p.template })));
+    };
+    try {
+      const arr = (window as any).__prompts || [];
+      setPrompts(arr.map((p: any) => ({ id: p.id, name: p.name, template: p.template })));
+    } catch {}
+    window.addEventListener('promptsChange', ph as EventListener);
+    return () => {
+      window.removeEventListener('connectionsChange', handler as EventListener);
+      window.removeEventListener('promptsChange', ph as EventListener);
+    };
   }, []);
   
   const handleConfigChange = (field: string, value: any) => {
@@ -473,12 +486,21 @@ export function AgentNode({ data, selected, id }: NodeProps) {
               Select Prompt
             </label>
             <select
-              value={config.promptLibraryId || ''}
-              onChange={(e) => handleConfigChange('promptLibraryId', e.target.value)}
+              value={(config as any).promptLibraryId || ''}
+              onChange={(e) => {
+                const pid = e.target.value;
+                const p = prompts.find(x => x.id === pid);
+                handleConfigChange('promptLibraryId', pid);
+                if (p?.template) {
+                  handleConfigChange('userPrompt', p.template);
+                }
+              }}
               className="w-full px-2 py-1 text-xs rounded border border-gray-300 bg-white focus:bg-white focus:ring-1 focus:ring-green-300 focus:outline-none"
             >
-              <option value="">Choose from library...</option>
-              {/* TODO: Load from prompt library */}
+              <option value="" disabled>{prompts.length ? 'Choose from library...' : 'No prompts available'}</option>
+              {prompts.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
         )}

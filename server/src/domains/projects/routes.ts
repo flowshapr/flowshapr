@@ -12,6 +12,9 @@ import {
   projectListQuerySchema,
   createApiKeySchema,
   apiKeyIdParamsSchema,
+  createPromptSchema,
+  updatePromptSchema,
+  promptIdParamsSchema,
 } from "./validation/schemas";
 
 const router = Router();
@@ -97,4 +100,35 @@ router.delete(
   "/:id/api-keys/:keyId",
   validate(apiKeyIdParamsSchema),
   (req, res) => projectController.revokeApiKey(req, res)
+);
+
+// Prompts
+router.get(
+  "/:id/prompts",
+  validate(projectIdSchema),
+  (req, res) => projectController.listPrompts(req, res)
+);
+
+router.post(
+  "/:id/prompts",
+  validate(createPromptSchema),
+  (req, res) => projectController.createPrompt(req, res)
+);
+
+router.put(
+  "/:id/prompts/:promptId",
+  validate(updatePromptSchema),
+  (req, res) => projectController.updatePrompt(req, res)
+);
+
+router.delete(
+  "/:id/prompts/:promptId",
+  validate(promptIdParamsSchema),
+  (req, res) => projectController.deletePrompt(req, res)
+);
+
+router.get(
+  "/:id/prompts/:promptId/export",
+  validate(promptIdParamsSchema),
+  (req, res) => projectController.exportPromptDotprompt(req, res)
 );

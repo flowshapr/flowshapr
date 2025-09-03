@@ -66,6 +66,14 @@ export class AuthController {
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
       });
+      // Also set a lightweight uid cookie (non-httpOnly) to allow session reconstruction after dev restarts
+      res.cookie('uid', result.user.id, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+      });
 
       res.json(response);
     } catch (error: any) {

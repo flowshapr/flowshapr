@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { authService } from "../../domains/auth/services/AuthService";
 import { auth } from "../../infrastructure/auth/auth";
+import { db } from "../../infrastructure/database/connection";
+import * as schema from "../../infrastructure/database/schema";
+import { hashToken } from "../utils/crypto";
+import { eq } from "drizzle-orm";
 import { UnauthorizedError } from "../utils/errors";
 import type { AuthenticatedUser, RequestContext } from "../types/index";
 
@@ -23,32 +27,72 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     let user: AuthenticatedUser | null = null;
     let authMethod: 'session' | 'token' | null = null;
 
-    // 1. Try token-based authentication first (API requests)
+    // 1. Try our project API token authentication first (Bearer token hashed lookup)
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      
       try {
-        // Verify session with Better Auth
-        const session = await auth.api.getSession({
-          headers: new Headers({
-            authorization: `Bearer ${token}`,
-          }),
-        });
+        if (!db) throw new Error('DB not available');
+        const hashed = hashToken(token);
+        const result = await db
+          .select({
+            id: schema.apiKey.id,
+            name: schema.apiKey.name,
+            prefix: schema.apiKey.prefix,
+            scopes: schema.apiKey.scopes,
+            isActive: schema.apiKey.isActive,
+            expiresAt: schema.apiKey.expiresAt,
+            projectId: schema.apiKey.projectId,
+            createdBy: schema.apiKey.createdBy,
+          })
+          .from(schema.apiKey)
+          .where(eq((schema as any).apiKey.key, hashed))
+          .limit(1);
 
-        if (session?.user) {
+        const key = result[0];
+        if (key && key.isActive !== false && (!key.expiresAt || key.expiresAt > new Date())) {
+          // Populate a service user context based on token
           user = {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.name,
-            image: session.user.image ?? undefined,
-            emailVerified: session.user.emailVerified,
+            id: `token_${key.id}`,
+            email: '',
+            name: key.name || 'API Token',
+            image: undefined,
+            emailVerified: true,
           };
+          (req as any).token = { id: key.id, projectId: key.projectId, scopes: key.scopes || [], rateLimit: key.rateLimit || undefined };
+          // best-effort usage tracking
+          try {
+            await (db as any).update((schema as any).apiKey).set({ lastUsedAt: new Date() }).where(((schema as any).apiKey.id as any).eq(key.id));
+          } catch {}
           authMethod = 'token';
         }
       } catch (error) {
-        // Token auth failed, continue to try session auth
-        console.warn('Token authentication failed:', error);
+        // If our API token check fails, we'll try session-based next
+        console.warn('API token check failed:', (error as any)?.message || error);
+      }
+
+      // If not our API token, try Better Auth bearer session as a fallback
+      if (!user) {
+        try {
+          const session = await auth.api.getSession({
+            headers: new Headers({
+              authorization: `Bearer ${token}`,
+            }),
+          });
+  
+          if (session?.user) {
+            user = {
+              id: session.user.id,
+              email: session.user.email,
+              name: session.user.name,
+              image: session.user.image ?? undefined,
+              emailVerified: session.user.emailVerified,
+            };
+            authMethod = 'token';
+          }
+        } catch (err) {
+          console.warn('Better Auth bearer session check failed:', (err as any)?.message || err);
+        }
       }
     }
 
@@ -57,7 +101,28 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       const sessionId = req.cookies?.sessionId;
       if (sessionId) {
         try {
-          const sessionData = await authService.getSession(sessionId);
+          let sessionData = await authService.getSession(sessionId);
+          // Dev-resilient: reconstruct session from uid cookie if in-memory session store was reset
+          if (!sessionData && req.cookies?.uid) {
+            const { db } = await import("../../infrastructure/database/connection");
+            const schemaAll = await import("../../infrastructure/database/schema");
+            if (db) {
+              const rows = await (db as any).select().from((schemaAll as any).user).where(((schemaAll as any).user.id as any).eq(req.cookies.uid)).limit(1);
+              const row = rows?.[0];
+              if (row) {
+                sessionData = {
+                  user: {
+                    id: row.id,
+                    email: row.email,
+                    name: row.name,
+                    image: row.image ?? undefined,
+                    emailVerified: !!row.emailVerified,
+                  },
+                  session: { id: sessionId, expiresAt: new Date(Date.now() + 24*60*60*1000) },
+                } as any;
+              }
+            }
+          }
           if (sessionData?.user) {
             user = {
               id: sessionData.user.id,

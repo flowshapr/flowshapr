@@ -76,6 +76,7 @@ export const executeFlowSchema = z.object({
   edges: z.array(flowEdgeSchema).optional(),
   metadata: z.any().optional(),
   connections: z.array(z.object({ id: z.string(), name: z.string(), provider: z.string(), apiKey: z.string().optional() })).optional(),
+  projectId: z.string().optional(),
 });
 
 export type ExecuteFlowRequest = z.infer<typeof executeFlowSchema>;
@@ -109,7 +110,7 @@ export const updateFlowMemberRoleSchema = z.object({
 
 // Flow ID param schema
 export const flowIdSchema = z.object({
-  id: z.string().regex(/^[a-f0-9]{32}$/, "Invalid flow ID"),
+  id: z.string().min(1, 'Invalid flow ID'),
 });
 
 // Member ID param schema

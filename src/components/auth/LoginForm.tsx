@@ -41,6 +41,10 @@ export function LoginForm() {
             console.warn('Failed to set frontend session cookie:', e);
           }
         }
+        const uid = result?.data?.user?.id;
+        if (uid) {
+          try { document.cookie = `uid=${uid}; Path=/; SameSite=Lax`; } catch {}
+        }
         // Redirect to app
         window.location.href = "/app";
       }
