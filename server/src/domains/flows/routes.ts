@@ -7,6 +7,7 @@ import { tracesController } from "../traces/controllers/TracesController";
 import { connectionsController } from "../connections/controllers/ConnectionsController";
 import { connectionIdParamsSchema, createConnectionSchema, updateConnectionSchema } from "../connections/validation/schemas";
 import { promptsController } from "../prompts/controllers/PromptsController";
+import { flowApiKeysController } from "../api-keys/controllers/FlowApiKeysController";
 import {
   createFlowSchema,
   updateFlowSchema,
@@ -175,6 +176,25 @@ router.delete(
   "/:id/connections/:connectionId",
   validateParams(connectionIdParamsSchema),
   (req, res) => connectionsController.deleteForFlow(req, res)
+);
+
+// API Keys (flow-scoped)
+router.get(
+  "/:id/api-keys",
+  validateParams(flowIdSchema),
+  (req, res) => flowApiKeysController.list(req, res)
+);
+
+router.post(
+  "/:id/api-keys",
+  validateParams(flowIdSchema),
+  (req, res) => flowApiKeysController.create(req, res)
+);
+
+router.delete(
+  "/:id/api-keys/:keyId",
+  validateParams(flowIdSchema.extend({ keyId: (flowIdSchema as any).shape.id })),
+  (req, res) => flowApiKeysController.revoke(req, res)
 );
 
 export { router as flowRoutes };

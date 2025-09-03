@@ -4,43 +4,8 @@ import { user } from "./auth";
 import { organization, team } from "./organizations";
 
 // Define enums for roles and status
-export const projectMemberRoleEnum = pgEnum("project_member_role", ["owner", "admin", "developer", "viewer"]);
 export const flowStatusEnum = pgEnum("flow_status", ["draft", "published", "archived"]);
 export const traceStatusEnum = pgEnum("trace_status", ["running", "completed", "failed"]);
-
-// Projects table (workspaces)
-export const project = pgTable("project", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  description: text("description"),
-  settings: jsonb("settings"), // deployment configs, API keys, etc.
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
-  
-  // Ownership - projects belong to organizations, optionally to specific teams
-  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
-  teamId: text("team_id").references(() => team.id, { onDelete: "set null" }), // optional team assignment
-  createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
-}, (table) => ({
-  slugIdx: index("project_slug_idx").on(table.slug),
-  orgIdx: index("project_org_idx").on(table.organizationId),
-  teamIdx: index("project_team_idx").on(table.teamId),
-}));
-
-// Project members - user access to specific projects
-export const projectMember = pgTable("project_member", {
-  id: text("id").primaryKey(),
-  role: projectMemberRoleEnum("role").notNull().default("viewer"),
-  joinedAt: timestamp("joined_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
-  
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  invitedBy: text("invited_by").references(() => user.id, { onDelete: "set null" }),
-}, (table) => ({
-  projectUserIdx: index("project_member_project_user_idx").on(table.projectId, table.userId),
-}));
 
 // Flows - AI workflows with versioning
 export const flow = pgTable("flow", {
@@ -64,12 +29,9 @@ export const flow = pgTable("flow", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
   publishedAt: timestamp("published_at"),
-  
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
   organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
   createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
 }, (table) => ({
-  projectIdx: index("flow_project_idx").on(table.projectId),
   statusIdx: index("flow_status_idx").on(table.status),
   latestIdx: index("flow_latest_idx").on(table.isLatest),
   aliasIdx: index("flow_alias_idx").on(table.alias),
@@ -114,10 +76,11 @@ export const prompt = pgTable("prompt", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
   
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  // New: flow-scoped prompts
+  flowId: text("flow_id").references(() => flow.id, { onDelete: "cascade" }),
   createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
 }, (table) => ({
-  projectIdx: index("prompt_project_idx").on(table.projectId),
+  flowIdx: index("prompt_flow_idx").on(table.flowId),
   nameIdx: index("prompt_name_idx").on(table.name),
 }));
 
@@ -144,11 +107,9 @@ export const trace = pgTable("trace", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   
   flowId: text("flow_id").notNull().references(() => flow.id, { onDelete: "cascade" }),
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
   executedBy: text("executed_by").references(() => user.id, { onDelete: "set null" }), // null for API executions
 }, (table) => ({
   flowIdx: index("trace_flow_idx").on(table.flowId),
-  projectIdx: index("trace_project_idx").on(table.projectId),
   executionIdx: index("trace_execution_idx").on(table.executionId),
   statusIdx: index("trace_status_idx").on(table.status),
   createdAtIdx: index("trace_created_at_idx").on(table.createdAt),
@@ -171,43 +132,13 @@ export const dataset = pgTable("dataset", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
-  
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  flowId: text("flow_id").notNull().references(() => flow.id, { onDelete: "cascade" }),
   createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
 }, (table) => ({
-  projectIdx: index("dataset_project_idx").on(table.projectId),
+  flowIdx: index("dataset_flow_idx").on(table.flowId),
   nameIdx: index("dataset_name_idx").on(table.name),
 }));
 
-// API Keys - for SDK authentication
-export const apiKey = pgTable("api_key", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  key: text("key").notNull().unique(), // hashed API key
-  prefix: text("prefix").notNull(), // visible prefix (e.g., "fs_12345...")
-  
-  // Permissions and limits
-  scopes: jsonb("scopes"), // array of permitted scopes
-  rateLimit: integer("rate_limit"), // requests per minute
-  
-  // Usage tracking
-  lastUsedAt: timestamp("last_used_at"),
-  usageCount: integer("usage_count").notNull().default(0),
-  
-  // Status
-  isActive: boolean("is_active").notNull().default(true),
-  expiresAt: timestamp("expires_at"),
-  
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
-  
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
-  createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
-}, (table) => ({
-  projectIdx: index("api_key_project_idx").on(table.projectId),
-  keyIdx: index("api_key_key_idx").on(table.key),
-  activeIdx: index("api_key_active_idx").on(table.isActive),
-}));
 
 // Connections - external provider credentials (flow-scoped for now)
 export const connection = pgTable("connection", {
@@ -219,57 +150,38 @@ export const connection = pgTable("connection", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
   flowId: text("flow_id").notNull().references(() => flow.id, { onDelete: "cascade" }),
-  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
   createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
 }, (table) => ({
   flowIdx: index("connection_flow_idx").on(table.flowId),
-  projectIdx: index("connection_project_idx").on(table.projectId),
   providerIdx: index("connection_provider_idx").on(table.provider),
 }));
 
-// Define relations
-export const projectRelations = relations(project, ({ one, many }) => ({
-  organization: one(organization, {
-    fields: [project.organizationId],
-    references: [organization.id],
-  }),
-  team: one(team, {
-    fields: [project.teamId],
-    references: [team.id],
-  }),
-  creator: one(user, {
-    fields: [project.createdBy],
-    references: [user.id],
-  }),
-  members: many(projectMember),
-  flows: many(flow),
-  prompts: many(prompt),
-  traces: many(trace),
-  datasets: many(dataset),
-  apiKeys: many(apiKey),
-  // connections are flow-scoped; project is for filtering
+// Flow-scoped API Keys (flows are top-level containers)
+export const flowApiKey = pgTable("flow_api_key", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  key: text("key").notNull(), // hashed
+  prefix: text("prefix").notNull(),
+  scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+  rateLimit: integer("rate_limit"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at"),
+  usageCount: integer("usage_count").notNull().default(0),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  
+  flowId: text("flow_id").notNull().references(() => flow.id, { onDelete: "cascade" }),
+  createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
+}, (table) => ({
+  flowIdx: index("flow_api_key_flow_idx").on(table.flowId),
+  keyIdx: index("flow_api_key_key_idx").on(table.key),
+  activeIdx: index("flow_api_key_active_idx").on(table.isActive),
 }));
 
-export const projectMemberRelations = relations(projectMember, ({ one }) => ({
-  project: one(project, {
-    fields: [projectMember.projectId],
-    references: [project.id],
-  }),
-  user: one(user, {
-    fields: [projectMember.userId],
-    references: [user.id],
-  }),
-  inviter: one(user, {
-    fields: [projectMember.invitedBy],
-    references: [user.id],
-  }),
-}));
+// Define relations
 
 export const flowRelations = relations(flow, ({ one, many }) => ({
-  project: one(project, {
-    fields: [flow.projectId],
-    references: [project.id],
-  }),
   creator: one(user, {
     fields: [flow.createdBy],
     references: [user.id],
@@ -283,10 +195,6 @@ export const connectionRelations = relations(connection, ({ one }) => ({
   flow: one(flow, {
     fields: [connection.flowId],
     references: [flow.id],
-  }),
-  project: one(project, {
-    fields: [connection.projectId],
-    references: [project.id],
   }),
   creator: one(user, {
     fields: [connection.createdBy],
@@ -306,10 +214,6 @@ export const flowVersionRelations = relations(flowVersion, ({ one }) => ({
 }));
 
 export const promptRelations = relations(prompt, ({ one }) => ({
-  project: one(project, {
-    fields: [prompt.projectId],
-    references: [project.id],
-  }),
   creator: one(user, {
     fields: [prompt.createdBy],
     references: [user.id],
@@ -321,10 +225,6 @@ export const traceRelations = relations(trace, ({ one }) => ({
     fields: [trace.flowId],
     references: [flow.id],
   }),
-  project: one(project, {
-    fields: [trace.projectId],
-    references: [project.id],
-  }),
   executor: one(user, {
     fields: [trace.executedBy],
     references: [user.id],
@@ -332,9 +232,9 @@ export const traceRelations = relations(trace, ({ one }) => ({
 }));
 
 export const datasetRelations = relations(dataset, ({ one }) => ({
-  project: one(project, {
-    fields: [dataset.projectId],
-    references: [project.id],
+  flow: one(flow, {
+    fields: [dataset.flowId],
+    references: [flow.id],
   }),
   creator: one(user, {
     fields: [dataset.createdBy],
@@ -342,13 +242,4 @@ export const datasetRelations = relations(dataset, ({ one }) => ({
   }),
 }));
 
-export const apiKeyRelations = relations(apiKey, ({ one }) => ({
-  project: one(project, {
-    fields: [apiKey.projectId],
-    references: [project.id],
-  }),
-  creator: one(user, {
-    fields: [apiKey.createdBy],
-    references: [user.id],
-  }),
-}));
+// Project-level API keys removed; use flowApiKey instead

@@ -10,9 +10,9 @@ import rateLimit from "express-rate-limit";
 import { authRoutes } from "./domains/auth/routes";
 import { organizationRoutes } from "./domains/organizations/routes";
 import { teamRoutes } from "./domains/teams/routes";
-import { projectRoutes } from "./domains/projects/routes";
 import { flowRoutes } from "./domains/flows/routes";
 import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
+import { telemetryRoutes } from "./domains/telemetry/routes";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -99,8 +99,8 @@ app.use("/api/auth", authRoutes);
 // API routes
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/teams", teamRoutes);
-app.use("/api/projects", projectRoutes);
 app.use("/api/flows", flowRoutes);
+app.use("/api/telemetry", telemetryRoutes);
 
 // Error handling
 app.use(notFoundHandler);

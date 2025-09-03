@@ -104,17 +104,29 @@ export class CodeGenerator {
   }
 
   private generateImports(): string {
-    const imports = [
-      `import { genkit } from 'genkit';`,
-      `import { googleAI } from '@genkit-ai/googleai';`,
-      `import { dotprompt } from '@genkit-ai/dotprompt';`,
-      `import { z } from 'zod';`,
-    ];
-    // If there are MCP tool nodes, include a placeholder import for the MCP plugin
-    const hasMcpTool = this.nodes.some(n => (n.data?.type === NodeType.TOOL) && ((n.data as any).config?.toolType === 'mcp'));
-    if (hasMcpTool) {
-      imports.push(`// MCP tool plugin (adjust package if needed)`, `import { mcp } from '@genkit-ai/mcp';`);
+    const imports: string[] = [];
+    imports.push(`import { genkit } from 'genkit';`);
+    imports.push(`import { z } from 'zod';`);
+
+    const usedProviders = new Set<string>();
+    for (const n of this.nodes) {
+      if (n.data?.type === NodeType.AGENT) {
+        const p = (n.data as any).config?.provider;
+        if (typeof p === 'string') usedProviders.add(p);
+      }
     }
+    if (usedProviders.has('googleai')) imports.push(`import { googleAI } from '@genkit-ai/googleai';`);
+    if (usedProviders.has('openai')) imports.push(`import { openAI } from '@genkit-ai/compat-oai/openai';`);
+    if (usedProviders.has('anthropic')) imports.push(`import { anthropic } from 'genkitx-anthropic';`);
+
+    // dotprompt is optional; include when prompts are used
+    const usesPrompts = this.nodes.some(n => n.data?.type === NodeType.AGENT && ((n.data as any).config?.systemPrompt || (n.data as any).config?.userPrompt));
+    if (usesPrompts) imports.push(`import { dotprompt } from '@genkit-ai/dotprompt';`);
+
+    // MCP tool plugin placeholder
+    const hasMcpTool = this.nodes.some(n => (n.data?.type === NodeType.TOOL) && ((n.data as any).config?.toolType === 'mcp'));
+    if (hasMcpTool) imports.push(`// MCP tool plugin (adjust package if needed)\nimport { mcp, mcpTool } from '@genkit-ai/mcp';`);
+
     return imports.join('\n');
   }
 
@@ -123,11 +135,27 @@ export class CodeGenerator {
     const flowName = 'generatedFlow';
     const flowBody = this.generateFlowBody(executionOrder);
     const inputSchema = this.generateInputSchema();
-    
+
+    // Build plugin list to include only providers actually used
+    const pluginCalls: string[] = [];
+    const usedProviders = new Set<string>();
+    for (const n of this.nodes) {
+      if (n.data?.type === NodeType.AGENT) {
+        const p = (n.data as any).config?.provider;
+        if (typeof p === 'string') usedProviders.add(p);
+      }
+    }
+    if (usedProviders.has('googleai')) pluginCalls.push('googleAI()');
+    if (usedProviders.has('openai')) pluginCalls.push('openAI()');
+    if (usedProviders.has('anthropic')) pluginCalls.push('anthropic()');
+    const usesPrompts = this.nodes.some(n => n.data?.type === NodeType.AGENT && ((n.data as any).config?.systemPrompt || (n.data as any).config?.userPrompt));
+    if (usesPrompts) pluginCalls.push('dotprompt()');
+
+    const pluginArray = `[${pluginCalls.join(', ')}]`;
+
     return `// Initialize AI instance
 const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-1.5-flash',
+  plugins: ${pluginArray},
 });
 
 export const ${flowName} = ai.defineFlow({
@@ -272,7 +300,7 @@ export const ${flowName} = ai.defineFlow({
         const apiKey = cfg.apiKey ? JSON.stringify(cfg.apiKey) : 'undefined';
         const selected = Array.isArray(cfg.selectedTools) ? cfg.selectedTools : [];
         const toolsArr = `[${selected.map((t: string) => JSON.stringify(t)).join(', ')}]`;
-        initLines.push(`// MCP tool from node ${sourceNode.id}\n  const ${varName} = mcp({ serverUrl: ${serverUrl}, apiKey: ${apiKey}, tools: ${toolsArr} });`);
+        initLines.push(`// MCP tool from node ${sourceNode.id}\n  const ${varName} = (typeof mcpTool === 'function' ? mcpTool({ serverUrl: ${serverUrl}, apiKey: ${apiKey}, tools: ${toolsArr} }) : mcp({ serverUrl: ${serverUrl}, apiKey: ${apiKey}, tools: ${toolsArr} }));`);
       } else {
         initLines.push(`// Unsupported tool type '${cfg.toolType}' from node ${sourceNode.id}`);
       }

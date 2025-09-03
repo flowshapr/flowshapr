@@ -24,6 +24,10 @@
   },
   "dependencies": {
     "@casl/ability": "^6.7.3",
+    "@genkit-ai/compat-oai": "^1.18.0",
+    "@genkit-ai/dotprompt": "^1.0.0-rc.5",
+    "@genkit-ai/googleai": "^1.18.0",
+    "@genkit-ai/mcp": "^1.18.0",
     "bcryptjs": "^2.4.3",
     "better-auth": "^1.3.7",
     "cors": "^2.8.5",
@@ -32,6 +36,8 @@
     "drizzle-orm": "^0.36.3",
     "express": "^4.18.0",
     "express-rate-limit": "^7.0.0",
+    "genkit": "^1.18.0",
+    "genkitx-anthropic": "^0.23.1",
     "helmet": "^7.0.0",
     "pg": "^8.11.0",
     "zod": "^3.25.76"

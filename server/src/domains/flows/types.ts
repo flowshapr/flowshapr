@@ -2,7 +2,7 @@ export interface Flow {
   id: string;
   name: string;
   alias: string; // Unique identifier for SDK calls
-  slug: string;
+  slug?: string;
   description?: string;
   version: string;
   isLatest: boolean;
@@ -15,9 +15,8 @@ export interface Flow {
   createdAt: Date;
   updatedAt: Date;
   publishedAt?: Date;
-  projectId: string;
   organizationId: string;
-  teamId?: string;
+  teamId?: string; // Optional team association
   createdBy: string;
   memberRole: string;
 }

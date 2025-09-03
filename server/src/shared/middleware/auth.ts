@@ -27,7 +27,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     let user: AuthenticatedUser | null = null;
     let authMethod: 'session' | 'token' | null = null;
 
-    // 1. Try our project API token authentication first (Bearer token hashed lookup)
+    // 1. Try our flow API token authentication first (Bearer token hashed lookup)
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
@@ -36,17 +36,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         const hashed = hashToken(token);
         const result = await db
           .select({
-            id: schema.apiKey.id,
-            name: schema.apiKey.name,
-            prefix: schema.apiKey.prefix,
-            scopes: schema.apiKey.scopes,
-            isActive: schema.apiKey.isActive,
-            expiresAt: schema.apiKey.expiresAt,
-            projectId: schema.apiKey.projectId,
-            createdBy: schema.apiKey.createdBy,
+            id: (schema as any).flowApiKey.id,
+            name: (schema as any).flowApiKey.name,
+            prefix: (schema as any).flowApiKey.prefix,
+            scopes: (schema as any).flowApiKey.scopes,
+            isActive: (schema as any).flowApiKey.isActive,
+            expiresAt: (schema as any).flowApiKey.expiresAt,
+            flowId: (schema as any).flowApiKey.flowId,
+            createdBy: (schema as any).flowApiKey.createdBy,
           })
-          .from(schema.apiKey)
-          .where(eq((schema as any).apiKey.key, hashed))
+          .from((schema as any).flowApiKey)
+          .where(eq((schema as any).flowApiKey.key, hashed))
           .limit(1);
 
         const key = result[0];
@@ -59,10 +59,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             image: undefined,
             emailVerified: true,
           };
-          (req as any).token = { id: key.id, projectId: key.projectId, scopes: key.scopes || [], rateLimit: (key as any).rateLimit || undefined };
+          (req as any).token = { id: key.id, flowId: (key as any).flowId, scopes: (key as any).scopes || [], rateLimit: (key as any).rateLimit || undefined };
           // best-effort usage tracking
           try {
-            await (db as any).update((schema as any).apiKey).set({ lastUsedAt: new Date() }).where(((schema as any).apiKey.id as any).eq(key.id));
+            await (db as any)
+              .update((schema as any).flowApiKey)
+              .set({ lastUsedAt: new Date() })
+              .where(((schema as any).flowApiKey.id as any).eq(key.id));
           } catch {}
           authMethod = 'token';
         }

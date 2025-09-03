@@ -76,7 +76,6 @@ export const executeFlowSchema = z.object({
   edges: z.array(flowEdgeSchema).optional(),
   metadata: z.any().optional(),
   connections: z.array(z.object({ id: z.string(), name: z.string(), provider: z.string(), apiKey: z.string().optional() })).optional(),
-  projectId: z.string().optional(),
 });
 
 export type ExecuteFlowRequest = z.infer<typeof executeFlowSchema>;

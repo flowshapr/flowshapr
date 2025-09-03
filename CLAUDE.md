@@ -93,14 +93,27 @@ The server follows domain-driven design principles with clear separation of conc
 ### Directory Structure
 ```
 server/src/
-├── domains/           # Business domains (auth, organizations, teams, users)
+├── domains/           # Business domains
+│   ├── auth/              # Authentication domain
+│   ├── organizations/     # Organization management
+│   ├── teams/             # Team management  
+│   ├── users/             # User management
+│   ├── flows/             # Flow CRUD and execution
+│   ├── prompts/           # Flow and project-scoped prompts
+│   ├── connections/       # External provider credentials per flow
+│   ├── api-keys/          # Project-scoped SDK access tokens
+│   ├── datasets/          # Project-scoped dataset management
+│   ├── traces/            # Flow execution trace storage and retrieval
+│   └── telemetry/         # System telemetry and metrics
 │   └── {domain}/
 │       ├── controllers/   # HTTP request/response handling
 │       ├── services/      # Business logic and validation
 │       ├── routes.ts      # Route definitions
-│       └── types.ts       # Domain-specific types
+│       ├── types.ts       # Domain-specific types
+│       └── validation/    # Zod validation schemas
 ├── infrastructure/    # External concerns (database, auth, email)
 ├── shared/           # Shared utilities and middleware
+│   └── authorization/ # Central authorization system
 └── config/           # Configuration management
 ```
 
@@ -121,13 +134,15 @@ server/src/
 3. **Routes**: Define HTTP endpoints and middleware
    - Map URLs to controller methods
    - Apply domain-specific middleware
-   - Handle route-level authentication/authorization
+   - Routes must be minimal - NO database logic in routes
+   - Only reference controller methods
 
 4. **Separation of Concerns**:
    - Controllers should NOT contain business logic
    - Services should NOT handle HTTP concerns
    - Each domain should be self-contained
    - Cross-domain communication through well-defined interfaces
+   - Services may call other domain services when needed
 
 ### Authentication System
 
@@ -155,6 +170,28 @@ router.get("/api/public/flows", optionalAuth, getPublicFlows);
 1. **Token Auth**: Checks `Authorization: Bearer <token>` header first
 2. **Session Auth**: Falls back to session cookies if no token
 3. **Request Context**: Sets `req.user`, `req.authMethod` ('session'|'token')
+
+### Authorization System
+
+Authorization follows a two-layer approach:
+
+1. **Authentication Middleware**: `requireAuth` authenticates users only
+2. **Service-Level Authorization**: Authorization is enforced in services using central abilities
+
+```typescript
+// Central abilities definition in server/src/shared/authorization/abilities.ts
+// Service-level protection using service-guard
+import { requireUserAbility } from "../../shared/authorization/service-guard";
+
+// At the start of service methods
+await requireUserAbility(userId, 'read', 'flow', flowId);
+```
+
+**Key Authorization Principles:**
+- Auth middleware only handles authentication
+- Authorization decisions happen in services, not middleware
+- Use `requireUserAbility(userId, action, subject, resource?)` in services
+- This ensures service-to-service calls are also properly authorized
 
 ### Validation System
 
@@ -189,41 +226,76 @@ router.post("/sign-up/email", validate(signUpSchema), controller.signUp);
 }
 ```
 
+### Domain Examples
+
+**Specific Domain Implementations:**
+
+- **Prompts Domain**: Encapsulates prompt CRUD for project- and flow-scoped endpoints via controller and service
+- **Traces Domain**: Handles execution trace listing, retrieval, and persistence; flow routes call traces controller, flow execution persists via traces service  
+- **Flows Execution**: `FlowRunService` orchestrates execution via `FlowExecutor` and persists traces via `TracesService`. `FlowController.executeFlow` remains a thin pass-through to the service
+- **Connections Domain**: Stores external provider credentials per flow (with projectId for filtering), with flow-scoped routes under `flows/:id/connections`
+- **API Keys Domain**: Manages project-scoped SDK access tokens; projects routes call its controller
+- **Datasets Domain**: Handles project-scoped datasets CRUD; projects routes reference its controller
+
 ### Example Pattern
 ```typescript
 // Controller (minimal logic, no validation)
-export const authController = {
-  signUp: async (req: Request, res: Response) => {
+export const flowController = {
+  executeFlow: async (req: Request, res: Response) => {
     try {
-      // Data is already validated by middleware
-      const result = await authService.signUp(req.body);
+      // Thin pass-through to service - no business logic
+      const result = await flowRunService.executeFlow(req.params.id, req.body);
       res.json({ data: result });
     } catch (error) {
-      if (error instanceof ConflictError) {
-        res.status(error.statusCode).json({ 
-          error: { message: error.message, code: 'USER_EXISTS' }
-        });
-      } else {
-        res.status(500).json({ error: 'Internal server error' });
-      }
+      // Handle known error types
+      res.status(500).json({ error: 'Internal server error' });
     }
   }
 };
 
-// Service (business logic only, no validation)
-export const authService = {
-  signUp: async (data: SignUpData) => {
-    // Business logic only - validation handled by middleware
-    const existingUser = await userRepository.findByEmail(data.email);
-    if (existingUser) {
-      throw new ConflictError('User already exists');
-    }
+// Service (business logic with authorization)
+export const flowRunService = {
+  executeFlow: async (flowId: string, data: ExecutionData) => {
+    // Authorization at service level
+    await requireUserAbility(data.userId, 'execute', 'flow', flowId);
     
-    // Create user
-    return userRepository.create(data);
+    // Orchestrate execution
+    const result = await flowExecutor.execute(flowId, data);
+    
+    // Persist traces via another domain service
+    await tracesService.createTrace(flowId, result);
+    
+    return result;
   }
 };
 ```
+
+### Frontend API Routes
+
+Frontend API routes in `src/app/api/**` should stay thin, acting as proxies to backend domain routes and forwarding session cookies consistently.
+
+**Route Structure:**
+```
+src/app/api/
+├── organizations/[...path]/     # Proxy to organizations domain
+├── teams/[...path]/             # Proxy to teams domain  
+├── auth/[...auth]/              # Authentication routes
+├── projects/[id]/               # Project-scoped routes
+│   ├── api-keys/                # Project API key management
+│   └── prompts/                 # Project prompt management
+└── flows/[id]/                  # Flow-scoped routes
+    ├── traces/                  # Flow execution traces
+    ├── connections/             # Flow provider connections
+    ├── prompts/                 # Flow-specific prompts
+    ├── execute/                 # Flow execution endpoint
+    └── publish/                 # Flow publishing
+```
+
+**Frontend API Principles:**
+- Thin proxy routes that forward to backend domains
+- Consistent session cookie forwarding
+- No business logic in frontend API routes
+- Follow RESTful patterns with proper HTTP methods
 
 ## Development Notes
 
@@ -234,3 +306,6 @@ This codebase follows enterprise-grade architecture patterns. The system is buil
 - Put business logic in services with proper validation
 - Maintain clear separation between domains
 - Use dependency injection for testability
+- Routes must be minimal with NO database logic
+- Authorization happens in services, not middleware
+- Frontend API routes should be thin proxies to backend domains

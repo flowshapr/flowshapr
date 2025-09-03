@@ -5,7 +5,6 @@ import type { AuthenticatedUser } from '../types';
 export type Subjects = 
   | 'Organization' 
   | 'Team' 
-  | 'Project' 
   | 'Flow' 
   | 'Prompt' 
   | 'Dataset' 
@@ -36,7 +35,6 @@ export interface UserContext {
   organizationId?: string;
   organizationRole?: string;
   teamRoles?: Array<{ teamId: string; role: string }>;
-  projectRoles?: Array<{ projectId: string; role: string }>;
 }
 
 /**
@@ -48,7 +46,7 @@ export interface UserContext {
  */
 export function defineAbilitiesFor(context: UserContext): AppAbility {
   const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
-  const { user, organizationRole, teamRoles = [], projectRoles = [] } = context;
+  const { user, organizationRole, teamRoles = [] } = context;
 
   // Global abilities for authenticated users
   can('read', 'Organization');
@@ -58,8 +56,9 @@ export function defineAbilitiesFor(context: UserContext): AppAbility {
   if (organizationRole === 'owner') {
     can('manage', 'Organization');
     can('manage', 'Team');
-    can('create', 'Project');
-    can('read', 'Project');
+    can('create', 'Flow');
+    can('read', 'Flow');
+    can('manage', 'Flow');
   }
 
   // Team-level abilities
@@ -67,70 +66,20 @@ export function defineAbilitiesFor(context: UserContext): AppAbility {
     if (role === 'admin') {
       can('manage', 'Team');
       can('invite', 'Team');
-      can('create', 'Project');
-      can('read', 'Project');
+      can('create', 'Flow');
+      can('read', 'Flow');
+      can('manage', 'Flow');
     } else if (role === 'developer') {
       can('read', 'Team');
-      can('read', 'Project');
-    }
-  });
-
-  // Project-level abilities - most granular level
-  projectRoles.forEach(({ projectId, role }) => {
-    switch (role) {
-      case 'owner':
-        can('manage', 'Project');
-        can('manage', 'Flow');
-        can('manage', 'Prompt');
-        can('manage', 'Dataset');
-        can('manage', 'ApiKey');
-        can('view_traces', 'Trace');
-        can('invite', 'Project');
-        can('deploy', 'Flow');
-        break;
-
-      case 'admin':
-        can('read', 'Project');
-        can('update', 'Project');
-        can('manage', 'Flow');
-        can('manage', 'Prompt');
-        can('manage', 'Dataset');
-        can('read', 'ApiKey');
-        can('view_traces', 'Trace');
-        can('invite', 'Project');
-        can('deploy', 'Flow');
-        can('publish', 'Flow');
-        break;
-
-      case 'developer':
-        can('read', 'Project');
-        can('create', 'Flow');
-        can('read', 'Flow');
-        can('update', 'Flow');
-        can('create', 'Prompt');
-        can('read', 'Prompt');
-        can('update', 'Prompt');
-        can('read', 'Dataset');
-        can('execute', 'Flow');
-        can('view_traces', 'Trace');
-        // Cannot delete flows, deploy, or manage API keys
-        break;
-
-      case 'viewer':
-        can('read', 'Project');
-        can('read', 'Flow');
-        can('read', 'Prompt');
-        can('read', 'Dataset');
-        can('execute', 'Flow');
-        can('view_traces', 'Trace');
-        // Read-only access
-        break;
+      can('read', 'Flow');
     }
   });
 
   // Additional permissions for authenticated users
   can('manage_keys', 'ApiKey');
   can('view_traces', 'Trace');
+  can('read', 'Prompt');
+  can('read', 'Dataset');
 
   return build();
 }
@@ -160,8 +109,7 @@ export async function getUserContext(userId: string): Promise<UserContext | null
   // This is a placeholder - in real implementation, this would:
   // 1. Query user's organization memberships
   // 2. Query user's team memberships
-  // 3. Query user's project memberships
-  // 4. Return complete context
+  // 3. Return complete context
   
   // For now, return basic context
   return {
@@ -174,6 +122,5 @@ export async function getUserContext(userId: string): Promise<UserContext | null
     // These would be populated from database queries
     organizationRole: undefined,
     teamRoles: [],
-    projectRoles: []
   };
 }

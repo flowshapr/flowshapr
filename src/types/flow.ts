@@ -118,6 +118,7 @@ export interface ExecutionResult {
   result?: any;
   error?: string;
   traces: ExecutionTrace[];
+  runtime?: string;
 }
 
 export interface GeneratedCode {

@@ -21,28 +21,7 @@ export class FlowService {
     }
 
     try {
-      let slug = generateSlug(data.name);
-
-      // Ensure slug is unique within the organization
-      let counter = 1;
-      let originalSlug = slug;
-      
-      while (true) {
-        const existingFlow = await db
-          .select()
-          .from(schema.project)
-          .where(
-            and(
-              eq(schema.project.slug, slug),
-              eq(schema.project.organizationId, data.organizationId)
-            )
-          )
-          .limit(1);
-
-        if (existingFlow.length === 0) break;
-        slug = `${originalSlug}-${counter}`;
-        counter++;
-      }
+      const slug = generateSlug(data.name);
 
       // Check if alias is unique within the organization
       const existingAlias = await db
@@ -60,21 +39,7 @@ export class FlowService {
         throw new ConflictError(`Flow with alias '${data.alias}' already exists in this organization`);
       }
 
-      // First create the project (workspace)
-      const projectId = generateId();
-      const newProject = {
-        id: projectId,
-        name: data.name,
-        slug,
-        description: data.description,
-        organizationId: data.organizationId,
-        teamId: data.teamId,
-        createdBy,
-      };
-
-      await db.insert(schema.project).values(newProject);
-
-      // Then create the initial flow within the project
+      // Create the initial flow (flows are top-level)
       const flowId = generateId();
       const newFlow = {
         id: flowId,
@@ -88,26 +53,17 @@ export class FlowService {
         edges: [],
         metadata: {},
         config: {},
-        projectId,
         organizationId: data.organizationId,
         createdBy,
       };
 
       await db.insert(schema.flow).values(newFlow);
 
-      // Add creator as owner of the project
-      await db.insert(schema.projectMember).values({
-        id: generateId(),
-        role: "owner",
-        projectId,
-        userId: createdBy,
-      });
-
       return {
         ...newFlow,
         slug,
         organizationId: data.organizationId,
-        teamId: data.teamId,
+        teamId: undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
         memberRole: "owner",
@@ -142,36 +98,27 @@ export class FlowService {
         updatedAt: schema.flow.updatedAt,
         publishedAt: schema.flow.publishedAt,
         createdBy: schema.flow.createdBy,
-        projectId: schema.flow.projectId,
-        slug: schema.project.slug,
-        organizationId: schema.project.organizationId,
-        teamId: schema.project.teamId,
-        memberRole: schema.projectMember.role,
+        organizationId: schema.flow.organizationId,
       })
       .from(schema.flow)
-      .innerJoin(schema.project, eq(schema.flow.projectId, schema.project.id))
-      .leftJoin(
-        schema.projectMember,
-        and(
-          eq(schema.projectMember.projectId, schema.project.id),
-          eq(schema.projectMember.userId, userId)
-        )
-      )
       .where(eq(schema.flow.id, flowId))
       .limit(1);
 
-    if (result.length === 0 || !result[0].memberRole) {
-      return null;
-    }
+    if (result.length === 0) return null;
 
-    // Convert null to undefined for optional fields
+    const row = result[0] as any;
+    const memberRole = row.createdBy === userId ? 'owner' : 'viewer';
+    const slug = generateSlug(row.name);
+
     return {
-      ...result[0],
-      description: result[0].description ?? undefined,
-      teamId: result[0].teamId ?? undefined,
-      publishedAt: result[0].publishedAt ?? undefined,
-      metadata: result[0].metadata ?? undefined,
-      config: result[0].config ?? undefined,
+      ...row,
+      slug,
+      memberRole,
+      description: row.description ?? undefined,
+      teamId: undefined,
+      publishedAt: row.publishedAt ?? undefined,
+      metadata: row.metadata ?? undefined,
+      config: row.config ?? undefined,
     } as Flow;
   }
 
@@ -193,13 +140,7 @@ export class FlowService {
     const conditions = [];
 
     if (options.organizationId) {
-      conditions.push(
-        eq(schema.project.organizationId, options.organizationId)
-      );
-    }
-
-    if (options.teamId) {
-      conditions.push(eq(schema.project.teamId, options.teamId));
+      conditions.push(eq(schema.flow.organizationId, options.organizationId));
     }
 
     if (options.search) {
@@ -228,21 +169,9 @@ export class FlowService {
         updatedAt: schema.flow.updatedAt,
         publishedAt: schema.flow.publishedAt,
         createdBy: schema.flow.createdBy,
-        projectId: schema.flow.projectId,
-        slug: schema.project.slug,
-        organizationId: schema.project.organizationId,
-        teamId: schema.project.teamId,
-        memberRole: schema.projectMember.role,
+        organizationId: schema.flow.organizationId,
       })
-      .from(schema.flow)
-      .innerJoin(schema.project, eq(schema.flow.projectId, schema.project.id))
-      .innerJoin(
-        schema.projectMember,
-        and(
-          eq(schema.projectMember.projectId, schema.project.id),
-          eq(schema.projectMember.userId, userId)
-        )
-      );
+      .from(schema.flow);
 
     const queryWithConditions = conditions.length > 0 
       ? baseQuery.where(and(...conditions))
@@ -254,13 +183,15 @@ export class FlowService {
       .offset(options.offset);
 
     // Convert null to undefined for optional fields
-    return results.map(result => ({
-      ...result,
-      description: result.description ?? undefined,
-      teamId: result.teamId ?? undefined,
-      publishedAt: result.publishedAt ?? undefined,
-      metadata: result.metadata ?? undefined,
-      config: result.config ?? undefined,
+    return results.map((row: any) => ({
+      ...row,
+      slug: generateSlug(row.name),
+      memberRole: row.createdBy === userId ? 'owner' : 'viewer',
+      description: row.description ?? undefined,
+      teamId: undefined,
+      publishedAt: row.publishedAt ?? undefined,
+      metadata: row.metadata ?? undefined,
+      config: row.config ?? undefined,
     })) as Flow[];
   }
 
@@ -287,43 +218,6 @@ export class FlowService {
     }
 
     // Generate new slug if name is being updated
-    let slug = existingFlow.slug;
-    if (updateData.name && updateData.name !== existingFlow.name) {
-      slug = generateSlug(updateData.name);
-      
-      // Ensure slug is unique within the organization
-      let counter = 1;
-      let originalSlug = slug;
-      
-      while (true) {
-        const existingWithSlug = await db
-          .select()
-          .from(schema.project)
-          .where(
-            and(
-              eq(schema.project.slug, slug),
-              eq(schema.project.organizationId, existingFlow.organizationId)
-            )
-          )
-          .limit(1);
-
-        if (existingWithSlug.length === 0 || existingWithSlug[0].id === flowId) break;
-        slug = `${originalSlug}-${counter}`;
-        counter++;
-      }
-    }
-
-    // Update both project and flow tables
-    await db
-      .update(schema.project)
-      .set({
-        name: updateData.name || existingFlow.name,
-        slug,
-        description: updateData.description,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.project.id, existingFlow.projectId));
-
     await db
       .update(schema.flow)
       .set({
@@ -354,11 +248,7 @@ export class FlowService {
       throw new ForbiddenError("Only flow owners can delete flows");
     }
 
-    // Get projectId first
-    const projectId = (flow as any).projectId;
-    if (projectId) {
-      await db.delete(schema.project).where(eq(schema.project.id, projectId));
-    }
+    await db.delete(schema.flow).where(eq(schema.flow.id, flowId));
   }
 
   // Flow definition methods
@@ -466,32 +356,37 @@ export class FlowService {
     return updatedFlow;
   }
 
-  // Member management methods (delegated to project methods for now)
+  // Member management methods - placeholder implementations
   async addFlowMember(
     flowId: string,
-    memberData: { userId?: string; email?: string; role: string },
-    currentUserId: string
-  ): Promise<FlowMember> {
-    // For now, delegate to project member methods
-    // In the future, we might want flow-specific member management
-    throw new Error("Flow member management not yet implemented");
+    memberData: {
+      userId?: string;
+      email?: string;
+      role: string;
+    },
+    requestingUserId: string
+  ): Promise<any> {
+    // For now, return a placeholder - flows don't have traditional member management
+    throw new NotFoundError("Flow member management not implemented in this version");
   }
 
   async updateFlowMemberRole(
     flowId: string,
     memberId: string,
     role: string,
-    currentUserId: string
-  ): Promise<FlowMember> {
-    throw new Error("Flow member management not yet implemented");
+    requestingUserId: string
+  ): Promise<any> {
+    // For now, return a placeholder - flows don't have traditional member management
+    throw new NotFoundError("Flow member management not implemented in this version");
   }
 
   async removeFlowMember(
     flowId: string,
     memberId: string,
-    currentUserId: string
+    requestingUserId: string
   ): Promise<void> {
-    throw new Error("Flow member management not yet implemented");
+    // For now, return a placeholder - flows don't have traditional member management
+    throw new NotFoundError("Flow member management not implemented in this version");
   }
 }
 

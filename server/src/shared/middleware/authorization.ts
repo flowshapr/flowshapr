@@ -3,7 +3,6 @@ import { ForbiddenError } from '@casl/ability';
 import { defineAbilitiesFor, getUserContext, Actions, Subjects, checkAbility, UserContext } from '../authorization/abilities';
 import { db } from '../../infrastructure/database/connection';
 import * as schema from '../../infrastructure/database/schema';
-import { user } from '../../infrastructure/database/schema';
 import { eq, and } from 'drizzle-orm';
 import { UnauthorizedError } from '../utils/errors';
 
@@ -44,8 +43,7 @@ export async function loadUserAbilities(req: Request, res: Response, next: NextF
 
 /**
  * Authorization middleware factory - checks if user can perform action on subject
- * Usage: authorize('create', 'Project')
- * Usage: authorize('update', 'Flow', (req) => ({ projectId: req.params.projectId }))
+ * Usage: authorize('update', 'Flow', (req) => ({ id: req.params.flowId }))
  */
 export function authorize(
   action: Actions, 
@@ -80,23 +78,13 @@ export function authorize(
   };
 }
 
-/**
- * Project-specific authorization middleware
- * Checks if user has access to a specific project
- */
-export function authorizeProject(action: Actions, resourceType: Subjects = 'Project') {
-  return authorize(action, resourceType, (req) => {
-    const projectId = req.params.projectId || req.params.id;
-    return projectId ? { projectId } : { id: projectId };
-  });
-}
+// Project-specific authorization removed
 
 /**
  * Flow-specific authorization middleware
  */
 export function authorizeFlow(action: Actions) {
   return authorize(action, 'Flow', (req) => ({
-    projectId: req.params.projectId,
     id: req.params.flowId || req.params.id
   }));
 }
@@ -137,34 +125,7 @@ async function getUserCompleteContext(userId: string) {
       .from(schema.teamMember)
       .where(eq(schema.teamMember.userId, userId));
 
-    // Get user's project memberships
-    const projectMemberships = await db
-      .select({
-        projectId: schema.projectMember.projectId,
-        role: schema.projectMember.role
-      })
-      .from(schema.projectMember)
-      .where(eq(schema.projectMember.userId, userId));
-
-    // Get user's project ownerships (through project creation)
-    const ownedProjects = await db
-      .select({
-        projectId: schema.project.id,
-      })
-      .from(schema.project)
-      .where(eq(schema.project.createdBy, userId));
-
-    // Combine project memberships and ownerships
-    const allProjectRoles = [
-      ...projectMemberships.map(p => ({ 
-        projectId: p.projectId as string, 
-        role: p.role as string 
-      })),
-      ...ownedProjects.map(p => ({ 
-        projectId: p.projectId, 
-        role: 'owner' 
-      }))
-    ];
+    // Projects deprecated: no project roles
 
     // Get user info
     const [userInfo] = await db
@@ -191,7 +152,6 @@ async function getUserCompleteContext(userId: string) {
         teamId: t.teamId as string, 
         role: t.role as string 
       })),
-      projectRoles: allProjectRoles
     };
   } catch (error) {
     console.error('Error getting user context:', error);
@@ -203,72 +163,4 @@ async function getUserCompleteContext(userId: string) {
  * Middleware to ensure user has access to specific project
  * Loads project and checks permissions
  */
-export function requireProjectAccess(action: Actions = 'read') {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.user) {
-        throw new UnauthorizedError('Authentication required');
-      }
-
-      const projectId = req.params.projectId || req.params.id;
-      if (!projectId) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            message: 'Project ID is required',
-            code: 'MISSING_PROJECT_ID'
-          }
-        });
-      }
-
-      // Load project to verify it exists
-      if (!db) {
-        throw new Error('Database not available');
-      }
-      
-      const project = await db
-        .select()
-        .from(schema.project)
-        .where(eq(schema.project.id, projectId))
-        .limit(1);
-
-      if (project.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            message: 'Project not found',
-            code: 'PROJECT_NOT_FOUND'
-          }
-        });
-      }
-
-      // Check if user has required access
-      const hasAccess = await checkUserAbility(req.user.id, action, 'Project', { id: projectId });
-      
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            message: `Access denied: You don't have permission to ${action} this project`,
-            code: 'FORBIDDEN'
-          }
-        });
-      }
-
-      // Attach project to request for use in controllers
-      req.project = project[0];
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-// Extend Request interface for project
-declare global {
-  namespace Express {
-    interface Request {
-      project?: typeof schema.project.$inferSelect;
-    }
-  }
-}
+// Project access removed

@@ -26,6 +26,7 @@ export const ENV = {
   MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET,
   APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID,
   APPLE_CLIENT_SECRET: process.env.APPLE_CLIENT_SECRET,
+  GENKIT_EXPORT_SECRET: process.env.GENKIT_EXPORT_SECRET,
 };
 
 console.log("Database configured:", !!ENV.DATABASE_URL);
