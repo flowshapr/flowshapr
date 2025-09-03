@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRequireAuth } from '@/components/auth/AuthProvider';
 import { AppLayout } from '@/components/navigation/AppLayout';
-import { FlowBuilderView } from '@/components/flow-builder/FlowBuilderView';
+import { FlowBuilderView } from '@/features/flow-builder/views/FlowBuilderView';
 
 export default function FlowBuilderApp() {
   // Temporarily bypass auth for UI development

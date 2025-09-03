@@ -354,55 +354,20 @@ export class FlowController {
   async executeFlow(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params as any;
-      const { input, nodes, edges, metadata, connections, projectId } = req.body || {};
-      const flow = await flowService.getFlowById(id, req.user!.id);
-      if (!flow && (!nodes || !edges)) {
-        res.status(404).json({ success: false, error: { message: 'Flow not found' } });
-        return;
-      }
-      const flowDef: any = (!nodes || !edges)
-        ? { nodes: flow!.nodes, edges: flow!.edges, metadata: flow!.metadata }
-        : { nodes, edges, metadata };
-      if (connections) {
-        flowDef.connections = connections;
-      }
-      const executor = new FlowExecutor();
-      const execStart = Date.now();
-      const result = await executor.execute(flowDef, input);
-      const duration = Date.now() - execStart;
-      // Persist trace only if flow exists (to avoid FK failures in dev)
-      if (flow) {
-        try {
-          const { db } = await import("../../../infrastructure/database/connection");
-          const schema = await import("../../../infrastructure/database/schema");
-          if (db) {
-            const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-            await (db as any).insert((schema as any).trace).values({
-              id: executionId,
-              executionId,
-              input,
-              output: result.success ? result.result : null,
-              nodeTraces: result.traces || [],
-              duration,
-              status: result.success ? 'completed' : 'failed',
-              errorMessage: result.success ? null : (result.error || null),
-              version: flow?.version || null,
-              userAgent: req.headers['user-agent'] || null,
-              ipAddress: (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null,
-              flowId: flow.id,
-              projectId: flow.projectId,
-              executedBy: req.user?.id?.startsWith('token_') ? null : req.user?.id || null,
-            });
-          }
-        } catch (traceErr) {
-          console.warn('Trace persist failed:', (traceErr as any)?.message || traceErr);
-        }
-      }
-      if (!result.success) {
-        res.status(400).json(result);
-        return;
-      }
-      res.json(result);
+      const { input, nodes, edges, metadata, connections } = req.body || {};
+      const { flowRunService } = await import('../services/FlowRunService.js');
+      const out = await flowRunService.execute({
+        flowId: id,
+        userId: req.user!.id,
+        input,
+        nodes,
+        edges,
+        metadata,
+        connections,
+        userAgent: (req.headers['user-agent'] as string) || null,
+        ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
+      });
+      res.status(out.status).json(out.body);
     } catch (error: any) {
       console.error('Execute flow error:', error);
       res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });

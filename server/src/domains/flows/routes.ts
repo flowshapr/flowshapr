@@ -3,7 +3,10 @@ import { flowController } from "./controllers/FlowController";
 import { validateBody, validateParams } from "../../shared/middleware/validation";
 import { requireAuth } from "../../shared/middleware/auth";
 import { requireScope, rateLimitToken } from "../../shared/middleware/scope";
-import { eq } from 'drizzle-orm';
+import { tracesController } from "../traces/controllers/TracesController";
+import { connectionsController } from "../connections/controllers/ConnectionsController";
+import { connectionIdParamsSchema, createConnectionSchema, updateConnectionSchema } from "../connections/validation/schemas";
+import { promptsController } from "../prompts/controllers/PromptsController";
 import {
   createFlowSchema,
   updateFlowSchema,
@@ -110,40 +113,68 @@ router.post(
 router.get(
   "/:id/traces",
   validateParams(flowIdSchema),
-  async (req, res) => {
-    try {
-      const { db } = await import("../../infrastructure/database/connection");
-      const schema = await import("../../infrastructure/database/schema");
-      const flowId = (req.params as any).id;
-      const rows = await (db as any).select({
-        id: (schema as any).trace.id,
-        executionId: (schema as any).trace.executionId,
-        status: (schema as any).trace.status,
-        duration: (schema as any).trace.duration,
-        createdAt: (schema as any).trace.createdAt,
-      }).from((schema as any).trace).where(eq((schema as any).trace.flowId, flowId)).orderBy((schema as any).trace.createdAt);
-      res.json({ success: true, data: rows });
-    } catch (e) {
-      res.status(500).json({ success: false, error: { message: 'Failed to list traces' } });
-    }
-  }
+  (req, res) => tracesController.listByFlow(req, res)
 );
 
 // GET /flows/:id/traces/:executionId - Get a trace
 router.get(
   "/:id/traces/:executionId",
-  async (req, res) => {
-    try {
-      const { db } = await import("../../infrastructure/database/connection");
-      const schema = await import("../../infrastructure/database/schema");
-      const execId = (req.params as any).executionId;
-      const rows = await (db as any).select().from((schema as any).trace).where(eq((schema as any).trace.executionId, execId)).limit(1);
-      if (!rows || rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Trace not found' } });
-      res.json({ success: true, data: rows[0] });
-    } catch (e) {
-      res.status(500).json({ success: false, error: { message: 'Failed to get trace' } });
-    }
-  }
+  (req, res) => tracesController.getByExecutionId(req, res)
+);
+
+// Prompts (flow-scoped)
+router.get(
+  "/:id/prompts",
+  validateParams(flowIdSchema),
+  (req, res) => promptsController.listByFlow(req, res)
+);
+
+router.post(
+  "/:id/prompts",
+  validateParams(flowIdSchema),
+  (req, res) => promptsController.createForFlow(req, res)
+);
+
+router.put(
+  "/:id/prompts/:promptId",
+  (req, res) => promptsController.updateForFlow(req, res)
+);
+
+router.delete(
+  "/:id/prompts/:promptId",
+  (req, res) => promptsController.deleteForFlow(req, res)
+);
+
+router.get(
+  "/:id/prompts/:promptId/export",
+  (req, res) => promptsController.exportForFlow(req, res)
+);
+
+// Connections (flow-scoped)
+router.get(
+  "/:id/connections",
+  validateParams(flowIdSchema),
+  (req, res) => connectionsController.listByFlow(req, res)
+);
+
+router.post(
+  "/:id/connections",
+  validateParams(flowIdSchema),
+  validateBody(createConnectionSchema),
+  (req, res) => connectionsController.createForFlow(req, res)
+);
+
+router.put(
+  "/:id/connections/:connectionId",
+  validateParams(connectionIdParamsSchema),
+  validateBody(updateConnectionSchema),
+  (req, res) => connectionsController.updateForFlow(req, res)
+);
+
+router.delete(
+  "/:id/connections/:connectionId",
+  validateParams(connectionIdParamsSchema),
+  (req, res) => connectionsController.deleteForFlow(req, res)
 );
 
 export { router as flowRoutes };

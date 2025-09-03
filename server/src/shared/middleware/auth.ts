@@ -59,7 +59,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             image: undefined,
             emailVerified: true,
           };
-          (req as any).token = { id: key.id, projectId: key.projectId, scopes: key.scopes || [], rateLimit: key.rateLimit || undefined };
+          (req as any).token = { id: key.id, projectId: key.projectId, scopes: key.scopes || [], rateLimit: (key as any).rateLimit || undefined };
           // best-effort usage tracking
           try {
             await (db as any).update((schema as any).apiKey).set({ lastUsedAt: new Date() }).where(((schema as any).apiKey.id as any).eq(key.id));
@@ -104,8 +104,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
           let sessionData = await authService.getSession(sessionId);
           // Dev-resilient: reconstruct session from uid cookie if in-memory session store was reset
           if (!sessionData && req.cookies?.uid) {
-            const { db } = await import("../../infrastructure/database/connection");
-            const schemaAll = await import("../../infrastructure/database/schema");
+            const { db } = await import("../../infrastructure/database/connection.js");
+            const schemaAll = await import("../../infrastructure/database/schema/index.js");
             if (db) {
               const rows = await (db as any).select().from((schemaAll as any).user).where(((schemaAll as any).user.id as any).eq(req.cookies.uid)).limit(1);
               const row = rows?.[0];

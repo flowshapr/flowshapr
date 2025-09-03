@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { projectController } from "./controllers/ProjectController";
+import { promptsController } from "../prompts/controllers/PromptsController";
+import { datasetsController } from "../datasets/controllers/DatasetsController";
+import { createDatasetSchema, datasetIdParamsSchema } from "../datasets/validation/schemas";
 import { validate } from "../../shared/middleware/validation";
+import { apiKeysController } from "../api-keys/controllers/ApiKeysController";
 import { requireAuth } from "../../shared/middleware/auth";
 import {
   createProjectSchema,
@@ -87,48 +91,67 @@ export { router as projectRoutes };
 router.get(
   "/:id/api-keys",
   validate(projectIdSchema),
-  (req, res) => projectController.listApiKeys(req, res)
+  (req, res) => apiKeysController.list(req, res)
 );
 
 router.post(
   "/:id/api-keys",
   validate(createApiKeySchema),
-  (req, res) => projectController.createApiKey(req, res)
+  (req, res) => apiKeysController.create(req, res)
 );
 
 router.delete(
   "/:id/api-keys/:keyId",
   validate(apiKeyIdParamsSchema),
-  (req, res) => projectController.revokeApiKey(req, res)
+  (req, res) => apiKeysController.revoke(req, res)
 );
 
-// Prompts
+// Datasets (project-scoped)
+router.get(
+  "/:id/datasets",
+  validate(projectIdSchema),
+  (req, res) => datasetsController.listByProject(req, res)
+);
+
+router.post(
+  "/:id/datasets",
+  validate(createDatasetSchema),
+  (req, res) => datasetsController.createForProject(req, res)
+);
+
+router.delete(
+  "/:id/datasets/:datasetId",
+  validate(datasetIdParamsSchema),
+  (req, res) => datasetsController.deleteForProject(req, res)
+);
+
+// Prompts (project-scoped)
 router.get(
   "/:id/prompts",
   validate(projectIdSchema),
-  (req, res) => projectController.listPrompts(req, res)
+  (req, res) => promptsController.listByProject(req, res)
 );
 
 router.post(
   "/:id/prompts",
   validate(createPromptSchema),
-  (req, res) => projectController.createPrompt(req, res)
+  (req, res) => promptsController.createForProject(req, res)
 );
 
 router.put(
   "/:id/prompts/:promptId",
   validate(updatePromptSchema),
-  (req, res) => projectController.updatePrompt(req, res)
+  (req, res) => promptsController.updatePrompt(req, res)
 );
 
 router.delete(
   "/:id/prompts/:promptId",
   validate(promptIdParamsSchema),
-  (req, res) => projectController.deletePrompt(req, res)
+  (req, res) => promptsController.deletePrompt(req, res)
 );
 
 router.get(
   "/:id/prompts/:promptId/export",
   validate(promptIdParamsSchema),
-  (req, res) => projectController.exportPromptDotprompt(req, res)
+  (req, res) => promptsController.exportPrompt(req, res)
 );

@@ -15,6 +15,7 @@ export enum NodeType {
   TRANSFORM = 'transform',
   OUTPUT = 'output',
   CONDITION = 'condition',
+  TOOL = 'tool',
   // PROMPT node removed - integrated into AGENT
 }
 
@@ -103,6 +104,8 @@ export interface FlowConfig {
 
 export interface ExecutionTrace {
   nodeId: string;
+  nodeTitle?: string;
+  nodeType?: string;
   input: any;
   output: any;
   duration: number;
@@ -144,6 +147,7 @@ export const NODE_TYPES = {
   [NodeType.TRANSFORM]: 'Function',
   [NodeType.OUTPUT]: 'Output',
   [NodeType.CONDITION]: 'Condition',
+  [NodeType.TOOL]: 'Tool',
 };
 
 export const MODEL_PROVIDERS = {

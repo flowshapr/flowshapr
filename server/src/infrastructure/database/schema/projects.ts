@@ -209,6 +209,24 @@ export const apiKey = pgTable("api_key", {
   activeIdx: index("api_key_active_idx").on(table.isActive),
 }));
 
+// Connections - external provider credentials (flow-scoped for now)
+export const connection = pgTable("connection", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  provider: text("provider").notNull(), // e.g., googleai, openai, anthropic
+  apiKey: text("api_key").notNull(), // consider encryption at rest
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  flowId: text("flow_id").notNull().references(() => flow.id, { onDelete: "cascade" }),
+  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  createdBy: text("created_by").notNull().references(() => user.id, { onDelete: "cascade" }),
+}, (table) => ({
+  flowIdx: index("connection_flow_idx").on(table.flowId),
+  projectIdx: index("connection_project_idx").on(table.projectId),
+  providerIdx: index("connection_provider_idx").on(table.provider),
+}));
+
 // Define relations
 export const projectRelations = relations(project, ({ one, many }) => ({
   organization: one(organization, {
@@ -229,6 +247,7 @@ export const projectRelations = relations(project, ({ one, many }) => ({
   traces: many(trace),
   datasets: many(dataset),
   apiKeys: many(apiKey),
+  // connections are flow-scoped; project is for filtering
 }));
 
 export const projectMemberRelations = relations(projectMember, ({ one }) => ({
@@ -257,6 +276,22 @@ export const flowRelations = relations(flow, ({ one, many }) => ({
   }),
   versions: many(flowVersion),
   traces: many(trace),
+  // connections: many(connection), // optional to add when needed
+}));
+
+export const connectionRelations = relations(connection, ({ one }) => ({
+  flow: one(flow, {
+    fields: [connection.flowId],
+    references: [flow.id],
+  }),
+  project: one(project, {
+    fields: [connection.projectId],
+    references: [project.id],
+  }),
+  creator: one(user, {
+    fields: [connection.createdBy],
+    references: [user.id],
+  }),
 }));
 
 export const flowVersionRelations = relations(flowVersion, ({ one }) => ({

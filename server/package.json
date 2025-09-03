@@ -19,6 +19,9 @@
   ],
   "author": "Flowshapr Team",
   "license": "ISC",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@casl/ability": "^6.7.3",
     "bcryptjs": "^2.4.3",

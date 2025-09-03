@@ -110,7 +110,11 @@ export class CodeGenerator {
       `import { dotprompt } from '@genkit-ai/dotprompt';`,
       `import { z } from 'zod';`,
     ];
-    
+    // If there are MCP tool nodes, include a placeholder import for the MCP plugin
+    const hasMcpTool = this.nodes.some(n => (n.data?.type === NodeType.TOOL) && ((n.data as any).config?.toolType === 'mcp'));
+    if (hasMcpTool) {
+      imports.push(`// MCP tool plugin (adjust package if needed)`, `import { mcp } from '@genkit-ai/mcp';`);
+    }
     return imports.join('\n');
   }
 
@@ -242,9 +246,41 @@ export const ${flowName} = ai.defineFlow({
     // Build provider-specific configuration
     const modelConfig = this.buildModelConfig(config);
     
-    const modelCall = `await ai.generate({\n    model: '${config.provider}/${config.model}',\n    prompt: ${prompt},\n    config: ${modelConfig}\n  })`;
+    // Gather tool nodes connected into this agent via the dedicated tool handle
+    const { toolInits, toolArrayName } = this.buildAgentTools(node);
+    const toolsLine = toolArrayName ? `,\n    tools: ${toolArrayName}` : '';
+
+    const modelCall = `await ai.generate({\n    model: '${config.provider}/${config.model}',\n    prompt: ${prompt},\n    config: ${modelConfig}${toolsLine}\n  })`;
     
-    return `const ${outputVar}Response = ${modelCall};\n  const ${outputVar} = ${outputVar}Response.text();`;
+    return `${toolInits}${toolInits ? '\n  ' : ''}const ${outputVar}Response = ${modelCall};\n  const ${outputVar} = ${outputVar}Response.text();`;
+  }
+
+  private buildAgentTools(agentNode: FlowNode): { toolInits: string; toolArrayName: string | null } {
+    // Identify edges that indicate tool connections into this agent
+    const toolEdges = this.edges.filter(e => e.target === agentNode.id && (e?.data as any)?.kind === 'tool' || e.target === agentNode.id && (e as any).targetHandle === 'tool');
+    const toolVarNames: string[] = [];
+    const initLines: string[] = [];
+
+    for (const edge of toolEdges) {
+      const sourceNode = this.nodes.find(n => n.id === edge.source);
+      if (!sourceNode || sourceNode.data?.type !== NodeType.TOOL) continue;
+      const cfg: any = sourceNode.data?.config || {};
+      const varName = `tool_${sourceNode.id.replace(/[^a-zA-Z0-9_]/g, '').slice(-6)}`;
+      toolVarNames.push(varName);
+      if (cfg.toolType === 'mcp') {
+        const serverUrl = JSON.stringify(cfg.serverUrl || '');
+        const apiKey = cfg.apiKey ? JSON.stringify(cfg.apiKey) : 'undefined';
+        const selected = Array.isArray(cfg.selectedTools) ? cfg.selectedTools : [];
+        const toolsArr = `[${selected.map((t: string) => JSON.stringify(t)).join(', ')}]`;
+        initLines.push(`// MCP tool from node ${sourceNode.id}\n  const ${varName} = mcp({ serverUrl: ${serverUrl}, apiKey: ${apiKey}, tools: ${toolsArr} });`);
+      } else {
+        initLines.push(`// Unsupported tool type '${cfg.toolType}' from node ${sourceNode.id}`);
+      }
+    }
+    if (toolVarNames.length === 0) return { toolInits: '', toolArrayName: null };
+    const arrName = `agentTools_${agentNode.id.replace(/[^a-zA-Z0-9_]/g, '').slice(-6)}`;
+    initLines.push(`const ${arrName} = [${toolVarNames.join(', ')}];`);
+    return { toolInits: initLines.join('\n  '), toolArrayName: arrName };
   }
   
   private processTemplate(template: string): string {
