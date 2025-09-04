@@ -367,7 +367,14 @@ export class FlowController {
         userAgent: (req.headers['user-agent'] as string) || null,
         ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
       });
-      res.status(out.status).json(out.body);
+      
+      // Handle streaming response
+      if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
+        res.status(out.status).json(out.body);
+      } else {
+        // This should not happen in non-streaming mode, but handle it gracefully
+        res.status(500).json({ success: false, error: { message: 'Unexpected response format' } });
+      }
     } catch (error: any) {
       console.error('Execute flow error:', error);
       res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });

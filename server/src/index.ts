@@ -13,6 +13,7 @@ import { teamRoutes } from "./domains/teams/routes";
 import { flowRoutes } from "./domains/flows/routes";
 import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
 import { telemetryRoutes } from "./domains/telemetry/routes";
+import { flowRunService } from "./domains/flows/services/FlowRunService";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -90,6 +91,28 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Container pool status endpoint
+app.get("/api/system/status", (req, res) => {
+  try {
+    const containerStatus = flowRunService.getStatus();
+    res.json({
+      success: true,
+      system: {
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        nodeVersion: process.version,
+      },
+      containerPool: containerStatus
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      containerPool: { initialized: false }
+    });
+  }
+});
+
 // Better Auth routes - disabled temporarily
 // app.all("/api/auth*", auth.handler);
 
@@ -107,19 +130,43 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Flowshapr server is running on port ${PORT}`);
   console.log(`📱 Health check: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
+  
+  // Initialize container pool for flow execution
+  try {
+    console.log('🐳 Initializing container pool...');
+    await flowRunService.initialize();
+    console.log('✅ Container pool ready for flow execution');
+  } catch (error: any) {
+    console.error('❌ Failed to initialize container pool:', error.message);
+    console.log('⚠️  Flow execution will attempt to initialize on first use');
+  }
 });
 
 // Graceful shutdown
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("\n👋 Shutting down gracefully...");
+  try {
+    console.log('🛑 Shutting down container pool...');
+    await flowRunService.shutdown();
+    console.log('✅ Container pool shut down');
+  } catch (error: any) {
+    console.error('❌ Error during container pool shutdown:', error.message);
+  }
   process.exit(0);
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("\n👋 Shutting down gracefully...");
+  try {
+    console.log('🛑 Shutting down container pool...');
+    await flowRunService.shutdown();
+    console.log('✅ Container pool shut down');
+  } catch (error: any) {
+    console.error('❌ Error during container pool shutdown:', error.message);
+  }
   process.exit(0);
 });

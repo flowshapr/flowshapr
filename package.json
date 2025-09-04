@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "restart": "./scripts/restart-frontend.sh",
+    "restart:all": "cd server && npm run restart",
+    "clean": "cd server && npm run clean",
     "mcp:playwright": "mcp-server-playwright --host 127.0.0.1 --port 8899 --output-dir .playwright-mcp --isolated"
   },
   "engines": {
