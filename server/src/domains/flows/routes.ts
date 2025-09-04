@@ -16,6 +16,7 @@ import {
   addFlowMemberSchema,
   updateFlowMemberRoleSchema,
   flowIdSchema,
+  flowAliasSchema,
   flowMemberParamsSchema,
   flowListQuerySchema,
   executeFlowSchema
@@ -108,6 +109,16 @@ router.post(
   rateLimitToken(),
   requireScope('execute_flow'),
   (req, res) => flowController.executeFlow(req, res)
+);
+
+// POST /flows/by-alias/:alias/execute - Execute flow by alias
+router.post(
+  "/by-alias/:alias/execute",
+  validateParams(flowAliasSchema),
+  validateBody(executeFlowSchema),
+  rateLimitToken(),
+  requireScope('execute_flow'),
+  (req, res) => flowController.executeFlowByAlias(req, res)
 );
 
 // GET /flows/:id/traces - List traces for a flow

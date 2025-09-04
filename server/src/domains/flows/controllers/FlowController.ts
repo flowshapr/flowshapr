@@ -381,6 +381,49 @@ export class FlowController {
     }
   }
 
+  async executeFlowByAlias(req: Request, res: Response): Promise<void> {
+    try {
+      const { alias } = req.params as any;
+      const { input, nodes, edges, metadata, connections } = req.body || {};
+
+      // Resolve flow by alias
+      const flow = await flowService.getFlowByAlias(alias, req.user!.id);
+      if (!flow) {
+        res.status(404).json({ success: false, error: { message: "Flow not found for alias" } });
+        return;
+      }
+
+      // If using token auth, ensure the token is scoped to this flow
+      const token: any = (req as any).token;
+      if (token?.flowId && token.flowId !== flow.id) {
+        res.status(403).json({ success: false, error: { message: 'Token not authorized for this flow' } });
+        return;
+      }
+
+      const { flowRunService } = await import('../services/FlowRunService.js');
+      const out = await flowRunService.execute({
+        flowId: flow.id,
+        userId: req.user!.id,
+        input,
+        nodes,
+        edges,
+        metadata,
+        connections,
+        userAgent: (req.headers['user-agent'] as string) || null,
+        ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
+      });
+
+      if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
+        res.status(out.status).json(out.body);
+      } else {
+        res.status(500).json({ success: false, error: { message: 'Unexpected response format' } });
+      }
+    } catch (error: any) {
+      console.error('Execute flow by alias error:', error);
+      res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });
+    }
+  }
+
   async publishFlow(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;

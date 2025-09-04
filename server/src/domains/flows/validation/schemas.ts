@@ -112,6 +112,15 @@ export const flowIdSchema = z.object({
   id: z.string().min(1, 'Invalid flow ID'),
 });
 
+// Flow alias param schema
+export const flowAliasSchema = z.object({
+  alias: z.string()
+    .min(2, "Alias must be at least 2 characters long")
+    .max(50, "Alias must be less than 50 characters")
+    .regex(/^[a-z0-9-_]+$/, "Alias can only contain lowercase letters, numbers, hyphens, and underscores")
+    .transform(alias => alias.toLowerCase().trim()),
+});
+
 // Member ID param schema
 export const memberIdSchema = z.object({
   memberId: z.string().regex(/^[a-f0-9]{32}$/, "Invalid member ID"),

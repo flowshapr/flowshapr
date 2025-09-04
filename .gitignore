@@ -126,6 +126,7 @@ temp/
 server/dist/
 server/.env*
 server/node_modules/
+server/temp/
 
 # Development logs
 dev.log

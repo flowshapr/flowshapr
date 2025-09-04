@@ -122,6 +122,52 @@ export class FlowService {
     } as Flow;
   }
 
+  async getFlowByAlias(alias: string, userId: string): Promise<Flow | null> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
+    const result = await db
+      .select({
+        id: schema.flow.id,
+        name: schema.flow.name,
+        alias: schema.flow.alias,
+        description: schema.flow.description,
+        version: schema.flow.version,
+        isLatest: schema.flow.isLatest,
+        status: schema.flow.status,
+        nodes: schema.flow.nodes,
+        edges: schema.flow.edges,
+        metadata: schema.flow.metadata,
+        config: schema.flow.config,
+        createdAt: schema.flow.createdAt,
+        updatedAt: schema.flow.updatedAt,
+        publishedAt: schema.flow.publishedAt,
+        createdBy: schema.flow.createdBy,
+        organizationId: schema.flow.organizationId,
+      })
+      .from(schema.flow)
+      .where(eq(schema.flow.alias, alias))
+      .limit(1);
+
+    if (result.length === 0) return null;
+
+    const row = result[0] as any;
+    const memberRole = row.createdBy === userId ? 'owner' : 'viewer';
+    const slug = generateSlug(row.name);
+
+    return {
+      ...row,
+      slug,
+      memberRole,
+      description: row.description ?? undefined,
+      teamId: undefined,
+      publishedAt: row.publishedAt ?? undefined,
+      metadata: row.metadata ?? undefined,
+      config: row.config ?? undefined,
+    } as Flow;
+  }
+
   async getUserFlows(
     userId: string,
     options: {

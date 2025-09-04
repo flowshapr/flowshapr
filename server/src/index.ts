@@ -91,10 +91,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Container pool status endpoint
+// Process executor status endpoint
 app.get("/api/system/status", (req, res) => {
   try {
-    const containerStatus = flowRunService.getStatus();
+    const executorStatus = flowRunService.getStatus();
     res.json({
       success: true,
       system: {
@@ -102,13 +102,13 @@ app.get("/api/system/status", (req, res) => {
         memory: process.memoryUsage(),
         nodeVersion: process.version,
       },
-      containerPool: containerStatus
+      processExecutor: executorStatus
     });
   } catch (error: any) {
     res.status(500).json({
       success: false,
       error: error.message,
-      containerPool: { initialized: false }
+      processExecutor: { initialized: false }
     });
   }
 });
@@ -135,13 +135,13 @@ app.listen(PORT, async () => {
   console.log(`📱 Health check: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
   
-  // Initialize container pool for flow execution
+  // Initialize process executor for flow execution
   try {
-    console.log('🐳 Initializing container pool...');
+    console.log('⚙️  Initializing process executor...');
     await flowRunService.initialize();
-    console.log('✅ Container pool ready for flow execution');
+    console.log('✅ Process executor ready for flow execution');
   } catch (error: any) {
-    console.error('❌ Failed to initialize container pool:', error.message);
+    console.error('❌ Failed to initialize process executor:', error.message);
     console.log('⚠️  Flow execution will attempt to initialize on first use');
   }
 });
@@ -150,11 +150,11 @@ app.listen(PORT, async () => {
 process.on("SIGINT", async () => {
   console.log("\n👋 Shutting down gracefully...");
   try {
-    console.log('🛑 Shutting down container pool...');
+    console.log('🛑 Shutting down process executor...');
     await flowRunService.shutdown();
-    console.log('✅ Container pool shut down');
+    console.log('✅ Process executor shut down');
   } catch (error: any) {
-    console.error('❌ Error during container pool shutdown:', error.message);
+    console.error('❌ Error during process executor shutdown:', error.message);
   }
   process.exit(0);
 });
@@ -162,11 +162,11 @@ process.on("SIGINT", async () => {
 process.on("SIGTERM", async () => {
   console.log("\n👋 Shutting down gracefully...");
   try {
-    console.log('🛑 Shutting down container pool...');
+    console.log('🛑 Shutting down process executor...');
     await flowRunService.shutdown();
-    console.log('✅ Container pool shut down');
+    console.log('✅ Process executor shut down');
   } catch (error: any) {
-    console.error('❌ Error during container pool shutdown:', error.message);
+    console.error('❌ Error during process executor shutdown:', error.message);
   }
   process.exit(0);
 });
