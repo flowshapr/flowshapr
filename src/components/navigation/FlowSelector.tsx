@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { 
   ChevronDown,
   Plus,
-  Folder,
+  Workflow,
   Check
 } from 'lucide-react';
 
@@ -65,8 +65,6 @@ export function FlowSelector({
   return (
     <div className="h-12 bg-gray-50 border-b border-gray-200 px-4 flex items-center">
       <div className="flex items-center gap-3 flex-1">
-        <span className="text-sm font-medium text-gray-600">Flow:</span>
-        
         <div className="relative">
           <Button
             variant="outline"
@@ -75,7 +73,7 @@ export function FlowSelector({
             disabled={loading}
           >
             <div className="flex items-center gap-2">
-              <Folder className="w-4 h-4" />
+              <Workflow className="w-4 h-4" />
               <span>
                 {loading 
                   ? 'Loading...' 
@@ -113,7 +111,7 @@ export function FlowSelector({
                           onClick={() => handleFlowSelect(flow)}
                           className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
                         >
-                          <Folder className="w-4 h-4 text-gray-400" />
+                          <Workflow className="w-4 h-4 text-gray-400" />
                           <div className="flex-1 text-left">
                             <div className="font-medium">{flow.name}</div>
                             {flow.description && (
