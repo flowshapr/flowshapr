@@ -7,6 +7,7 @@ import { tracesController } from "../traces/controllers/TracesController";
 import { connectionsController } from "../connections/controllers/ConnectionsController";
 import { connectionIdParamsSchema, createConnectionSchema, updateConnectionSchema } from "../connections/validation/schemas";
 import { promptsController } from "../prompts/controllers/PromptsController";
+import { createPromptSchema, updatePromptSchema, flowPromptParamsSchema } from "../prompts/validation/schemas";
 import { flowApiKeysController } from "../api-keys/controllers/FlowApiKeysController";
 import {
   createFlowSchema,
@@ -144,21 +145,26 @@ router.get(
 router.post(
   "/:id/prompts",
   validateParams(flowIdSchema),
+  validateBody(createPromptSchema),
   (req, res) => promptsController.createForFlow(req, res)
 );
 
 router.put(
   "/:id/prompts/:promptId",
+  validateParams(flowPromptParamsSchema),
+  validateBody(updatePromptSchema),
   (req, res) => promptsController.updateForFlow(req, res)
 );
 
 router.delete(
   "/:id/prompts/:promptId",
+  validateParams(flowPromptParamsSchema),
   (req, res) => promptsController.deleteForFlow(req, res)
 );
 
 router.get(
   "/:id/prompts/:promptId/export",
+  validateParams(flowPromptParamsSchema),
   (req, res) => promptsController.exportForFlow(req, res)
 );
 

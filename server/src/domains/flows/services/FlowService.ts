@@ -193,7 +193,8 @@ export class FlowService {
       conditions.push(
         or(
           like(schema.flow.name, `%${options.search}%`),
-          like(schema.flow.description, `%${options.search}%`)
+          like(schema.flow.description, `%${options.search}%`),
+          like(schema.flow.alias, `%${options.search}%`)
         )
       );
     }

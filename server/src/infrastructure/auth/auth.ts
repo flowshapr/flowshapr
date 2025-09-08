@@ -61,8 +61,17 @@ export const auth: any = db ? betterAuth({
   ],
   session: {
     cookieCache: {
-      enabled: true,
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      enabled: false, // Disable in-memory cache to force DB lookup
+    },
+    expiresIn: 60 * 60 * 24 * 30, // 30 days
+    updateAge: 60 * 60 * 24, // Update session daily
+    cookieName: "sessionId", // Consistent cookie name
+    freshTokenThreshold: 60 * 60 * 24 * 7, // 7 days fresh threshold
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
     },
   },
   user: {

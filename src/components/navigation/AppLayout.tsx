@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { TopNavigation } from './TopNavigation';
 import { FlowSelector } from './FlowSelector';
 import { ProjectNavigation, ProjectView } from './ProjectNavigation';
@@ -24,15 +25,57 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ user, children }: AppLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedFlow, setSelectedFlow] = useState<Flow | undefined>(undefined);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<ProjectView>('flows');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Extract flow ID and view from URL
+  useEffect(() => {
+    const match = pathname.match(/^\/app\/flows\/([^\/]+)(?:\/([^\/]+))?/);
+    if (match) {
+      const flowId = match[1];
+      const view = (match[2] as ProjectView) || 'flows';
+      setActiveView(view);
+      
+      // Load flow data if not already loaded or different flow
+      if (!selectedFlow || selectedFlow.id !== flowId) {
+        loadFlowData(flowId);
+      }
+    }
+  }, [pathname, selectedFlow]);
+
+  const loadFlowData = async (flowId: string) => {
+    try {
+      const response = await fetch(`/api/flows/${flowId}`);
+      if (response.ok) {
+        const result = await response.json();
+        setSelectedFlow(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to load flow:', error);
+    }
+  };
+
   const handleFlowChange = (flow: Flow) => {
+    // Only navigate if we're actually changing flows or if we're not already in a flow route
+    const currentFlowId = pathname.match(/^\/app\/flows\/([^\/]+)/)?.[1];
+    const currentView = pathname.match(/^\/app\/flows\/[^\/]+\/([^\/]+)/)?.[1] || 'flows';
+    const isChangingFlow = !selectedFlow || selectedFlow.id !== flow.id;
+    const isInFlowRoute = pathname.startsWith('/app/flows/');
+    
     setSelectedFlow(flow);
-    // Reset to flows view when switching flows  
-    setActiveView('flows');
+    
+    if (isChangingFlow && !isInFlowRoute) {
+      // Navigate to the flow's default view only if not in a flow route at all
+      router.push(`/app/flows/${flow.id}/flows`);
+    } else if (isChangingFlow && isInFlowRoute) {
+      // Preserve the current view when switching flows
+      router.push(`/app/flows/${flow.id}/${currentView}`);
+    }
+    // If same flow is selected, don't navigate at all
   };
 
   const handleCreateFlow = () => {
@@ -78,7 +121,9 @@ export function AppLayout({ user, children }: AppLayoutProps) {
   };
 
   const handleViewChange = (view: ProjectView) => {
-    setActiveView(view);
+    if (selectedFlow) {
+      router.push(`/app/flows/${selectedFlow.id}/${view}`);
+    }
   };
 
   return (
