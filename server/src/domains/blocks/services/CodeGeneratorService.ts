@@ -271,13 +271,13 @@ export class CodeGeneratorService {
   private generateAIConfig(context: CodeGenerationContext): string {
     const plugins = Array.from(context.plugins);
     
-    // Add telemetry exporter to plugins if configured
+    // Add telemetry plugin to plugins if configured
     const telemetrySetup = `
-// Setup telemetry exporter
-const telemetryExporter = await createFlowshaprExporter();
+// Setup telemetry plugin
+const telemetryPlugin = createFlowshaprTelemetryPlugin();
 const allPlugins = [${plugins.length > 0 ? plugins.join(', ') : ''}];
-if (telemetryExporter) {
-  allPlugins.push(telemetryExporter);
+if (telemetryPlugin) {
+  allPlugins.push(telemetryPlugin);
 }`;
 
     return `${telemetrySetup}
@@ -290,22 +290,24 @@ const ai = genkit({
   private assembleCode(imports: string, aiConfig: string, inputSchema: string, flowBody: string): string {
     return `${imports}
 
-// Flowshapr telemetry exporter setup
-async function createFlowshaprExporter() {
-  try {
-    const endpoint = process.env.FLOWSHAPR_TRACE_ENDPOINT;
-    const secret = process.env.FLOWSHAPR_TRACE_SECRET;
-    
-    if (!endpoint) {
-      return null; // Skip telemetry if not configured
-    }
+// Flowshapr telemetry plugin using Genkit's plugin system
+function createFlowshaprTelemetryPlugin() {
+  const endpoint = process.env.FLOWSHAPR_TRACE_ENDPOINT;
+  const secret = process.env.FLOWSHAPR_TRACE_SECRET;
+  
+  if (!endpoint) {
+    return null; // Skip telemetry if not configured
+  }
 
-    // Simple telemetry exporter that sends trace events to Flowshapr backend
-    return function flowshaprPlugin(ai) {
+  // Create a proper Genkit plugin using genkitPlugin helper
+  return {
+    name: 'flowshapr-telemetry',
+    async initializer(ai) {
+      // Hook into Genkit's telemetry system
       try {
-        const onAny = ai?.telemetry?.onEvent || ai?.onEvent;
-        if (typeof onAny === 'function') {
-          onAny(async (event) => {
+        const telemetry = ai.telemetry || ai;
+        if (telemetry && typeof telemetry.onEvent === 'function') {
+          telemetry.onEvent(async (event) => {
             try {
               await fetch(endpoint, {
                 method: 'POST',
@@ -323,11 +325,8 @@ async function createFlowshaprExporter() {
       } catch (e) {
         // Silently fail to avoid disrupting flow execution
       }
-      return {};
-    };
-  } catch (e) {
-    return null;
-  }
+    }
+  };
 }
 
 // Main execution wrapper
