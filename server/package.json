@@ -34,6 +34,7 @@
     "@casl/ability": "^6.7.3",
     "@genkit-ai/compat-oai": "^1.19.1",
     "@genkit-ai/dotprompt": "^1.0.0-rc.5",
+    "@genkit-ai/google-genai": "^1.19.2",
     "@genkit-ai/googleai": "^1.19.1",
     "@genkit-ai/mcp": "^1.19.1",
     "@types/dockerode": "^3.3.43",

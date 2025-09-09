@@ -125,12 +125,15 @@ export interface GeneratedCode {
   code: string;
   isValid: boolean;
   errors: ValidationError[];
+  imports?: string[];
+  dependencies?: string[];
 }
 
 export interface ValidationError {
   message: string;
+  field?: string;
   nodeId?: string;
-  severity: 'error' | 'warning';
+  severity: 'error' | 'warning' | 'info';
 }
 
 export interface FlowTemplate {
