@@ -44,10 +44,8 @@ export function FlowSelector({
         const result = await response.json();
         setFlows(result.data || []);
         
-        // Auto-select first flow if none selected
-        if (!selectedFlow && result.data?.length > 0) {
-          onFlowChange?.(result.data[0]);
-        }
+        // Let the AppLayout handle flow selection based on URL
+        // Don't auto-select here to avoid conflicts with URL-based routing
       }
     } catch (error) {
       console.error('Failed to fetch flows:', error);

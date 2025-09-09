@@ -60,22 +60,22 @@ export function AppLayout({ user, children }: AppLayoutProps) {
   };
 
   const handleFlowChange = (flow: Flow) => {
-    // Only navigate if we're actually changing flows or if we're not already in a flow route
-    const currentFlowId = pathname.match(/^\/app\/flows\/([^\/]+)/)?.[1];
-    const currentView = pathname.match(/^\/app\/flows\/[^\/]+\/([^\/]+)/)?.[1] || 'flows';
-    const isChangingFlow = !selectedFlow || selectedFlow.id !== flow.id;
-    const isInFlowRoute = pathname.startsWith('/app/flows/');
+    console.log('FlowSelector: handleFlowChange called', { 
+      flowId: flow.id, 
+      flowName: flow.name,
+      currentPath: pathname,
+      selectedFlowId: selectedFlow?.id 
+    });
     
     setSelectedFlow(flow);
     
-    if (isChangingFlow && !isInFlowRoute) {
-      // Navigate to the flow's default view only if not in a flow route at all
-      router.push(`/app/flows/${flow.id}/flows`);
-    } else if (isChangingFlow && isInFlowRoute) {
-      // Preserve the current view when switching flows
-      router.push(`/app/flows/${flow.id}/${currentView}`);
-    }
-    // If same flow is selected, don't navigate at all
+    // Always navigate to the selected flow
+    // Preserve current view if we're already in a flow route, otherwise use 'flows'
+    const currentView = pathname.match(/^\/app\/flows\/[^\/]+\/([^\/]+)/)?.[1] || 'flows';
+    const targetUrl = `/app/flows/${flow.id}/${currentView}`;
+    
+    console.log('FlowSelector: navigating to', targetUrl);
+    router.push(targetUrl);
   };
 
   const handleCreateFlow = () => {
