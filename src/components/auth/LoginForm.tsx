@@ -89,13 +89,13 @@ export function LoginForm() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-error text-sm">{error}</p>
         </div>
       )}
 
       <form onSubmit={handleEmailLogin} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-base-content">
             Email
           </label>
           <Input
@@ -110,7 +110,7 @@ export function LoginForm() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-base-content">
             Password
           </label>
           <Input
@@ -190,7 +190,7 @@ export function LoginForm() {
       <div className="text-center">
         <p className="text-sm text-base-content/70">
           Don't have an account?{" "}
-          <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+          <a href="/register" className="font-medium text-primary hover:text-blue-500">
             Sign up
           </a>
         </p>

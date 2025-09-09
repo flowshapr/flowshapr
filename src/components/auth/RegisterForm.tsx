@@ -89,13 +89,13 @@ export function RegisterForm() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-error text-sm">{error}</p>
         </div>
       )}
 
       <form onSubmit={handleEmailRegister} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="block text-sm font-medium text-base-content">
             Full Name
           </label>
           <Input
@@ -110,7 +110,7 @@ export function RegisterForm() {
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-base-content">
             Email
           </label>
           <Input
@@ -125,7 +125,7 @@ export function RegisterForm() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-base-content">
             Password
           </label>
           <Input
@@ -144,7 +144,7 @@ export function RegisterForm() {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-base-content">
             Confirm Password
           </label>
           <Input
@@ -224,7 +224,7 @@ export function RegisterForm() {
       <div className="text-center">
         <p className="text-sm text-base-content/70">
           Already have an account?{" "}
-          <a href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <a href="/login" className="font-medium text-primary hover:text-blue-500">
             Sign in
           </a>
         </p>

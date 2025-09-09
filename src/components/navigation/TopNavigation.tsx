@@ -15,7 +15,7 @@ interface TopNavigationProps {
 
 export function TopNavigation({ user }: TopNavigationProps) {
   return (
-    <div className="navbar bg-base-100 border-b border-base-300 min-h-14 h-14">
+    <div className="navbar bg-base-100 border-b min-h-14 h-14">
       {/* Logo */}
       <div className="navbar-start">
         <div className="flex items-center gap-2">

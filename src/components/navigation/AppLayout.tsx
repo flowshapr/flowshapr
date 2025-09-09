@@ -155,11 +155,7 @@ export function AppLayout({ user, children }: AppLayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           {selectedFlow ? (
             <div className="flex-1 overflow-hidden">
-              {React.cloneElement(children as React.ReactElement, {
-                selectedFlow,
-                activeView,
-                isNavCollapsed
-              })}
+{children}
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">

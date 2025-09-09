@@ -12,11 +12,11 @@ export type FlowEdge = Edge;
 export enum NodeType {
   INPUT = 'input',
   AGENT = 'agent', // Renamed from MODEL
-  TRANSFORM = 'transform',
   OUTPUT = 'output',
   CONDITION = 'condition',
   TOOL = 'tool',
   // PROMPT node removed - integrated into AGENT
+  // TRANSFORM node removed
 }
 
 export interface NodeConfig {
@@ -145,7 +145,6 @@ export interface FlowTemplate {
 export const NODE_TYPES = {
   [NodeType.INPUT]: 'Input',
   [NodeType.AGENT]: 'Agent',
-  [NodeType.TRANSFORM]: 'Function',
   [NodeType.OUTPUT]: 'Output',
   [NodeType.CONDITION]: 'Condition',
   [NodeType.TOOL]: 'Tool',

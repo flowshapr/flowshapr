@@ -27,7 +27,6 @@ export function FlowSelector({
   onFlowChange, 
   onCreateFlow 
 }: FlowSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +50,9 @@ export function FlowSelector({
         }
       }
     } catch (error) {
-      console.warn('Failed to fetch flows:', error);
+      console.error('Failed to fetch flows:', error);
+      // If unauthorized, flows list will remain empty which is expected behavior
+      setFlows([]);
     } finally {
       setLoading(false);
     }
@@ -59,18 +60,20 @@ export function FlowSelector({
 
   const handleFlowSelect = (flow: Flow) => {
     onFlowChange?.(flow);
-    setIsOpen(false);
+    // Close dropdown by removing focus
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   };
 
   return (
-    <div className="h-12 bg-base-200 border-b border-base-300 px-4 flex items-center">
+    <div className="h-12 bg-base-200 border-b px-4 flex items-center">
       <div className="flex items-center gap-3 flex-1">
         <div className="dropdown">
           <div 
             tabIndex={0} 
             role="button" 
             className="btn btn-outline gap-2 min-w-[200px] justify-between"
-            onClick={() => setIsOpen(!isOpen)}
           >
             <div className="flex items-center gap-2">
               <Workflow className="w-4 h-4" />
@@ -84,7 +87,7 @@ export function FlowSelector({
             <ChevronDown className="w-4 h-4" />
           </div>
 
-          {isOpen && !loading && (
+          {!loading && (
             <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-80 p-2 shadow-lg mt-2">
               <li className="menu-title">
                 <span>Select Flow</span>
@@ -132,7 +135,10 @@ export function FlowSelector({
                 <button
                   onClick={() => {
                     onCreateFlow?.();
-                    setIsOpen(false);
+                    // Close dropdown by removing focus
+                    if (document.activeElement instanceof HTMLElement) {
+                      document.activeElement.blur();
+                    }
                   }}
                   className="flex items-center gap-3 text-primary"
                 >

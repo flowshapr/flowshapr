@@ -57,7 +57,7 @@ export function UserMenu({ user }: UserMenuProps) {
       </div>
 
       <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-20 w-56 p-2 shadow-lg mt-2">
-        <li className="p-3 border-b border-base-300 mb-2">
+        <li className="p-3 border-b border mb-2">
           <div>
             <p className="text-sm font-medium text-base-content">{user.name}</p>
             <p className="text-xs text-base-content/60">{user.email}</p>

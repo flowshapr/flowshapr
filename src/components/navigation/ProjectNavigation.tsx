@@ -7,11 +7,10 @@ import {
   Activity,
   Settings,
   Database,
-  Key,
-  BarChart3
+  Key
 } from 'lucide-react';
 
-export type ProjectView = 'flows' | 'prompts' | 'traces' | 'datasets' | 'access-tokens' | 'connections' | 'analytics' | 'settings';
+export type ProjectView = 'flows' | 'prompts' | 'traces' | 'access-tokens' | 'connections' | 'settings';
 
 interface ProjectNavigationProps {
   isCollapsed?: boolean;
@@ -48,12 +47,6 @@ export function ProjectNavigation({
       description: 'Execution logs and traces'
     },
     {
-      id: 'datasets' as ProjectView,
-      icon: Database,
-      label: 'Datasets',
-      description: 'Training and test data'
-    },
-    {
       id: 'access-tokens' as ProjectView,
       icon: Key,
       label: 'Access Tokens',
@@ -66,12 +59,6 @@ export function ProjectNavigation({
       description: 'Provider & external keys'
     },
     {
-      id: 'analytics' as ProjectView,
-      icon: BarChart3,
-      label: 'Analytics',
-      description: 'Usage metrics and insights'
-    },
-    {
       id: 'settings' as ProjectView,
       icon: Settings,
       label: 'Settings',
@@ -80,11 +67,11 @@ export function ProjectNavigation({
   ];
 
   return (
-    <div className={`bg-base-100 border-r border-base-300 flex flex-col transition-all duration-200 ${
+    <div className={`bg-base-100 border-r flex flex-col transition-all duration-200 ${
       isCollapsed ? 'w-16' : 'w-64'
     }`}>
       {/* Header with collapse toggle */}
-      <div className="h-12 flex items-center justify-between px-4 border-b border-base-300">
+      <div className="h-12 flex items-center justify-between px-4 border-b">
         {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-base-content truncate">
@@ -105,31 +92,30 @@ export function ProjectNavigation({
       </div>
 
       {/* Navigation items */}
-      <div className="flex-1 py-4">
-        <nav className="space-y-1 px-2">
+      <div className="flex-1 py-2">
+        <ul className="menu menu-md w-full">
           {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onViewChange?.(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
-                activeView === item.id
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-base-content hover:bg-base-200'
-              }`}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && (
-                <div className="flex-1 text-left">
-                  <div className="font-medium">{item.label}</div>
-                  <div className="text-xs text-base-content/60 mt-0.5">
-                    {item.description}
+            <li key={item.id} className="w-full">
+              <a
+                onClick={() => onViewChange?.(item.id)}
+                className={`flex items-center gap-3 cursor-pointer w-full justify-start ${
+                  activeView === item.id ? 'active bg-primary/10 text-primary border-r-2 border-primary' : ''
+                }`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {!isCollapsed && (
+                  <div className="flex-1 text-left">
+                    <div className="font-medium">{item.label}</div>
+                    <div className="text-xs text-base-content/60 mt-0.5">
+                      {item.description}
+                    </div>
                   </div>
-                </div>
-              )}
-            </button>
+                )}
+              </a>
+            </li>
           ))}
-        </nav>
+        </ul>
       </div>
     </div>
   );

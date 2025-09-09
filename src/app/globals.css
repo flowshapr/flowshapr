@@ -1,6 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    @apply border-base-300;
+  }
+}
+
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+/* Force default border color using CSS */
+/* Custom dark theme with proper border colors */
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+  color-scheme: "dark";
+  --color-base-100: oklch(22% 0.019 237.69);
+  --color-base-200: oklch(20% 0.019 237.69);
+  --color-base-300: oklch(18% 0.019 237.69);
+  --color-base-content: oklch(77.383% 0.043 245.096);
+  --color-primary: oklch(74.703% 0.158 39.947);
+  --color-primary-content: oklch(14.94% 0.031 39.947);
+  --color-secondary: oklch(72.537% 0.177 2.72);
+  --color-secondary-content: oklch(14.507% 0.035 2.72);
+  --color-accent: oklch(71.294% 0.166 299.844);
+  --color-accent-content: oklch(14.258% 0.033 299.844);
+  --color-neutral: oklch(26% 0.019 237.69);
+  --color-neutral-content: oklch(70% 0.019 237.69);
+  --color-info: oklch(85.559% 0.085 206.015);
+  --color-info-content: oklch(17.111% 0.017 206.015);
+  --color-success: oklch(85.56% 0.085 144.778);
+  --color-success-content: oklch(17.112% 0.017 144.778);
+  --color-warning: oklch(85.569% 0.084 74.427);
+  --color-warning-content: oklch(17.113% 0.016 74.427);
+  --color-error: oklch(85.511% 0.078 16.886);
+  --color-error-content: oklch(17.102% 0.015 16.886);
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+
 
 .react-flow__node {
   font-size: 12px;
@@ -27,19 +78,22 @@
   text-align: left !important;
 }
 
-.react-flow__controls {
-  button {
-    @apply bg-base-100 border-base-300 text-base-content;
+@layer components {
+  .react-flow__controls button {
+    background-color: oklch(var(--b1));
+    border-color: oklch(var(--b3));
+    color: oklch(var(--bc));
   }
-}
 
-.react-flow__minimap {
-  @apply bg-base-200;
-}
+  .react-flow__minimap {
+    background-color: oklch(var(--b2));
+  }
 
-/* Flow node styling with DaisyUI */
-.flow-node {
-  @apply bg-base-100 border-base-300;
+  /* Flow node styling with DaisyUI */
+  .flow-node {
+    background-color: oklch(var(--b1));
+    border-color: oklch(var(--b3));
+  }
 }
 
 /* Enlarge React Flow handles (default is ~6px) */
@@ -47,4 +101,19 @@
   width: 14px !important;
   height: 14px !important;
   border-width: 2px !important;
+}
+
+/* Fix dropdown positioning in React Flow nodes */
+.react-flow__node .select,
+.react-flow__node .select select {
+  /* Override DaisyUI appearance that breaks dropdown positioning in React Flow */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Fix for select dropdown options styling */
+.flow-node select option {
+  background-color: oklch(var(--b1));
+  color: oklch(var(--bc));
 }

@@ -39,8 +39,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                <span className="text-white font-bold">F</span>
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-3">
+                <span className="text-primary-content font-bold">F</span>
               </div>
               <h1 className="text-xl font-bold text-base-content">Flowshapr</h1>
             </div>
@@ -61,7 +61,7 @@ export default function LandingPage() {
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-base-content sm:text-5xl md:text-6xl">
             Build AI Flows
-            <span className="text-blue-600"> Visually</span>
+            <span className="text-primary"> Visually</span>
           </h1>
           <p className="mt-6 max-w-2xl mx-auto text-xl text-base-content/60">
             Create, manage, and deploy Firebase Genkit AI flows with our visual drag-and-drop interface. 
@@ -87,7 +87,7 @@ export default function LandingPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
+            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-primary text-primary-content">
               <Zap className="h-6 w-6" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-base-content">Visual Flow Builder</h3>
@@ -97,7 +97,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
+            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-primary text-primary-content">
               <Users className="h-6 w-6" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-base-content">Team Collaboration</h3>
@@ -107,7 +107,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
+            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-primary text-primary-content">
               <Globe className="h-6 w-6" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-base-content">Multi-Platform Deploy</h3>
@@ -117,7 +117,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
+            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-primary text-primary-content">
               <Settings className="h-6 w-6" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-base-content">Remote SDK</h3>
@@ -129,16 +129,16 @@ export default function LandingPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-blue-600">
+      <div className="bg-primary">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+          <h2 className="text-3xl font-extrabold tracking-tight text-primary-content md:text-4xl">
             <span className="block">Ready to start building?</span>
             <span className="block text-blue-200">Create your account today.</span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Link href="/register">
-                <Button size="lg" className="bg-base-100 text-blue-600 hover:bg-base-200">
+                <Button size="lg" className="bg-base-100 text-primary hover:bg-base-200">
                   Get Started
                 </Button>
               </Link>
@@ -152,8 +152,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center mr-2">
-                <span className="text-white text-sm font-bold">F</span>
+              <div className="w-6 h-6 bg-primary rounded flex items-center justify-center mr-2">
+                <span className="text-primary-content text-sm font-bold">F</span>
               </div>
               <span className="text-base-content/60 text-sm">© 2024 Flowshapr. All rights reserved.</span>
             </div>

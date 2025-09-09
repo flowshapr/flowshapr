@@ -62,7 +62,7 @@ export function CreateFlowModal({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
-              <label htmlFor="flowName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="flowName" className="block text-sm font-medium text-base-content mb-2">
                 Flow Name *
               </label>
               <input
@@ -70,7 +70,7 @@ export function CreateFlowModal({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="Enter flow name..."
                 required
                 autoFocus
@@ -78,7 +78,7 @@ export function CreateFlowModal({
             </div>
             
             <div>
-              <label htmlFor="flowAlias" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="flowAlias" className="block text-sm font-medium text-base-content mb-2">
                 Flow Alias *
               </label>
               <input
@@ -86,7 +86,7 @@ export function CreateFlowModal({
                 type="text"
                 value={alias}
                 onChange={(e) => setAlias(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="e.g., my-flow-alias"
                 required
                 pattern="[a-z0-9-_]+"
@@ -98,7 +98,7 @@ export function CreateFlowModal({
             </div>
             
             <div>
-              <label htmlFor="flowDescription" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="flowDescription" className="block text-sm font-medium text-base-content mb-2">
                 Description (Optional)
               </label>
               <textarea
@@ -106,7 +106,7 @@ export function CreateFlowModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="Describe what this flow does..."
               />
             </div>

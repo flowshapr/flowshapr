@@ -15,7 +15,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-base-200">
       {/* Header */}
-      <div className="bg-base-100 border-b border-gray-200">
+      <div className="bg-base-100 border-b border-base-300">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <h1 className="text-2xl font-bold text-base-content">Account Settings</h1>
@@ -30,7 +30,7 @@ export default function SettingsPage() {
         <div className="space-y-6">
           {/* Profile Section */}
           <div className="bg-base-100 shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-base-300">
               <h2 className="text-lg font-medium text-base-content flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Profile Information
@@ -45,8 +45,8 @@ export default function SettingsPage() {
                     className="w-16 h-16 rounded-full"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center">
-                    <User className="w-8 h-8 text-white" />
+                  <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+                    <User className="w-8 h-8 text-primary-content" />
                   </div>
                 )}
                 <div>
@@ -59,21 +59,21 @@ export default function SettingsPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <label className="block text-sm font-medium text-base-content">Name</label>
                   <input
                     type="text"
                     value={session.user.name || ''}
                     readOnly
-                    className="mt-1 block w-full rounded-md border-gray-300 bg-base-200 text-base-content/60 cursor-not-allowed"
+                    className="mt-1 block w-full rounded-md border-base-300 bg-base-200 text-base-content/60 cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label className="block text-sm font-medium text-base-content">Email</label>
                   <input
                     type="email"
                     value={session.user.email}
                     readOnly
-                    className="mt-1 block w-full rounded-md border-gray-300 bg-base-200 text-base-content/60 cursor-not-allowed"
+                    className="mt-1 block w-full rounded-md border-base-300 bg-base-200 text-base-content/60 cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
           {/* Account Security */}
           <div className="bg-base-100 shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-base-300">
               <h2 className="text-lg font-medium text-base-content flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 Account Security
@@ -101,8 +101,8 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-green-600">Verified</span>
+                  <Mail className="w-4 h-4 text-success" />
+                  <span className="text-sm text-success">Verified</span>
                 </div>
               </div>
               
@@ -123,7 +123,7 @@ export default function SettingsPage() {
 
           {/* Preferences */}
           <div className="bg-base-100 shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-base-300">
               <h2 className="text-lg font-medium text-base-content">Preferences</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
@@ -137,7 +137,7 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   defaultChecked
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary focus:ring-primary border-base-300 rounded"
                 />
               </div>
               
@@ -151,7 +151,7 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   defaultChecked
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary focus:ring-primary border-base-300 rounded"
                 />
               </div>
             </div>
@@ -159,18 +159,18 @@ export default function SettingsPage() {
 
           {/* Danger Zone */}
           <div className="bg-base-100 shadow rounded-lg border border-red-200">
-            <div className="px-6 py-4 border-b border-red-200">
+            <div className="px-6 py-4 border-b border-base-300-red-200">
               <h2 className="text-lg font-medium text-red-900">Danger Zone</h2>
             </div>
             <div className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-medium text-red-900">Delete Account</h3>
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     Permanently delete your account and all associated data
                   </p>
                 </div>
-                <Button variant="outline" size="sm" disabled className="border-red-300 text-red-600">
+                <Button variant="outline" size="sm" disabled className="border-red-300 text-error">
                   Delete Account
                 </Button>
               </div>

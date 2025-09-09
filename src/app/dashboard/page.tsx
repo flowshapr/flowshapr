@@ -25,8 +25,8 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                <span className="text-white font-bold">F</span>
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-3">
+                <span className="text-primary-content font-bold">F</span>
               </div>
               <h1 className="text-2xl font-bold text-base-content">Flowshapr</h1>
             </div>
@@ -58,7 +58,7 @@ export default function DashboardPage() {
             <div className="sm:flex sm:items-center">
               <div className="sm:flex-auto">
                 <h2 className="text-xl font-semibold text-base-content">Organizations</h2>
-                <p className="mt-2 text-sm text-gray-700">
+                <p className="mt-2 text-sm text-base-content">
                   Manage your organizations and teams to collaborate on Genkit flows.
                 </p>
               </div>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
             <div className="px-6 py-4">
               <h3 className="text-lg font-medium text-base-content">Your Organizations</h3>
             </div>
-            <div className="border-t border-gray-200">
+            <div className="border-t border-base-300">
               <div className="px-6 py-4">
                 <div className="text-center py-12">
                   <div className="mx-auto h-12 w-12 text-gray-400">
@@ -109,7 +109,7 @@ export default function DashboardPage() {
               <div className="px-6 py-4">
                 <h3 className="text-lg font-medium text-base-content">Recent Activity</h3>
               </div>
-              <div className="border-t border-gray-200">
+              <div className="border-t border-base-300">
                 <div className="px-6 py-4">
                   <div className="text-center py-12">
                     <p className="text-sm text-base-content/60">No recent activity</p>

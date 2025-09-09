@@ -56,7 +56,7 @@ export default function FlowBuilderApp() {
       <AppLayout user={mockSession.user}>
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2 text-base-content/70">
-            <div className="w-6 h-6 border-2 border-base-300 border-t-primary rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border border-t-primary rounded-full animate-spin" />
             <div className="text-sm">Loading…</div>
           </div>
         </div>
