@@ -1,0 +1,70 @@
+name: Server Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-tests.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./server
+      run: npm ci
+
+    - name: Run linting (if available)
+      working-directory: ./server
+      run: npm run lint --if-present
+
+    - name: Run type checking
+      working-directory: ./server
+      run: npm run build
+
+    - name: Run tests
+      working-directory: ./server
+      run: npm run test:ci
+
+    - name: Upload coverage reports to Codecov
+      if: matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./server/coverage/lcov.info
+        directory: ./server/coverage/
+        flags: server
+        name: server-tests
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          server/coverage/
+          server/test-results/
+        retention-days: 30

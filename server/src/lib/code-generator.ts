@@ -1,0 +1,314 @@
+// Simplified types for server-side code generation
+interface FlowNode {
+  id: string;
+  type: string;
+  data?: {
+    label?: string;
+    config?: any;
+  };
+}
+
+interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+interface GeneratedCode {
+  code: string;
+  isValid: boolean;
+  errors: ValidationError[];
+}
+
+interface ValidationError {
+  message: string;
+  nodeId: string;
+}
+
+export class CodeGenerator {
+  private nodes: FlowNode[] = [];
+  private edges: FlowEdge[] = [];
+  private errors: ValidationError[] = [];
+
+  constructor(nodes: FlowNode[], edges: FlowEdge[]) {
+    this.nodes = nodes || [];
+    this.edges = edges || [];
+    this.errors = [];
+  }
+
+  generate(): GeneratedCode {
+    this.errors = [];
+    
+    try {
+      // Debug: Log the nodes to understand the structure
+      console.log('🔍 Code generator received nodes:', JSON.stringify(this.nodes.slice(0, 2), null, 2));
+      
+      // Validate the flow structure
+      this.validateFlow();
+      
+      if (this.errors.length > 0) {
+        return {
+          code: '',
+          isValid: false,
+          errors: this.errors
+        };
+      }
+
+      // Generate the TypeScript code
+      const code = this.generateCode();
+      
+      console.log('🔧 Generated code:', code);
+      
+      return {
+        code,
+        isValid: true,
+        errors: []
+      };
+    } catch (error: any) {
+      return {
+        code: '',
+        isValid: false,
+        errors: [{ message: error.message || 'Code generation failed', nodeId: '' }]
+      };
+    }
+  }
+
+  private validateFlow(): void {
+    // Check for required input node
+    const inputNodes = this.nodes.filter(n => n.type === 'input');
+    if (inputNodes.length === 0) {
+      this.errors.push({ message: 'Flow must have at least one input node', nodeId: '' });
+    }
+
+    // Check for required output node
+    const outputNodes = this.nodes.filter(n => n.type === 'output');
+    if (outputNodes.length === 0) {
+      this.errors.push({ message: 'Flow must have at least one output node', nodeId: '' });
+    }
+
+    // Validate each node
+    this.nodes.forEach(node => {
+      this.validateNode(node);
+    });
+  }
+
+  private validateNode(node: FlowNode): void {
+    switch (node.type) {
+      case 'input':
+        if (!node.data?.label && !node.data?.config?.variableName) {
+          this.errors.push({ message: 'Input node must have a label or variable name', nodeId: node.id });
+        }
+        break;
+      case 'agent':
+        const agentConfig = node.data?.config;
+        if (!agentConfig?.provider) {
+          this.errors.push({ message: 'Agent node must have a provider', nodeId: node.id });
+        }
+        if (!agentConfig?.model) {
+          this.errors.push({ message: 'Agent node must have a model', nodeId: node.id });
+        }
+        break;
+      case 'output':
+        if (!node.data?.label) {
+          this.errors.push({ message: 'Output node must have a label', nodeId: node.id });
+        }
+        break;
+    }
+  }
+
+  private generateCode(): string {
+    const inputNode = this.nodes.find(n => n.type === 'input');
+    const outputNode = this.nodes.find(n => n.type === 'output');
+    
+    if (!inputNode || !outputNode) {
+      throw new Error('Missing required input or output node');
+    }
+
+    // Build execution order
+    const executionOrder = this.buildExecutionOrder();
+    
+    // Generate flow definition
+    const flowCode = this.generateFlowDefinition(inputNode, outputNode, executionOrder);
+    
+    return flowCode;
+  }
+
+  private buildExecutionOrder(): FlowNode[] {
+    // Simple topological sort - start from input nodes
+    const visited = new Set<string>();
+    const order: FlowNode[] = [];
+    
+    // Start with input nodes
+    const inputNodes = this.nodes.filter(n => n.type === 'input');
+    
+    const visit = (nodeId: string) => {
+      if (visited.has(nodeId)) return;
+      
+      const node = this.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      
+      visited.add(nodeId);
+      order.push(node);
+      
+      // Visit connected nodes
+      const outgoingEdges = this.edges.filter(e => e.source === nodeId);
+      outgoingEdges.forEach(edge => visit(edge.target));
+    };
+    
+    inputNodes.forEach(node => visit(node.id));
+    
+    return order;
+  }
+
+  private generateFlowDefinition(inputNode: FlowNode, outputNode: FlowNode, executionOrder: FlowNode[]): string {
+    const inputLabel = inputNode.data?.label || 'input';
+    const outputLabel = outputNode.data?.label || 'output';
+    
+    // Collect which providers are needed
+    const agentNodes = executionOrder.filter(n => n.type === 'agent');
+    const providers = new Set<string>();
+    agentNodes.forEach(node => {
+      if (node.data?.config?.provider) {
+        providers.add(node.data.config.provider);
+      }
+    });
+    
+    let code = `// Complete Genkit flow - generated by Flowshapr\n`;
+    
+    // Add imports
+    code += `import { genkit, z } from 'genkit';\n`;
+    if (providers.has('googleai')) {
+      code += `import { googleAI } from '@genkit-ai/googleai';\n`;
+    }
+    if (providers.has('openai')) {
+      code += `import { openAI } from '@genkit-ai/compat-oai/openai';\n`;
+    }
+    if (providers.has('anthropic')) {
+      code += `import { anthropic } from 'genkitx-anthropic';\n`;
+    }
+    code += `\n`;
+
+
+    // Get input and config from environment variables
+    code += `const input = JSON.parse(process.env.FLOW_INPUT || '{}');\n`;
+    code += `const config = JSON.parse(process.env.FLOW_CONFIG || '{}');\n\n`;
+    
+    // Initialize plugins
+    code += `const plugins = [];\n`;
+    if (providers.has('googleai')) {
+      code += `if (config.googleApiKey) plugins.push(googleAI());\n`;
+    }
+    if (providers.has('openai')) {
+      code += `if (config.openaiApiKey) plugins.push(openAI());\n`;
+    }
+    if (providers.has('anthropic')) {
+      code += `if (config.anthropicApiKey) plugins.push(anthropic());\n`;
+    }
+    code += `\n`;
+    
+    // Initialize Genkit
+    code += `const ai = genkit({ plugins });\n\n`;
+    
+    // Define the flow
+    code += `const flow = ai.defineFlow({\n`;
+    code += `  name: "${inputLabel.toLowerCase().replace(/\s+/g, '-')}-to-${outputLabel.toLowerCase().replace(/\s+/g, '-')}",\n`;
+    code += `  inputSchema: z.string(),\n`;
+    code += `  outputSchema: z.string()\n`;
+    code += `}, async (input) => {\n`;
+    code += `  let result = input;\n\n`;
+    
+    // Generate code for each agent node
+    for (let i = 0; i < agentNodes.length; i++) {
+      const node = agentNodes[i];
+      const agentConfig = node.data?.config;
+      
+      if (agentConfig?.provider && agentConfig?.model) {
+        // Construct prompt from system and user prompts
+        let prompt = '';
+        if (agentConfig.systemPrompt) {
+          prompt += agentConfig.systemPrompt;
+        }
+        if (agentConfig.userPrompt) {
+          if (prompt) prompt += '\n\n';
+          prompt += agentConfig.userPrompt;
+        }
+        if (!prompt) {
+          prompt = 'You are a helpful assistant.';
+        }
+        
+        const modelRef = this.getModelReference(agentConfig.provider, agentConfig.model);
+        
+        code += `  // Agent: ${node.data?.label || node.id}\n`;
+        code += `  const response${i} = await ai.generate({\n`;
+        code += `    model: ${modelRef},\n`;
+        code += `    prompt: \`${prompt}\n\nInput: \${result}\`,\n`;
+        
+        // Add model configuration if provided
+        if (agentConfig.temperature !== undefined || 
+            agentConfig.maxTokens !== undefined || 
+            agentConfig.topP !== undefined) {
+          code += `    config: {\n`;
+          if (agentConfig.temperature !== undefined) {
+            code += `      temperature: ${agentConfig.temperature},\n`;
+          }
+          if (agentConfig.maxTokens !== undefined) {
+            code += `      maxOutputTokens: ${agentConfig.maxTokens},\n`;
+          }
+          if (agentConfig.topP !== undefined) {
+            code += `      topP: ${agentConfig.topP},\n`;
+          }
+          code += `    },\n`;
+        }
+        
+        code += `  });\n`;
+        code += `  result = response${i}.text;\n\n`;
+      }
+    }
+    
+    code += `  return result;\n`;
+    code += `});\n\n`;
+    
+    // Execute the flow and output result
+    code += `// Execute the flow\n`;
+    code += `const result = await flow(input);\n`;
+    code += `console.log(result);`;
+    
+    return code;
+  }
+
+  private getModelReference(provider: string, model: string): string {
+    // Use provider-specific model references for better compatibility
+    switch (provider) {
+      case 'googleai':
+        // Map common variants to standard names
+        const googleModel = model
+          .replace('gemini-1.5-pro-latest', 'gemini-1.5-pro')
+          .replace('gemini-1.5-flash-latest', 'gemini-1.5-flash')
+          .replace('gemini-2.0-flash-experimental', 'gemini-2.0-flash-exp');
+        return `googleAI.model('${googleModel}')`;
+      
+      case 'openai':
+        return `openAI.model('${model}')`;
+      
+      case 'anthropic':
+        return `anthropic.model('${model}')`;
+      
+      default:
+        // Fallback to string reference
+        return `"${provider}/${model}"`;
+    }
+  }
+
+  private getModelName(provider: string, model: string): string {
+    switch (provider) {
+      case 'googleai':
+        return `googleAI.model('${model}')`;
+      case 'openai':
+        return `openAI.model('${model}')`;
+      case 'anthropic':
+        return `anthropic.model('${model}')`;
+      default:
+        return `'${model}'`;
+    }
+  }
+}

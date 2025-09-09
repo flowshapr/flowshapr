@@ -1,0 +1,18 @@
+{
+  "name": "@flowshapr/sdk",
+  "version": "0.1.0",
+  "description": "Minimal client SDK to execute Flowshapr flows via API key.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch ./examples/run-sample.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { flowService } from "../services/FlowService";
-import { FlowExecutor } from "../services/FlowExecutor";
 import { ConflictError, NotFoundError } from "../../../shared/utils/errors";
 
 export class FlowController {
