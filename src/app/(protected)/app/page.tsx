@@ -55,8 +55,8 @@ export default function FlowBuilderApp() {
     return (
       <AppLayout user={mockSession.user}>
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-gray-600">
-            <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-2 text-base-content/70">
+            <div className="w-6 h-6 border-2 border-base-300 border-t-primary rounded-full animate-spin" />
             <div className="text-sm">Loading…</div>
           </div>
         </div>
@@ -68,10 +68,10 @@ export default function FlowBuilderApp() {
     <AppLayout user={mockSession.user}>
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          <h2 className="text-lg font-semibold text-base-content mb-2">
             Welcome to Flowshapr
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-base-content/70 mb-4">
             Create your first flow to get started with building AI workflows.
           </p>
         </div>

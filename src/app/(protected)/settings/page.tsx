@@ -13,13 +13,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-base-200">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-base-100 border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
-            <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <h1 className="text-2xl font-bold text-base-content">Account Settings</h1>
+            <p className="mt-1 text-sm text-base-content/70">
               Manage your account preferences and security settings.
             </p>
           </div>
@@ -29,9 +29,9 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           {/* Profile Section */}
-          <div className="bg-white shadow rounded-lg">
+          <div className="bg-base-100 shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-medium text-base-content flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Profile Information
               </h2>
@@ -50,10 +50,10 @@ export default function SettingsPage() {
                   </div>
                 )}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">
+                  <h3 className="text-lg font-medium text-base-content">
                     {session.user.name || 'Anonymous User'}
                   </h3>
-                  <p className="text-sm text-gray-600">{session.user.email}</p>
+                  <p className="text-sm text-base-content/70">{session.user.email}</p>
                 </div>
               </div>
               
@@ -64,7 +64,7 @@ export default function SettingsPage() {
                     type="text"
                     value={session.user.name || ''}
                     readOnly
-                    className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="mt-1 block w-full rounded-md border-gray-300 bg-base-200 text-base-content/60 cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -73,21 +73,21 @@ export default function SettingsPage() {
                     type="email"
                     value={session.user.email}
                     readOnly
-                    className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="mt-1 block w-full rounded-md border-gray-300 bg-base-200 text-base-content/60 cursor-not-allowed"
                   />
                 </div>
               </div>
               
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-base-content/60">
                 Profile information is managed through your authentication provider.
               </p>
             </div>
           </div>
 
           {/* Account Security */}
-          <div className="bg-white shadow rounded-lg">
+          <div className="bg-base-100 shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-medium text-base-content flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 Account Security
               </h2>
@@ -95,8 +95,8 @@ export default function SettingsPage() {
             <div className="px-6 py-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">Authentication Method</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-sm font-medium text-base-content">Authentication Method</h3>
+                  <p className="text-sm text-base-content/70">
                     You're signed in with {session.user.email}
                   </p>
                 </div>
@@ -108,8 +108,8 @@ export default function SettingsPage() {
               
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">API Keys</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-sm font-medium text-base-content">API Keys</h3>
+                  <p className="text-sm text-base-content/70">
                     Manage API keys for external integrations
                   </p>
                 </div>
@@ -122,15 +122,15 @@ export default function SettingsPage() {
           </div>
 
           {/* Preferences */}
-          <div className="bg-white shadow rounded-lg">
+          <div className="bg-base-100 shadow rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Preferences</h2>
+              <h2 className="text-lg font-medium text-base-content">Preferences</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">Email Notifications</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-sm font-medium text-base-content">Email Notifications</h3>
+                  <p className="text-sm text-base-content/70">
                     Receive updates about your flows and account
                   </p>
                 </div>
@@ -143,8 +143,8 @@ export default function SettingsPage() {
               
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">Auto-save Flows</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-sm font-medium text-base-content">Auto-save Flows</h3>
+                  <p className="text-sm text-base-content/70">
                     Automatically save your work as you build
                   </p>
                 </div>
@@ -158,7 +158,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Danger Zone */}
-          <div className="bg-white shadow rounded-lg border border-red-200">
+          <div className="bg-base-100 shadow rounded-lg border border-red-200">
             <div className="px-6 py-4 border-b border-red-200">
               <h2 className="text-lg font-medium text-red-900">Danger Zone</h2>
             </div>

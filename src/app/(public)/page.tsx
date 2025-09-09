@@ -35,14 +35,14 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm">
+      <nav className="bg-base-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
                 <span className="text-white font-bold">F</span>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Flowshapr</h1>
+              <h1 className="text-xl font-bold text-base-content">Flowshapr</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/login">
@@ -59,11 +59,11 @@ export default function LandingPage() {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+          <h1 className="text-4xl font-extrabold text-base-content sm:text-5xl md:text-6xl">
             Build AI Flows
             <span className="text-blue-600"> Visually</span>
           </h1>
-          <p className="mt-6 max-w-2xl mx-auto text-xl text-gray-500">
+          <p className="mt-6 max-w-2xl mx-auto text-xl text-base-content/60">
             Create, manage, and deploy Firebase Genkit AI flows with our visual drag-and-drop interface. 
             Deploy to any platform and call remotely with our thin SDK.
           </p>
@@ -90,8 +90,8 @@ export default function LandingPage() {
             <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
               <Zap className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Visual Flow Builder</h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <h3 className="mt-4 text-lg font-medium text-base-content">Visual Flow Builder</h3>
+            <p className="mt-2 text-sm text-base-content/60">
               Drag and drop nodes to create complex AI workflows without writing code
             </p>
           </div>
@@ -100,8 +100,8 @@ export default function LandingPage() {
             <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
               <Users className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Team Collaboration</h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <h3 className="mt-4 text-lg font-medium text-base-content">Team Collaboration</h3>
+            <p className="mt-2 text-sm text-base-content/60">
               Work together with your team on AI flows with role-based access control
             </p>
           </div>
@@ -110,8 +110,8 @@ export default function LandingPage() {
             <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
               <Globe className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Multi-Platform Deploy</h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <h3 className="mt-4 text-lg font-medium text-base-content">Multi-Platform Deploy</h3>
+            <p className="mt-2 text-sm text-base-content/60">
               Deploy to Firebase, Google Cloud, AWS, or keep with us - your choice
             </p>
           </div>
@@ -120,8 +120,8 @@ export default function LandingPage() {
             <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
               <Settings className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Remote SDK</h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <h3 className="mt-4 text-lg font-medium text-base-content">Remote SDK</h3>
+            <p className="mt-2 text-sm text-base-content/60">
               Call your deployed flows remotely with our lightweight SDK
             </p>
           </div>
@@ -138,7 +138,7 @@ export default function LandingPage() {
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Link href="/register">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-50">
+                <Button size="lg" className="bg-base-100 text-blue-600 hover:bg-base-200">
                   Get Started
                 </Button>
               </Link>
@@ -148,20 +148,20 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white">
+      <footer className="bg-base-100">
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center mr-2">
                 <span className="text-white text-sm font-bold">F</span>
               </div>
-              <span className="text-gray-500 text-sm">© 2024 Flowshapr. All rights reserved.</span>
+              <span className="text-base-content/60 text-sm">© 2024 Flowshapr. All rights reserved.</span>
             </div>
             <div className="flex space-x-6">
-              <Link href="/privacy" className="text-gray-400 hover:text-gray-500 text-sm">
+              <Link href="/privacy" className="text-gray-400 hover:text-base-content/60 text-sm">
                 Privacy
               </Link>
-              <Link href="/terms" className="text-gray-400 hover:text-gray-500 text-sm">
+              <Link href="/terms" className="text-gray-400 hover:text-base-content/60 text-sm">
                 Terms
               </Link>
             </div>

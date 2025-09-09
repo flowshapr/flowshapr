@@ -34,7 +34,11 @@ app.use(helmet({
 // CORS configuration with explicit credentials and flexible origins
 const defaultOrigins = [
   'http://localhost:3000',
+  'http://localhost:3003',
+  'http://localhost:3004',
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:3003',
+  'http://127.0.0.1:3004',
 ];
 const envOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
 const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);

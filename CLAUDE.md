@@ -309,3 +309,11 @@ This codebase follows enterprise-grade architecture patterns. The system is buil
 - Routes must be minimal with NO database logic
 - Authorization happens in services, not middleware
 - Frontend API routes should be thin proxies to backend domains
+
+<genkit_prompts hash="56fae31b">
+<!-- Genkit Context - Auto-generated, do not edit -->
+
+Genkit Framework Instructions:
+ - @./GENKIT.md
+
+</genkit_prompts>

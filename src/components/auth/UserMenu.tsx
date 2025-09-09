@@ -35,13 +35,8 @@ export function UserMenu({ user }: UserMenuProps) {
   };
 
   return (
-    <div className="relative">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+    <div className="dropdown dropdown-end">
+      <div tabIndex={0} role="button" className="btn btn-ghost btn-sm gap-2">
         <div className="flex items-center gap-2">
           {user.image ? (
             <img
@@ -50,49 +45,39 @@ export function UserMenu({ user }: UserMenuProps) {
               className="w-6 h-6 rounded-full"
             />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-              <User className="w-4 h-4 text-white" />
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+              <User className="w-4 h-4 text-primary-content" />
             </div>
           )}
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-medium text-base-content">
             {user.name || user.email}
           </span>
-          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className="w-4 h-4 text-base-content/60" />
         </div>
-      </Button>
+      </div>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-20">
-            <div className="p-3 border-b border-gray-100">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-            
-            <div className="py-1">
-              <button
-                onClick={handleSettings}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <Settings className="w-4 h-4" />
-                Account Settings
-              </button>
-              
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
-            </div>
+      <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-20 w-56 p-2 shadow-lg mt-2">
+        <li className="p-3 border-b border-base-300 mb-2">
+          <div>
+            <p className="text-sm font-medium text-base-content">{user.name}</p>
+            <p className="text-xs text-base-content/60">{user.email}</p>
           </div>
-        </>
-      )}
+        </li>
+        
+        <li>
+          <button onClick={handleSettings} className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Account Settings
+          </button>
+        </li>
+        
+        <li>
+          <button onClick={handleSignOut} className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </li>
+      </ul>
     </div>
   );
 }

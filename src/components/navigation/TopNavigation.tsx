@@ -15,19 +15,21 @@ interface TopNavigationProps {
 
 export function TopNavigation({ user }: TopNavigationProps) {
   return (
-    <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4">
+    <div className="navbar bg-base-100 border-b border-base-300 min-h-14 h-14">
       {/* Logo */}
-      <div className="flex items-center gap-2">
+      <div className="navbar-start">
         <div className="flex items-center gap-2">
-          <Zap className="w-6 h-6 text-blue-600" />
-          <span className="text-lg font-semibold text-gray-900">Flowshapr</span>
+          <Zap className="w-6 h-6 text-primary" />
+          <span className="text-lg font-semibold text-base-content">Flowshapr</span>
         </div>
       </div>
       
       {/* Right side: Service menu + Account */}
-      <div className="flex items-center gap-4">
-        <ServiceMenu />
-        {user && <UserMenu user={user} />}
+      <div className="navbar-end">
+        <div className="flex items-center gap-4">
+          <ServiceMenu />
+          {user && <UserMenu user={user} />}
+        </div>
       </div>
     </div>
   );

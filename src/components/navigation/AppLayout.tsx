@@ -127,7 +127,7 @@ export function AppLayout({ user, children }: AppLayoutProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-base-200">
       {/* Top Navigation */}
       <TopNavigation user={user} />
       
@@ -164,15 +164,15 @@ export function AppLayout({ user, children }: AppLayoutProps) {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                <h2 className="text-lg font-semibold text-base-content mb-2">
                   No Flow Selected
                 </h2>
-                <p className="text-gray-600 mb-4">
+                <p className="text-base-content/70 mb-4">
                   Select a flow from the dropdown above or create a new one to get started.
                 </p>
                 <button
                   onClick={handleCreateFlow}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="btn btn-primary"
                 >
                   Create New Flow
                 </button>

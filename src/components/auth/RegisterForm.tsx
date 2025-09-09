@@ -82,7 +82,7 @@ export function RegisterForm() {
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Create Your Account</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-base-content/70 mt-2">
           Get started with Flowshapr today
         </p>
       </div>
@@ -138,7 +138,7 @@ export function RegisterForm() {
             placeholder="••••••••"
             minLength={8}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-base-content/60 mt-1">
             Must be at least 8 characters
           </p>
         </div>
@@ -172,7 +172,7 @@ export function RegisterForm() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-gray-500">Or continue with</span>
+          <span className="bg-base-100 px-2 text-base-content/60">Or continue with</span>
         </div>
       </div>
 
@@ -222,7 +222,7 @@ export function RegisterForm() {
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-base-content/70">
           Already have an account?{" "}
           <a href="/login" className="font-medium text-blue-600 hover:text-blue-500">
             Sign in
@@ -230,7 +230,7 @@ export function RegisterForm() {
         </p>
       </div>
 
-      <div className="text-xs text-gray-500 text-center">
+      <div className="text-xs text-base-content/60 text-center">
         By creating an account, you agree to our{" "}
         <a href="/terms" className="underline">Terms of Service</a>{" "}
         and{" "}

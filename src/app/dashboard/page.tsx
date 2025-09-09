@@ -20,18 +20,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
+    <div className="min-h-screen bg-base-200">
+      <div className="bg-base-100 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
                 <span className="text-white font-bold">F</span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Flowshapr</h1>
+              <h1 className="text-2xl font-bold text-base-content">Flowshapr</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-base-content/70">
                 Welcome, {session.user.name}
               </span>
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
@@ -42,7 +42,7 @@ export default function DashboardPage() {
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
-                  <span className="text-sm font-medium text-gray-600">
+                  <span className="text-sm font-medium text-base-content/70">
                     {session.user.name.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -57,7 +57,7 @@ export default function DashboardPage() {
           <div className="mb-8">
             <div className="sm:flex sm:items-center">
               <div className="sm:flex-auto">
-                <h2 className="text-xl font-semibold text-gray-900">Organizations</h2>
+                <h2 className="text-xl font-semibold text-base-content">Organizations</h2>
                 <p className="mt-2 text-sm text-gray-700">
                   Manage your organizations and teams to collaborate on Genkit flows.
                 </p>
@@ -72,9 +72,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Organizations Grid */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="bg-base-100 overflow-hidden shadow rounded-lg">
             <div className="px-6 py-4">
-              <h3 className="text-lg font-medium text-gray-900">Your Organizations</h3>
+              <h3 className="text-lg font-medium text-base-content">Your Organizations</h3>
             </div>
             <div className="border-t border-gray-200">
               <div className="px-6 py-4">
@@ -89,8 +89,8 @@ export default function DashboardPage() {
                       />
                     </svg>
                   </div>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No organizations</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h3 className="mt-2 text-sm font-medium text-base-content">No organizations</h3>
+                  <p className="mt-1 text-sm text-base-content/60">
                     Get started by creating your first organization.
                   </p>
                   <div className="mt-6">
@@ -105,14 +105,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-8">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="bg-base-100 overflow-hidden shadow rounded-lg">
               <div className="px-6 py-4">
-                <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
+                <h3 className="text-lg font-medium text-base-content">Recent Activity</h3>
               </div>
               <div className="border-t border-gray-200">
                 <div className="px-6 py-4">
                   <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">No recent activity</p>
+                    <p className="text-sm text-base-content/60">No recent activity</p>
                   </div>
                 </div>
               </div>

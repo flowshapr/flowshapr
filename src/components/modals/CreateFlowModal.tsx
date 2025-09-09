@@ -48,14 +48,14 @@ export function CreateFlowModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Flow</h2>
+      <div className="modal-box bg-base-100 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-base-content">Create New Flow</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="btn btn-ghost btn-sm btn-circle"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4" />
           </button>
         </div>
         
@@ -92,7 +92,7 @@ export function CreateFlowModal({
                 pattern="[a-z0-9-_]+"
                 title="Only lowercase letters, numbers, hyphens, and underscores allowed"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-base-content/60">
                 Unique identifier for SDK calls. Only lowercase letters, numbers, hyphens, and underscores allowed.
               </p>
             </div>

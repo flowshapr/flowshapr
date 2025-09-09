@@ -82,7 +82,7 @@ export function LoginForm() {
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Sign In to Flowshapr</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-base-content/70 mt-2">
           Welcome back! Sign in to your account
         </p>
       </div>
@@ -138,7 +138,7 @@ export function LoginForm() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-gray-500">Or continue with</span>
+          <span className="bg-base-100 px-2 text-base-content/60">Or continue with</span>
         </div>
       </div>
 
@@ -188,7 +188,7 @@ export function LoginForm() {
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-base-content/70">
           Don't have an account?{" "}
           <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
             Sign up
