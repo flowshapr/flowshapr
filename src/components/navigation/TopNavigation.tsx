@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { ServiceMenu } from './ServiceMenu';
-import { Zap } from 'lucide-react';
+import { Circle } from 'lucide-react';
 
 interface TopNavigationProps {
   user?: {
@@ -18,9 +18,9 @@ export function TopNavigation({ user }: TopNavigationProps) {
     <div className="navbar bg-base-100 border-b min-h-14 h-14">
       {/* Logo */}
       <div className="navbar-start">
-        <div className="flex items-center gap-2">
-          <Zap className="w-6 h-6 text-primary" />
-          <span className="text-lg font-semibold text-base-content">Flowshapr</span>
+        <div className="flex items-center gap-1">
+          <span className="text-lg font-semibold text-primary">flowshapr</span>
+          <Circle className="w-3 h-3 text-primary fill-current" />
         </div>
       </div>
       

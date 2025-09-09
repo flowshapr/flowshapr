@@ -99,7 +99,7 @@ export function ProjectNavigation({
               <a
                 onClick={() => onViewChange?.(item.id)}
                 className={`flex items-center gap-3 cursor-pointer w-full justify-start ${
-                  activeView === item.id ? 'active bg-primary/10 text-primary border-r-2 border-primary' : ''
+                  activeView === item.id ? 'active bg-primary/10 text-primary' : ''
                 }`}
                 title={isCollapsed ? item.label : undefined}
               >
