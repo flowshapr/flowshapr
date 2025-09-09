@@ -14,6 +14,8 @@ import { flowRoutes } from "./domains/flows/routes";
 import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
 import { telemetryRoutes } from "./domains/telemetry/routes";
 import { flowRunService } from "./domains/flows/services/FlowRunService";
+import blocksRoutes from "./domains/blocks/routes";
+import { initializeServerBlocks } from "./domains/blocks";
 
 const app = express();
 const PORT = ENV.PORT;
@@ -128,6 +130,7 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/flows", flowRoutes);
 app.use("/api/telemetry", telemetryRoutes);
+app.use("/api", blocksRoutes);
 
 // Error handling
 app.use(notFoundHandler);
@@ -138,6 +141,15 @@ app.listen(PORT, async () => {
   console.log(`🚀 Flowshapr server is running on port ${PORT}`);
   console.log(`📱 Health check: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
+  
+  // Initialize server-side blocks
+  try {
+    console.log('🧩 Initializing server-side blocks...');
+    initializeServerBlocks();
+    console.log('✅ Server blocks ready');
+  } catch (error: any) {
+    console.error('❌ Failed to initialize blocks:', error.message);
+  }
   
   // Initialize process executor for flow execution
   try {
