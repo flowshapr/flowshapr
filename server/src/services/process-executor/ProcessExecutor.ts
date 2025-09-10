@@ -201,13 +201,19 @@ export class ProcessExecutor {
   private async executeChildProcess(filepath: string, input: any, config: ExecutionConfig, executionId: string): Promise<any> {
     return new Promise(async (resolve, reject) => {
       try {
+        // Get the current server port from environment or config
+        const serverPort = process.env.PORT || '3001';
+        
         // Prepare environment variables with API keys set BEFORE child process starts
         const env: NodeJS.ProcessEnv = {
           ...process.env,
           NODE_ENV: 'production',
           // Pass input and config as environment variables
           FLOW_INPUT: JSON.stringify(input),
-          FLOW_CONFIG: JSON.stringify(config)
+          FLOW_CONFIG: JSON.stringify(config),
+          // Configure Genkit telemetry to send traces to our server
+          GENKIT_TELEMETRY_SERVER: `http://localhost:${serverPort}/telemetry`,
+          GENKIT_ENV: 'dev'
         };
 
         // Add API keys to environment BEFORE spawning child process
@@ -224,20 +230,17 @@ export class ProcessExecutor {
           env.ANTHROPIC_API_KEY = config.anthropicApiKey;
         }
 
-        // Add Flowshapr trace export configuration
-        const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
-        const traceSecret = process.env.GENKIT_EXPORT_SECRET || '';
-        env.FLOWSHAPR_TRACE_ENDPOINT = `${backendUrl}/api/telemetry/genkit`;
-        env.FLOWSHAPR_TRACE_SECRET = traceSecret;
-
         // Convert .js to .mjs for ES module support
         const mjsFilepath = filepath.replace('.js', '.mjs');
         await fs.rename(filepath, mjsFilepath);
+        // Ensure our local genkit shim takes precedence for provider packages
+        const shimNodePath = path.join(process.cwd(), 'server', 'shims', 'node_modules');
+        env.NODE_PATH = env.NODE_PATH ? `${shimNodePath}:${env.NODE_PATH}` : shimNodePath;
         const child = spawn('node', [mjsFilepath], {
           env,
-          cwd: process.cwd(), // Set working directory to server root so node_modules is accessible
+          cwd: process.cwd(), // keep server root; NODE_PATH will surface our shim
           timeout: this.config.timeout,
-          stdio: ['ignore', 'pipe', 'pipe']
+          stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         let output = '';

@@ -129,7 +129,9 @@ export class FlowRunService {
     }
 
     // Prepare API keys configuration
-    const executionConfig: ExecutionConfig = {};
+    const executionConfig: ExecutionConfig = {
+      flowId: flowId // Pass the flowId for telemetry
+    };
     if (flowConnections && Array.isArray(flowConnections)) {
       for (const conn of flowConnections) {
         if (conn.isActive === false) {
@@ -179,28 +181,34 @@ export class FlowRunService {
 
     const duration = Date.now() - execStart;
 
-    // Store execution trace
+    // Store execution trace with timeout to prevent hanging
     if (flow) {
-      try {
-        const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-        await tracesService.createTrace({
-          executionId,
-          input,
-          output: result.success ? result.result : null,
-          nodeTraces: [], // Container execution doesn't provide detailed node traces yet
-          duration,
-          status: result.success ? 'completed' : 'failed',
-          errorMessage: result.success ? null : (result.error || 'Unknown error'),
-          version: (flow as any)?.version || null,
-          userAgent: userAgent || null,
-          ipAddress: ipAddress || null,
-          flowId: (flow as any).id,
-          executedBy: userId?.startsWith('token_') ? null : (userId || null),
-        });
-      } catch (e) {
-        // Swallow trace persistence errors
+      // Run trace persistence in background with timeout - don't block response
+      const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const tracePromise = tracesService.createTrace({
+        executionId,
+        input,
+        output: result.success ? result.result : null,
+        nodeTraces: [], // Container execution doesn't provide detailed node traces yet
+        duration,
+        status: result.success ? 'completed' : 'failed',
+        errorMessage: result.success ? null : (result.error || 'Unknown error'),
+        version: (flow as any)?.version || null,
+        userAgent: userAgent || null,
+        ipAddress: ipAddress || null,
+        flowId: (flow as any).id,
+        executedBy: userId?.startsWith('token_') ? null : (userId || null),
+      });
+
+      // Run with 5 second timeout, don't await - let it run in background
+      Promise.race([
+        tracePromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Trace persistence timeout')), 5000)
+        )
+      ]).catch(e => {
         console.warn('Trace persist failed:', (e as any)?.message || e);
-      }
+      });
     }
 
     return {

@@ -2,6 +2,7 @@ export interface ExecutionConfig {
   googleApiKey?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
+  flowId?: string;
 }
 
 export interface ExecutionResult {

@@ -248,8 +248,7 @@ export class CodeGeneratorService {
 
   private generateImports(context: CodeGenerationContext): string {
     const imports: string[] = [
-      "import { genkit, z } from 'genkit';",
-      "import { genkitPlugin } from 'genkit/plugin';"
+      "import { genkit, z } from 'genkit';"
     ];
 
     // Add provider imports based on plugins used
@@ -272,71 +271,19 @@ export class CodeGeneratorService {
   private generateAIConfig(context: CodeGenerationContext): string {
     const plugins = Array.from(context.plugins);
     
-    // Add telemetry plugin to plugins if configured
-    const telemetrySetup = `
-// Setup telemetry plugin
-const telemetryPlugin = createFlowshaprTelemetryPlugin();
-const allPlugins = [${plugins.length > 0 ? plugins.join(', ') : ''}];
-if (telemetryPlugin) {
-  allPlugins.push(telemetryPlugin);
-}`;
-
-    return `${telemetrySetup}
-
-const ai = genkit({
-  plugins: allPlugins,
+    return `const ai = genkit({
+  plugins: [${plugins.length > 0 ? plugins.join(', ') : ''}]
 });`;
   }
 
   private assembleCode(imports: string, aiConfig: string, inputSchema: string, flowBody: string): string {
     return `${imports}
 
-// Flowshapr telemetry plugin using proper genkitPlugin helper
-function createFlowshaprTelemetryPlugin() {
-  const endpoint = process.env.FLOWSHAPR_TRACE_ENDPOINT;
-  const secret = process.env.FLOWSHAPR_TRACE_SECRET;
-  
-  if (!endpoint) {
-    return null; // Skip telemetry if not configured
-  }
-
-  // Create a proper Genkit plugin using genkitPlugin helper
-  return genkitPlugin('flowshapr-telemetry', async (ai) => {
-    // Hook into Genkit's telemetry system during initialization
-    try {
-      const telemetry = ai.telemetry || ai;
-      if (telemetry && typeof telemetry.onEvent === 'function') {
-        console.log('[Flowshapr] Telemetry plugin initialized, endpoint:', endpoint);
-        telemetry.onEvent(async (event) => {
-          try {
-            console.log('[Flowshapr] Sending telemetry event:', event?.type || 'unknown');
-            const response = await fetch(endpoint, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': \`Bearer \${secret}\` 
-              },
-              body: JSON.stringify(event),
-            });
-            if (!response.ok) {
-              console.warn('[Flowshapr] Telemetry export failed:', response.status);
-            }
-          } catch (e) {
-            console.warn('[Flowshapr] Telemetry export error:', e.message);
-          }
-        });
-      } else {
-        console.warn('[Flowshapr] No telemetry.onEvent found on ai object');
-      }
-    } catch (e) {
-      console.warn('[Flowshapr] Telemetry plugin setup error:', e.message);
-    }
-  });
-}
-
 // Main execution wrapper
 (async () => {
   try {
+ 
+
 ${aiConfig}
 
 const generatedFlow = ai.defineFlow({
@@ -344,15 +291,21 @@ const generatedFlow = ai.defineFlow({
   inputSchema: ${inputSchema},
   outputSchema: z.any(),
 }, async (input) => {
+  
   ${flowBody}
 });
 
+
 // Execute the flow and output the result
 const input = JSON.parse(process.env.FLOW_INPUT || '{}');
+
+
 const result = await generatedFlow(input);
+
 console.log(JSON.stringify(result));
+
+process.exit(0);
   } catch (error) {
-    console.error('Flow execution error:', error.message);
     process.exit(1);
   }
 })();`;

@@ -11,8 +11,8 @@ import { authRoutes } from "./domains/auth/routes";
 import { organizationRoutes } from "./domains/organizations/routes";
 import { teamRoutes } from "./domains/teams/routes";
 import { flowRoutes } from "./domains/flows/routes";
-import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
 import { telemetryRoutes } from "./domains/telemetry/routes";
+import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
 import { flowRunService } from "./domains/flows/services/FlowRunService";
 import blocksRoutes from "./domains/blocks/routes";
 import { initializeServerBlocks } from "./domains/blocks";
@@ -131,7 +131,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/flows", flowRoutes);
-app.use("/api/telemetry", telemetryRoutes);
+app.use("/telemetry", telemetryRoutes);
 app.use("/api", blocksRoutes);
 
 // Error handling
@@ -162,6 +162,10 @@ app.listen(PORT, async () => {
     console.error('❌ Failed to initialize process executor:', error.message);
     console.log('⚠️  Flow execution will attempt to initialize on first use');
   }
+  
+  // Genkit telemetry server is running
+  console.log('📊 Genkit telemetry server is active');
+  console.log('🔍 Child processes will send traces to /telemetry endpoint');
 });
 
 // Graceful shutdown
@@ -174,6 +178,15 @@ process.on("SIGINT", async () => {
   } catch (error: any) {
     console.error('❌ Error during process executor shutdown:', error.message);
   }
+  
+  try {
+    console.log('🛑 Shutting down Genkit telemetry server...');
+    await stopGenkitTelemetryServer();
+    console.log('✅ Genkit telemetry server shut down');
+  } catch (error: any) {
+    console.error('❌ Error during telemetry server shutdown:', error.message);
+  }
+  
   process.exit(0);
 });
 
@@ -186,5 +199,14 @@ process.on("SIGTERM", async () => {
   } catch (error: any) {
     console.error('❌ Error during process executor shutdown:', error.message);
   }
+  
+  try {
+    console.log('🛑 Shutting down Genkit telemetry server...');
+    await stopGenkitTelemetryServer();
+    console.log('✅ Genkit telemetry server shut down');
+  } catch (error: any) {
+    console.error('❌ Error during telemetry server shutdown:', error.message);
+  }
+  
   process.exit(0);
 });

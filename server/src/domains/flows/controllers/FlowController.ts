@@ -352,9 +352,12 @@ export class FlowController {
 
   async executeFlow(req: Request, res: Response): Promise<void> {
     try {
+      console.log('🎯 FlowController: Starting flow execution for flow ID:', req.params.id);
       const { id } = req.params as any;
       const { input, nodes, edges, metadata, connections } = req.body || {};
       const { flowRunService } = await import('../services/FlowRunService.js');
+      
+      console.log('🎯 FlowController: Calling flowRunService.execute...');
       const out = await flowRunService.execute({
         flowId: id,
         userId: req.user!.id,
@@ -367,15 +370,19 @@ export class FlowController {
         ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
       });
       
+      console.log('🎯 FlowController: Got response from flowRunService, sending back:', { status: out.status, hasBody: !!out.body });
+      
       // Handle streaming response
       if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
         res.status(out.status).json(out.body);
+        console.log('🎯 FlowController: Response sent successfully');
       } else {
         // This should not happen in non-streaming mode, but handle it gracefully
+        console.log('🎯 FlowController: Unexpected response format, sending 500');
         res.status(500).json({ success: false, error: { message: 'Unexpected response format' } });
       }
     } catch (error: any) {
-      console.error('Execute flow error:', error);
+      console.error('🎯 FlowController: Execute flow error:', error);
       res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });
     }
   }
