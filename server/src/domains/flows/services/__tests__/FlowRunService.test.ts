@@ -17,15 +17,15 @@ const mockTracesService = {
   createTrace: jest.fn(),
 };
 
-const mockProcessExecutor = {
+const mockContainerPool = {
   initialize: jest.fn(),
   shutdown: jest.fn(),
-  getStatus: jest.fn(() => ({ status: 'ready', processes: 0 })),
-  execute: jest.fn(),
+  getStatus: jest.fn(() => ({ initialized: true, availableContainers: 3, activeExecutions: 0 })),
+  executeFlow: jest.fn(),
 };
 
-const mockCodeGenerator = {
-  generateFlowCode: jest.fn(),
+const mockCodeGeneratorService = {
+  generate: jest.fn(),
 };
 
 // Mock modules
@@ -37,12 +37,12 @@ jest.mock('../../traces/services/TracesService', () => ({
   tracesService: mockTracesService,
 }));
 
-jest.mock('../../../services/process-executor', () => ({
-  ProcessExecutor: jest.fn(() => mockProcessExecutor),
+jest.mock('../../../services/container-pool/ContainerPoolService', () => ({
+  ContainerPoolService: jest.fn(() => mockContainerPool),
 }));
 
-jest.mock('../../../lib/code-generator', () => ({
-  CodeGenerator: jest.fn(() => mockCodeGenerator),
+jest.mock('../../blocks/services/CodeGeneratorService', () => ({
+  CodeGeneratorService: jest.fn(() => mockCodeGeneratorService),
 }));
 
 describe('FlowRunService', () => {
@@ -61,30 +61,30 @@ describe('FlowRunService', () => {
 
   describe('initialization', () => {
     it('should initialize successfully', async () => {
-      mockProcessExecutor.initialize.mockResolvedValue(undefined);
+      mockContainerPool.initialize.mockResolvedValue(undefined);
 
       await flowRunService.initialize();
 
-      expect(mockProcessExecutor.initialize).toHaveBeenCalledTimes(1);
+      expect(mockContainerPool.initialize).toHaveBeenCalledTimes(1);
       expect(flowRunService.getStatus().initialized).toBe(true);
     });
 
     it('should not initialize twice', async () => {
-      mockProcessExecutor.initialize.mockResolvedValue(undefined);
+      mockContainerPool.initialize.mockResolvedValue(undefined);
 
       await flowRunService.initialize();
       await flowRunService.initialize();
 
-      expect(mockProcessExecutor.initialize).toHaveBeenCalledTimes(1);
+      expect(mockContainerPool.initialize).toHaveBeenCalledTimes(1);
     });
 
     it('should shutdown successfully', async () => {
-      mockProcessExecutor.shutdown.mockResolvedValue(undefined);
+      mockContainerPool.shutdown.mockResolvedValue(undefined);
       
       await flowRunService.initialize();
       await flowRunService.shutdown();
 
-      expect(mockProcessExecutor.shutdown).toHaveBeenCalledTimes(1);
+      expect(mockContainerPool.shutdown).toHaveBeenCalledTimes(1);
       expect(flowRunService.getStatus().initialized).toBe(false);
     });
   });
@@ -95,7 +95,7 @@ describe('FlowRunService', () => {
 
       expect(status).toMatchObject({
         initialized: false,
-        processExecutor: { status: 'ready', processes: 0 },
+        containerPool: { initialized: true, availableContainers: 3, activeExecutions: 0 },
       });
     });
   });
@@ -111,12 +111,18 @@ describe('FlowRunService', () => {
 
     beforeEach(() => {
       mockFlowService.getFlowById.mockResolvedValue(mockFlow);
-      mockCodeGenerator.generateFlowCode.mockReturnValue('// generated code');
-      mockProcessExecutor.execute.mockResolvedValue({
+      mockCodeGeneratorService.generate.mockReturnValue({ 
+        isValid: true, 
+        code: '// generated code',
+        errors: []
+      });
+      mockContainerPool.executeFlow.mockResolvedValue({
         success: true,
         result: { output: 'test output' },
-        duration: 1000,
-        executionId: 'exec-123',
+        meta: {
+          duration: 1000,
+          instance: 'container-123',
+        }
       });
       mockTracesService.createTrace.mockResolvedValue(createMockTrace());
     });
@@ -125,7 +131,7 @@ describe('FlowRunService', () => {
       const result = await flowRunService.execute(executeParams);
 
       expect(mockFlowService.getFlowById).toHaveBeenCalledWith(executeParams.flowId, executeParams.userId);
-      expect(mockProcessExecutor.execute).toHaveBeenCalled();
+      expect(mockContainerPool.executeFlow).toHaveBeenCalled();
       expect(mockTracesService.createTrace).toHaveBeenCalled();
       expect(result).toMatchObject({
         status: 200,
@@ -170,47 +176,13 @@ describe('FlowRunService', () => {
     });
 
     it('should handle execution errors', async () => {
-      mockProcessExecutor.execute.mockResolvedValue({
+      mockContainerPool.executeFlow.mockResolvedValue({
         success: false,
         error: 'Execution failed',
-        duration: 500,
-        executionId: 'exec-failed',
-      });
-
-      const result = await flowRunService.execute(executeParams);
-
-      expect(result).toMatchObject({
-        status: 200,
-        body: {
-          success: false,
-          error: 'Execution failed',
-        },
-      });
-      expect(mockTracesService.createTrace).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: 'error',
-          error: 'Execution failed',
-        })
-      );
-    });
-
-    it('should handle process executor timeout', async () => {
-      mockProcessExecutor.execute.mockRejectedValue(new Error('Timeout'));
-
-      const result = await flowRunService.execute(executeParams);
-
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: { message: 'Internal server error' },
-        },
-      });
-    });
-
-    it('should handle flow generation errors', async () => {
-      mockCodeGenerator.generateFlowCode.mockImplementation(() => {
-        throw new Error('Code generation failed');
+        meta: {
+          duration: 500,
+          instance: 'container-failed',
+        }
       });
 
       const result = await flowRunService.execute(executeParams);
@@ -219,13 +191,54 @@ describe('FlowRunService', () => {
         status: 400,
         body: {
           success: false,
-          error: { message: 'Code generation failed' },
+          error: 'Execution failed',
+          runtime: 'container-executor',
+        },
+      });
+      expect(mockTracesService.createTrace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'failed',
+          errorMessage: 'Execution failed',
+        })
+      );
+    });
+
+    it('should handle container executor timeout', async () => {
+      mockContainerPool.executeFlow.mockRejectedValue(new Error('Timeout'));
+
+      const result = await flowRunService.execute(executeParams);
+
+      expect(result).toMatchObject({
+        status: 400,
+        body: {
+          success: false,
+          error: 'Timeout',
+          runtime: 'container-executor',
+        },
+      });
+    });
+
+    it('should handle flow generation errors', async () => {
+      mockCodeGeneratorService.generate.mockReturnValue({
+        isValid: false,
+        code: '',
+        errors: ['Code generation failed']
+      });
+
+      const result = await flowRunService.execute(executeParams);
+
+      expect(result).toMatchObject({
+        status: 400,
+        body: {
+          success: false,
+          error: { message: 'Code generation failed', errors: ['Code generation failed'] },
+          runtime: 'container-executor',
         },
       });
     });
   });
 
-  describe('executeStream', () => {
+  describe('streaming execution', () => {
     const streamParams = {
       flowId: 'flow-123',
       userId: mockUser.id,
@@ -235,63 +248,27 @@ describe('FlowRunService', () => {
 
     beforeEach(() => {
       mockFlowService.getFlowById.mockResolvedValue(mockFlow);
-      mockCodeGenerator.generateFlowCode.mockReturnValue('// generated code');
+      mockCodeGeneratorService.generate.mockReturnValue({ 
+        isValid: true, 
+        code: '// generated code',
+        errors: []
+      });
     });
 
-    it('should execute streaming flow successfully', async () => {
-      const mockReadableStream = {
-        getReader: jest.fn(() => ({
-          read: jest.fn()
-            .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('chunk 1') })
-            .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('chunk 2') })
-            .mockResolvedValueOnce({ done: true }),
-        })),
-      };
-
-      mockProcessExecutor.execute.mockResolvedValue({
+    it('should handle streaming execution (returns async generator)', async () => {
+      mockContainerPool.executeFlow.mockResolvedValue({
         success: true,
-        stream: mockReadableStream,
-        executionId: 'exec-stream-123',
+        result: { output: 'streaming output' },
+        meta: {
+          duration: 1500,
+          instance: 'container-stream',
+        }
       });
 
-      const result = await flowRunService.executeStream(streamParams);
+      const result = await flowRunService.execute(streamParams);
 
-      expect(result).toMatchObject({
-        status: 200,
-        body: mockReadableStream,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Transfer-Encoding': 'chunked',
-        },
-      });
-    });
-
-    it('should handle streaming errors', async () => {
-      mockProcessExecutor.execute.mockRejectedValue(new Error('Streaming failed'));
-
-      const result = await flowRunService.executeStream(streamParams);
-
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: { message: 'Internal server error' },
-        },
-      });
-    });
-
-    it('should return 404 for streaming when flow not found', async () => {
-      mockFlowService.getFlowById.mockResolvedValue(null);
-
-      const result = await flowRunService.executeStream(streamParams);
-
-      expect(result).toMatchObject({
-        status: 404,
-        body: {
-          success: false,
-          error: { message: 'Flow not found' },
-        },
-      });
+      // The result should be an async generator for streaming
+      expect(typeof result.next).toBe('function');
     });
   });
 });

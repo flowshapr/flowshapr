@@ -92,7 +92,7 @@ export class FlowRunService {
           body: { 
             success: false, 
             error: { message: 'Flow validation failed', issues }, 
-            runtime: 'process-executor' 
+            runtime: 'container-executor' 
           } 
         };
       }
@@ -102,7 +102,7 @@ export class FlowRunService {
         body: { 
           success: false, 
           error: { message: 'Validator error', details: e?.message || String(e) }, 
-          runtime: 'process-executor' 
+          runtime: 'container-executor' 
         } 
       };
     }
@@ -125,7 +125,7 @@ export class FlowRunService {
             message: 'Code generation failed', 
             errors: generatedCode.errors 
           },
-          runtime: 'process-executor'
+          runtime: 'container-executor'
         }
       };
     }
@@ -217,7 +217,7 @@ export class FlowRunService {
       status: result.success ? 200 : 400,
       body: { 
         ...result, 
-        runtime: 'process-executor',
+        runtime: 'container-executor',
         traces: [] // Add empty traces array for frontend compatibility
       },
     };
