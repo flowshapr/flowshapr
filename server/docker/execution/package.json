@@ -4,6 +4,7 @@
   "description": "Secure runtime for Flowshapr flow execution",
   "main": "index.js",
   "dependencies": {
+    "express": "^4.18.2",
     "genkit": "latest",
     "@genkit-ai/google-genai": "latest",
     "@genkit-ai/compat-oai": "latest",

@@ -73,6 +73,8 @@ export interface CodeGenerationContext {
   dependencies: Set<string>;
   plugins: Set<string>;
   variables: Array<{ name: string; type: string; description?: string }>;
+  attachments?: Record<string, Array<{ id: string; blockType: string; config: any }>>;
+  currentBlockId?: string;
 }
 
 /**

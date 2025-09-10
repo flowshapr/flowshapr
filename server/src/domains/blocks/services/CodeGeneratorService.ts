@@ -108,14 +108,11 @@ export class CodeGeneratorService {
     return `import { genkit } from 'genkit';
 import { z } from 'zod';
 
-// Main execution wrapper
-(async () => {
-  try {
 const ai = genkit({
   plugins: []
 });
 
-// Define flow
+// Define empty flow
 const generatedFlow = ai.defineFlow({
   name: 'generatedFlow',
   inputSchema: z.any(),
@@ -125,19 +122,18 @@ const generatedFlow = ai.defineFlow({
   return input;
 });
 
-// Parse input
-const input = JSON.parse(process.env.FLOW_INPUT || '{}');
-
-// Execute flow
-const result = await generatedFlow(input);
-
-console.log(JSON.stringify(result));
-process.exit(0);
+// Export default function for container execution
+export default async function executeFlow(input) {
+  try {
+    return await generatedFlow(input);
   } catch (error) {
-    console.error('Flow execution error:', error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    throw new Error(\`Flow execution error: \${error instanceof Error ? error.message : String(error)}\`);
   }
-})();`;
+}
+
+// Also export ai and flows for alternative execution patterns
+export { ai };
+export const flows = [generatedFlow];`;
   }
 
   private getExecutionOrder(): BlockInstance[] {
@@ -403,12 +399,9 @@ process.exit(0);
   private assembleCode(imports: string, aiConfig: string, inputSchema: string, flowBody: string): string {
     return `${imports}
 
-// Main execution wrapper
-(async () => {
-  try {
 ${aiConfig}
 
-// Define flow
+// Define and export the flow for container execution
 const generatedFlow = ai.defineFlow({
   name: 'generatedFlow',
   inputSchema: ${inputSchema},
@@ -417,18 +410,17 @@ const generatedFlow = ai.defineFlow({
   ${flowBody}
 });
 
-// Parse input
-const input = JSON.parse(process.env.FLOW_INPUT || '{}');
-
-// Execute flow
-const result = await generatedFlow(input);
-
-console.log(JSON.stringify(result));
-process.exit(0);
+// Export default function for container execution
+export default async function executeFlow(input) {
+  try {
+    return await generatedFlow(input);
   } catch (error) {
-    console.error('Flow execution error:', error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    throw new Error(\`Flow execution error: \${error instanceof Error ? error.message : String(error)}\`);
   }
-})();`;
+}
+
+// Also export ai and flows for alternative execution patterns
+export { ai };
+export const flows = [generatedFlow];`;
   }
 }

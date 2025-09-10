@@ -10,10 +10,9 @@ services:
     environment:
       - NODE_ENV=production
       - EXECUTOR_ID=executor-1
-      - WORK_DIR=/app/work
-    volumes:
-      - executor_work_1:/app/work
-      - executor_results_1:/app/results
+      - PORT=3000
+    ports:
+      - "3100:3000"  # Expose container port 3000 to host port 3100
     working_dir: /app
     command: ["node", "/app/execution-daemon.js"]
     restart: unless-stopped
@@ -23,7 +22,7 @@ services:
           memory: 512M
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -39,10 +38,9 @@ services:
     environment:
       - NODE_ENV=production
       - EXECUTOR_ID=executor-2
-      - WORK_DIR=/app/work
-    volumes:
-      - executor_work_2:/app/work
-      - executor_results_2:/app/results
+      - PORT=3000
+    ports:
+      - "3101:3000"  # Expose container port 3000 to host port 3101
     working_dir: /app
     command: ["node", "/app/execution-daemon.js"]
     restart: unless-stopped
@@ -52,7 +50,7 @@ services:
           memory: 512M
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -68,10 +66,9 @@ services:
     environment:
       - NODE_ENV=production
       - EXECUTOR_ID=executor-3
-      - WORK_DIR=/app/work
-    volumes:
-      - executor_work_3:/app/work
-      - executor_results_3:/app/results
+      - PORT=3000
+    ports:
+      - "3102:3000"  # Expose container port 3000 to host port 3102
     working_dir: /app
     command: ["node", "/app/execution-daemon.js"]
     restart: unless-stopped
@@ -81,7 +78,7 @@ services:
           memory: 512M
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -89,19 +86,7 @@ services:
     networks:
       - genkit-network
 
-volumes:
-  executor_work_1:
-    driver: local
-  executor_work_2:
-    driver: local
-  executor_work_3:
-    driver: local
-  executor_results_1:
-    driver: local
-  executor_results_2:
-    driver: local
-  executor_results_3:
-    driver: local
+# Volumes removed - HTTP-based execution doesn't need shared volumes
 
 networks:
   genkit-network:

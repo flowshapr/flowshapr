@@ -297,132 +297,81 @@ export class ContainerPoolService extends EventEmitter {
     const { executionId, code, input, config } = request;
 
     try {
-      // Write execution request to container's work volume
-      await this.writeExecutionRequest(container, request);
-
-      // Wait for result with timeout
-      const result = await this.waitForResult(container, executionId);
+      // Make HTTP request to container's execution daemon
+      const result = await this.makeHttpRequest(container, {
+        code,
+        input,
+        config,
+        flowId: config.flowId
+      });
       
       return result;
     } catch (error) {
-      // Clean up if possible
-      try {
-        await this.cleanupExecution(container, executionId);
-      } catch {
-        // Ignore cleanup errors
-      }
       throw error;
     }
   }
 
-  private async writeExecutionRequest(container: PoolContainer, request: ExecutionRequest): Promise<void> {
-    const requestData = {
-      code: request.code,
-      input: request.input,
-      config: request.config,
-      flowId: request.flowId
-    };
-
-    // Write to temp file first
-    const tempFile = path.join(os.tmpdir(), `exec_${request.executionId}.json`);
-    await fs.writeFile(tempFile, JSON.stringify(requestData, null, 2));
-
-    // Copy to container using docker cp
+  private async makeHttpRequest(container: PoolContainer, requestData: any): Promise<{ result: any }> {
+    // Get container's exposed port
+    const containerPort = await this.getContainerPort(container);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.workTimeout);
+    
     try {
-      const result = await this.dockerCommand([
-        'cp',
-        tempFile,
-        `${container.name}:/app/work/exec_${request.executionId}.json`
-      ]);
-    } finally {
-      // Clean up temp file
-      try {
-        await fs.unlink(tempFile);
-      } catch {}
+      const response = await fetch(`http://localhost:${containerPort}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Flow execution failed');
+      }
+
+      return { result: result.result };
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
     }
   }
 
-  private async waitForResult(container: PoolContainer, executionId: string): Promise<{ result: any }> {
-    const timeout = Date.now() + this.config.workTimeout;
-    const tempFile = path.join(os.tmpdir(), `result_${executionId}.json`);
-    
-    while (Date.now() < timeout) {
-      try {
-        // Check if result file exists in container
-        const checkResult = await this.dockerCommand([
-          'exec', container.name, 'test', '-f', `/app/results/result_${executionId}.json`
-        ]);
-        
-        if (checkResult.code === 0) {
-          // File exists, copy it out
-          const copyResult = await this.dockerCommand([
-            'cp',
-            `${container.name}:/app/results/result_${executionId}.json`,
-            tempFile
-          ]);
-          
-          if (copyResult.code === 0) {
-            try {
-              const resultData = await fs.readFile(tempFile, 'utf8');
-              const result = JSON.parse(resultData);
-              
-              // Clean up both local temp file and container file
-              try {
-                await fs.unlink(tempFile);
-                await this.dockerCommand(['exec', container.name, 'rm', `-f`, `/app/results/result_${executionId}.json`]);
-              } catch {
-                // Ignore cleanup errors
-              }
-              
-              if (result.success === false) {
-                throw new Error(result.error || 'Container execution failed');
-              }
-              
-              return { result: result.result || result };
-            } catch (parseError: any) {
-              // If JSON parsing failed, clean up and try again
-              try {
-                await fs.unlink(tempFile);
-              } catch {}
-            }
-          }
-        }
-        
-        // Wait before polling again
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error: any) {
-        if (error.message.includes('execution failed') || error.message.includes('Container execution failed')) {
-          throw error;
-        }
-        // Continue polling for other errors
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-    
-    // Clean up temp file on timeout
+  private async getContainerPort(container: PoolContainer): Promise<number> {
     try {
-      await fs.unlink(tempFile);
-    } catch {}
-    
-    throw new Error('Container execution timeout');
+      const result = await this.dockerCommand([
+        'port', container.name, '3000'
+      ]);
+      
+      if (result.code !== 0) {
+        throw new Error('Container port not exposed');
+      }
+      
+      // Parse "0.0.0.0:XXXXX" format
+      const portMatch = result.output.match(/:(\d+)$/);
+      if (!portMatch) {
+        throw new Error('Could not parse container port mapping');
+      }
+      
+      return parseInt(portMatch[1], 10);
+    } catch (error) {
+      throw new Error(`Failed to get container port: ${error.message}`);
+    }
   }
 
   private async cleanupExecution(container: PoolContainer, executionId: string): Promise<void> {
-    const files = [
-      `/app/work/exec_${executionId}.json`,
-      `/app/work/exec_${executionId}.json.processing`,
-      `/app/work/flow_${executionId}.mjs`,
-      `/app/results/result_${executionId}.json`
-    ];
-
-    for (const file of files) {
-      try {
-        await this.dockerCommand(['exec', container.name, 'rm', '-f', file]);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
+    // No cleanup needed for HTTP-based execution
+    // The execution-daemon handles its own cleanup
   }
 
   private startHealthChecking(): void {
@@ -452,9 +401,25 @@ export class ContainerPoolService extends EventEmitter {
 
   private async checkContainerHealth(container: PoolContainer): Promise<boolean> {
     try {
-      // Check if .ready file exists in container work directory
-      const result = await this.dockerCommand(['exec', container.name, 'test', '-f', '/app/work/.ready']);
-      return result.code === 0;
+      // Check container health via HTTP endpoint
+      const containerPort = await this.getContainerPort(container);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(`http://localhost:${containerPort}/health`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const health = await response.json();
+        return health.status === 'healthy';
+      }
+      
+      return false;
     } catch {
       return false;
     }

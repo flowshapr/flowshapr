@@ -1,252 +1,229 @@
 #!/usr/bin/env node
 
+const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 
-const WORK_DIR = process.env.WORK_DIR || '/app/work';
-const RESULTS_DIR = process.env.RESULTS_DIR || '/app/results';
+const PORT = process.env.PORT || 3000;
 const EXECUTOR_ID = process.env.EXECUTOR_ID || 'executor-unknown';
-const POLL_INTERVAL = 1000; // 1 second
 
-console.log(`🚀 Starting Genkit Execution Daemon (${EXECUTOR_ID})`);
-console.log(`   Work Directory: ${WORK_DIR}`);
-console.log(`   Results Directory: ${RESULTS_DIR}`);
+console.log(`🚀 Starting Genkit HTTP Execution Server (${EXECUTOR_ID})`);
+console.log(`   Listening on port: ${PORT}`);
 
-class ExecutionDaemon {
+class GenkitExecutionServer {
   constructor() {
-    this.isRunning = true;
-    this.currentExecution = null;
+    this.app = express();
+    this.flowCache = new Map();
+    this.setupMiddleware();
+    this.setupRoutes();
     this.setupSignalHandlers();
   }
 
-  async initialize() {
-    // Ensure directories exist
-    await fs.mkdir(WORK_DIR, { recursive: true });
-    await fs.mkdir(RESULTS_DIR, { recursive: true });
+  setupMiddleware() {
+    // Parse JSON requests
+    this.app.use(express.json({ limit: '10mb' }));
     
-    // Create ready file to signal container is ready
-    await fs.writeFile(path.join(WORK_DIR, '.ready'), EXECUTOR_ID);
-    
-    console.log(`✅ Daemon initialized and ready for work`);
+    // Basic logging
+    this.app.use((req, res, next) => {
+      console.log(`📡 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+      next();
+    });
+  }
+
+  setupRoutes() {
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'healthy', 
+        executorId: EXECUTOR_ID,
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+      });
+    });
+
+    // Flow execution endpoint
+    this.app.post('/execute', async (req, res) => {
+      try {
+        const result = await this.executeFlow(req.body);
+        res.json(result);
+      } catch (error) {
+        console.error(`❌ Execution failed:`, error.message);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          executorId: EXECUTOR_ID,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Shutdown endpoint (for graceful container shutdown)
+    this.app.post('/shutdown', (req, res) => {
+      console.log('📡 Received shutdown request');
+      res.json({ status: 'shutting down' });
+      setTimeout(() => process.exit(0), 1000);
+    });
   }
 
   setupSignalHandlers() {
-    process.on('SIGTERM', async () => {
+    process.on('SIGTERM', () => {
       console.log('📡 Received SIGTERM, shutting down gracefully...');
-      this.isRunning = false;
-      if (this.currentExecution) {
-        console.log('⏳ Waiting for current execution to complete...');
-        // Let current execution finish
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
       process.exit(0);
     });
 
-    process.on('SIGINT', async () => {
+    process.on('SIGINT', () => {
       console.log('📡 Received SIGINT, shutting down gracefully...');
-      this.isRunning = false;
       process.exit(0);
     });
   }
 
-  async start() {
-    await this.initialize();
+  async executeFlow(requestData) {
+    const { code, input, config, flowId, executionId: providedExecutionId } = requestData;
+    const executionId = providedExecutionId || `exec_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
     
-    while (this.isRunning) {
-      try {
-        await this.pollForWork();
-      } catch (error) {
-        console.error(`❌ Error in daemon loop:`, error);
-      }
-      
-      // Wait before polling again
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
-    }
-  }
-
-  async pollForWork() {
-    try {
-      const files = await fs.readdir(WORK_DIR);
-      
-      // Look for execution request files (format: exec_<id>.json)
-      const execFiles = files.filter(file => 
-        file.startsWith('exec_') && file.endsWith('.json') && !file.includes('.processing')
-      );
-
-      if (execFiles.length > 0) {
-        // Process the first available execution
-        const execFile = execFiles[0];
-        await this.processExecution(execFile);
-      }
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        console.error(`❌ Error polling for work:`, error);
-      }
-    }
-  }
-
-  async processExecution(execFile) {
-    const execPath = path.join(WORK_DIR, execFile);
-    const processingPath = path.join(WORK_DIR, execFile + '.processing');
-    const executionId = execFile.replace('exec_', '').replace('.json', '');
+    console.log(`⚡ Executing flow ${flowId || executionId}...`);
     
     try {
-      console.log(`🔄 Processing execution: ${executionId}`);
-      this.currentExecution = executionId;
-
-      // Rename file to indicate we're processing it
-      await fs.rename(execPath, processingPath);
-
-      // Read execution request
-      const requestData = JSON.parse(await fs.readFile(processingPath, 'utf8'));
-      const { code, input, config, flowId } = requestData;
-
-      // Write the code to a temporary file
-      const codeFile = `flow_${executionId}.mjs`;
-      const codePath = path.join(WORK_DIR, codeFile);
-      await fs.writeFile(codePath, code);
-
-      console.log(`⚡ Executing flow ${flowId || executionId}...`);
+      // Set up environment variables for API keys
+      this.setupEnvironmentFromConfig(config, input);
       
-      // Execute the flow
-      const result = await this.executeFlow(codePath, input, config);
+      // Execute the generated Genkit flow code directly
+      const result = await this.executeGenkitFlow(code, input, executionId);
       
-      // Write result
-      const resultPath = path.join(RESULTS_DIR, `result_${executionId}.json`);
-      await fs.writeFile(resultPath, JSON.stringify(result, null, 2));
-
       console.log(`✅ Execution ${executionId} completed successfully`);
-
-      // Cleanup
-      await this.cleanup(processingPath, codePath);
+      
+      return {
+        success: true,
+        result: result,
+        executionId,
+        executorId: EXECUTOR_ID,
+        timestamp: new Date().toISOString()
+      };
       
     } catch (error) {
       console.error(`❌ Execution ${executionId} failed:`, error.message);
       
-      // Write error result
-      const errorResult = {
+      return {
         success: false,
         error: error.message,
         executionId,
+        executorId: EXECUTOR_ID,
         timestamp: new Date().toISOString()
       };
-      
-      const resultPath = path.join(RESULTS_DIR, `result_${executionId}.json`);
-      await fs.writeFile(resultPath, JSON.stringify(errorResult, null, 2));
-      
-      // Cleanup
-      try {
-        await this.cleanup(processingPath, path.join(WORK_DIR, `flow_${executionId}.mjs`));
-      } catch (cleanupError) {
-        console.error(`⚠️  Cleanup failed:`, cleanupError.message);
-      }
-    } finally {
-      this.currentExecution = null;
     }
   }
 
-  async executeFlow(codePath, input, config) {
-    return new Promise((resolve, reject) => {
-      const { spawn } = require('child_process');
+  setupEnvironmentFromConfig(config, input) {
+    // Set API keys from config
+    if (config.googleApiKey) {
+      process.env.GEMINI_API_KEY = config.googleApiKey;
+      process.env.GOOGLE_API_KEY = config.googleApiKey;
+      process.env.GOOGLE_GENAI_API_KEY = config.googleApiKey;
+    }
+    if (config.openaiApiKey) {
+      process.env.OPENAI_API_KEY = config.openaiApiKey;
+    }
+    if (config.anthropicApiKey) {
+      process.env.ANTHROPIC_API_KEY = config.anthropicApiKey;
+    }
+    
+    // Set execution environment
+    process.env.NODE_ENV = 'production';
+    process.env.NODE_PATH = '/app/node_modules';
+    process.env.FLOW_INPUT = JSON.stringify(input);
+    process.env.FLOW_CONFIG = JSON.stringify(config);
+  }
+
+  async executeGenkitFlow(code, input, executionId) {
+    try {
+      // Create a unique module identifier to avoid caching issues
+      const moduleId = `flow_${executionId}`;
       
-      // Prepare environment
-      const env = {
-        ...process.env,
-        FLOW_INPUT: JSON.stringify(input),
-        FLOW_CONFIG: JSON.stringify(config),
-        NODE_ENV: 'production'
-      };
-
-      // Add API keys from config
-      if (config.googleApiKey) {
-        env.GEMINI_API_KEY = config.googleApiKey;
-        env.GOOGLE_API_KEY = config.googleApiKey;
-        env.GOOGLE_GENAI_API_KEY = config.googleApiKey;
-      }
-      if (config.openaiApiKey) {
-        env.OPENAI_API_KEY = config.openaiApiKey;
-      }
-      if (config.anthropicApiKey) {
-        env.ANTHROPIC_API_KEY = config.anthropicApiKey;
-      }
-
-      console.log(`🎯 Spawning Node.js process for: ${codePath}`);
+      // Write the code to app directory where node_modules is available
+      const tempDir = '/app/flows';
+      await fs.mkdir(tempDir, { recursive: true });
       
-      const child = spawn('node', [codePath], {
-        env,
-        cwd: WORK_DIR,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 120000 // 2 minutes timeout
-      });
-
-      let output = '';
-      let error = '';
-
-      child.stdout.on('data', (data) => {
-        const text = data.toString();
-        output += text;
-        console.log(`[Flow Output] ${text.trim()}`);
-      });
-
-      child.stderr.on('data', (data) => {
-        const text = data.toString();
-        error += text;
-        console.error(`[Flow Error] ${text.trim()}`);
-      });
-
-      child.on('close', (code) => {
-        if (code === 0) {
-          try {
-            // Try to parse the last line as JSON result
-            const lines = output.trim().split('\n');
-            let result = lines[lines.length - 1];
-            
-            try {
-              result = JSON.parse(result);
-            } catch {
-              // If not JSON, use the entire output
-              result = output.trim();
-            }
-            
-            resolve({
-              success: true,
-              result: result,
-              executionId: this.currentExecution,
-              timestamp: new Date().toISOString()
-            });
-          } catch (parseError) {
-            reject(new Error(`Failed to parse execution result: ${output}`));
-          }
+      const codePath = path.join(tempDir, `${moduleId}.mjs`);
+      await fs.writeFile(codePath, code);
+      
+      // Dynamic import the generated flow
+      const flowModule = await import(codePath);
+      
+      // Look for the flow execution function
+      // The generated code should export a function or have a specific pattern
+      let result;
+      
+      if (typeof flowModule.default === 'function') {
+        // If default export is a function, call it with input
+        result = await flowModule.default(input);
+      } else if (flowModule.executeFlow && typeof flowModule.executeFlow === 'function') {
+        // If there's an executeFlow function, use it
+        result = await flowModule.executeFlow(input);
+      } else if (flowModule.ai && flowModule.flows && Array.isArray(flowModule.flows)) {
+        // If we have Genkit flows defined, execute the first one
+        const flow = flowModule.flows[0];
+        if (flow) {
+          result = await flow(input);
         } else {
-          const errorMsg = error || `Process exited with code ${code}`;
-          reject(new Error(errorMsg));
+          throw new Error('No executable flows found in generated code');
         }
+      } else {
+        // Try to find any exported function that could be a flow
+        const exportedFunctions = Object.keys(flowModule).filter(key => 
+          typeof flowModule[key] === 'function' && !key.startsWith('_')
+        );
+        
+        if (exportedFunctions.length > 0) {
+          const flowFunction = flowModule[exportedFunctions[0]];
+          result = await flowFunction(input);
+        } else {
+          throw new Error('No executable function found in generated code');
+        }
+      }
+      
+      // Cleanup temp file
+      try {
+        await fs.unlink(codePath);
+      } catch (error) {
+        console.warn(`⚠️ Failed to cleanup temp file: ${error.message}`);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      // Enhanced error handling for common issues
+      if (error.message.includes('Cannot resolve module')) {
+        throw new Error(`Missing dependency: ${error.message}`);
+      } else if (error.message.includes('SyntaxError')) {
+        throw new Error(`Code syntax error: ${error.message}`);
+      } else if (error.message.includes('API_KEY')) {
+        throw new Error(`Missing API key: ${error.message}`);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  async start() {
+    return new Promise((resolve) => {
+      const server = this.app.listen(PORT, () => {
+        console.log(`✅ Genkit HTTP Execution Server ready on port ${PORT}`);
+        console.log(`   Health check: http://localhost:${PORT}/health`);
+        console.log(`   Execute endpoint: http://localhost:${PORT}/execute`);
+        resolve(server);
       });
 
-      child.on('error', (err) => {
-        reject(err);
+      server.on('error', (error) => {
+        console.error('💥 Server failed to start:', error);
+        process.exit(1);
       });
     });
   }
-
-  async cleanup(processingPath, codePath) {
-    try {
-      await fs.unlink(processingPath);
-    } catch (error) {
-      console.warn(`⚠️  Failed to cleanup processing file: ${error.message}`);
-    }
-    
-    try {
-      await fs.unlink(codePath);
-    } catch (error) {
-      console.warn(`⚠️  Failed to cleanup code file: ${error.message}`);
-    }
-  }
 }
 
-// Start the daemon
-const daemon = new ExecutionDaemon();
-daemon.start().catch(error => {
-  console.error('💥 Daemon failed to start:', error);
+// Start the server
+const server = new GenkitExecutionServer();
+server.start().catch(error => {
+  console.error('💥 Failed to start execution server:', error);
   process.exit(1);
 });

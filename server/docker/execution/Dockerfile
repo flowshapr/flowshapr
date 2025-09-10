@@ -13,8 +13,8 @@ FROM node:20-alpine AS runtime
 RUN addgroup -g 1001 -S genkituser && \
     adduser -S genkituser -u 1001 -G genkituser
 
-# Install only essential packages
-RUN apk add --no-cache dumb-init && \
+# Install only essential packages (wget for health checks)
+RUN apk add --no-cache dumb-init wget && \
     apk del apk-tools
 
 # Set up secure working directory
@@ -30,10 +30,10 @@ COPY --chown=genkituser:genkituser execution-daemon.js ./execution-daemon.js
 # Copy Genkit shims with proper permissions (create basic shims directory)
 RUN mkdir -p ./shims/node_modules
 
-# Create work and results directories
-RUN mkdir -p /app/work /app/results && \
-    chown -R genkituser:genkituser /app/work /app/results && \
-    chmod 755 /app/work /app/results
+# Create work, results, and flows directories
+RUN mkdir -p /app/work /app/results /app/flows && \
+    chown -R genkituser:genkituser /app/work /app/results /app/flows && \
+    chmod 755 /app/work /app/results /app/flows
 
 # Switch to non-root user
 USER genkituser

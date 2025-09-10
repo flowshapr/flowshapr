@@ -2,8 +2,8 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { ExecutionConfig, ExecutionResult, ContainerExecutorConfig } from './types.js';
-import { ContainerManager } from './ContainerManager.js';
+import { ExecutionConfig, ExecutionResult, ContainerExecutorConfig } from './types';
+import { ContainerManager } from './ContainerManager';
 
 export class ContainerExecutor {
   private config: ContainerExecutorConfig;
@@ -18,7 +18,7 @@ export class ContainerExecutor {
       imageName: 'flowshapr-genkit-executor',
       memoryLimit: '256m',
       cpuLimit: '0.5',
-      networkMode: 'none', // Disable network access by default
+      networkMode: 'bridge', // Enable network for HTTP communication
       ...config
     };
     
@@ -26,41 +26,15 @@ export class ContainerExecutor {
   }
 
   async initialize(): Promise<void> {
-    // Create temp directory if it doesn't exist
-    try {
-      await fs.mkdir(this.config.tempDir, { recursive: true });
-      console.log(`📁 Container executor temp directory created at ${this.config.tempDir}`);
-    } catch (error: any) {
-      if (error.code !== 'EEXIST') {
-        throw error;
-      }
-    }
-
     // Build Docker image if it doesn't exist
     await this.buildDockerImage();
+    console.log(`📁 Container executor initialized for HTTP communication`);
   }
 
   async shutdown(): Promise<void> {
     // Shutdown container manager (this handles stopping containers)
     await this.containerManager.shutdown();
-
-    // Clean up temp files
-    try {
-      const files = await fs.readdir(this.config.tempDir);
-      const tempFiles = files.filter(file => file.startsWith('flow-') && file.endsWith('.mjs'));
-      
-      for (const file of tempFiles) {
-        try {
-          await fs.unlink(path.join(this.config.tempDir, file));
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
-      
-      console.log(`🧹 Container executor cleaned up ${tempFiles.length} temp files`);
-    } catch {
-      // Ignore cleanup errors
-    }
+    console.log(`🧹 Container executor shutdown completed`);
   }
 
   getStatus() {
@@ -88,28 +62,18 @@ export class ContainerExecutor {
       };
     }
 
-    // Code sanitization temporarily disabled for debugging
-    const sanitizedCode = code;
-    
-    // Generate unique filename
-    const filename = `flow-${crypto.randomBytes(8).toString('hex')}.mjs`;
-    const filepath = path.join(this.config.tempDir, filename);
     const containerId = `flowshapr-${executionId}`;
-
     this.activeContainers.add(containerId);
     this.containerManager.registerContainer(containerId, `flow-${executionId}`);
 
     try {
-      // Write sanitized code to temp file
-      await fs.writeFile(filepath, sanitizedCode);
-      
-      console.log(`🐳 Executing Genkit flow in secure container: ${containerId}`);
+      console.log(`🐳 Starting Genkit HTTP server container: ${containerId}`);
 
-      // Execute in container with strict security
-      const result = await this.executeInContainer(filepath, input, config, containerId);
+      // Start container with HTTP server and execute via HTTP
+      const result = await this.executeViaHttp(code, input, config, containerId, executionId);
       
       const duration = Date.now() - startTime;
-      console.log(`✅ Flow executed successfully in container ${duration}ms`);
+      console.log(`✅ Flow executed successfully via HTTP ${duration}ms`);
 
       return {
         success: true,
@@ -135,13 +99,6 @@ export class ContainerExecutor {
         }
       };
     } finally {
-      // Clean up temp file and container
-      try {
-        await fs.unlink(filepath);
-      } catch {
-        // Ignore cleanup errors
-      }
-      
       try {
         await this.stopContainer(containerId);
       } catch {
@@ -193,68 +150,86 @@ export class ContainerExecutor {
     });
   }
 
-  private async executeInContainer(
-    filepath: string, 
-    input: any, 
-    config: ExecutionConfig, 
-    containerId: string
+  private async executeViaHttp(
+    code: string,
+    input: any,
+    config: ExecutionConfig,
+    containerId: string,
+    executionId: string
   ): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const serverPort = process.env.PORT || '3001';
+    // First, start the container with HTTP server
+    const containerPort = await this.startContainerWithHttpServer(containerId, config);
+    
+    try {
+      // Wait for container to be ready
+      await this.waitForContainerReady(containerPort, containerId);
       
-      // Prepare secure environment variables (only what's needed)
-      const secureEnv = [
-        `NODE_ENV=production`,
-        `FLOW_INPUT=${JSON.stringify(input)}`,
-        `FLOW_CONFIG=${JSON.stringify(this.sanitizeConfig(config))}`,
-        // Only pass specific API keys, not entire process.env
-      ];
-
-      // Add only the API keys that are explicitly provided
-      if (config.googleApiKey) {
-        secureEnv.push(`GEMINI_API_KEY=${config.googleApiKey}`);
-      }
-      if (config.openaiApiKey) {
-        secureEnv.push(`OPENAI_API_KEY=${config.openaiApiKey}`);
-      }
-      if (config.anthropicApiKey) {
-        secureEnv.push(`ANTHROPIC_API_KEY=${config.anthropicApiKey}`);
-      }
-
-      const dockerArgs = [
-        'run',
-        '--name', containerId,
-        '--rm', // Auto-remove container when done
-        '--network', this.config.networkMode, // Disable network
-        '--memory', this.config.memoryLimit, // Memory limit
-        '--cpus', this.config.cpuLimit, // CPU limit
-        '--user', '1001:1001', // Run as non-root user
-        '--read-only', // Read-only filesystem
-        '--tmpfs', '/tmp:noexec,nosuid,size=10m', // Small temp directory
-        '--security-opt', 'no-new-privileges:true', // Prevent privilege escalation
-        '--security-opt', `seccomp=${path.join(process.cwd(), 'docker', 'execution', 'security', 'seccomp.json')}`,
-        '--cap-drop', 'ALL', // Drop all capabilities
-        '--pids-limit', '10', // Limit number of processes
-        '--ulimit', 'nofile=64:64', // Limit file descriptors
-        '--ulimit', 'nproc=10:10', // Limit number of processes
-        // Mount the flow file as read-only
-        '-v', `${filepath}:/tmp/execution/flow.mjs:ro`,
-      ];
-
-      // Add environment variables
-      secureEnv.forEach(env => {
-        dockerArgs.push('-e', env);
+      // Make HTTP request to execute the flow
+      const result = await this.makeExecutionRequest(containerPort, {
+        code,
+        input,
+        config: this.sanitizeConfig(config),
+        flowId: config.flowId,
+        executionId: executionId  // Pass the execution ID to the daemon
       });
+      
+      return result;
+      
+    } catch (error) {
+      this.containerManager.updateContainerStatus(containerId, 'failed', error.message);
+      throw error;
+    }
+  }
 
-      // Add image name
-      dockerArgs.push(this.config.imageName);
+  private async startContainerWithHttpServer(containerId: string, config: ExecutionConfig): Promise<number> {
+    // Find available port for container
+    const containerPort = 3000 + Math.floor(Math.random() * 1000);
+    
+    // Prepare secure environment variables
+    const secureEnv = [
+      `NODE_ENV=production`,
+      `PORT=3000`, // Internal container port
+      `EXECUTOR_ID=${containerId}`,
+    ];
 
-      console.log(`🔒 Starting secure container with ID: ${containerId}`);
-      this.containerManager.updateContainerStatus(containerId, 'running');
+    // Add API keys from config
+    if (config.googleApiKey) {
+      secureEnv.push(`GEMINI_API_KEY=${config.googleApiKey}`);
+    }
+    if (config.openaiApiKey) {
+      secureEnv.push(`OPENAI_API_KEY=${config.openaiApiKey}`);
+    }
+    if (config.anthropicApiKey) {
+      secureEnv.push(`ANTHROPIC_API_KEY=${config.anthropicApiKey}`);
+    }
 
+    const dockerArgs = [
+      'run',
+      '--name', containerId,
+      '--rm', // Auto-remove container when done
+      '--detach', // Run in background
+      '--network', this.config.networkMode, // Enable network for HTTP
+      '--memory', this.config.memoryLimit, // Memory limit
+      '--cpus', this.config.cpuLimit, // CPU limit
+      '--user', '1001:1001', // Run as non-root user
+      '--security-opt', 'no-new-privileges:true', // Prevent privilege escalation
+      '-p', `${containerPort}:3000`, // Map container port to host
+    ];
+
+    // Add environment variables
+    secureEnv.forEach(env => {
+      dockerArgs.push('-e', env);
+    });
+
+    // Add image name
+    dockerArgs.push(this.config.imageName);
+
+    console.log(`🔒 Starting HTTP server container on port ${containerPort}: ${containerId}`);
+    this.containerManager.updateContainerStatus(containerId, 'starting');
+
+    return new Promise((resolve, reject) => {
       const child = spawn('docker', dockerArgs, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: this.config.timeout
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
       let output = '';
@@ -274,25 +249,10 @@ export class ContainerExecutor {
 
       child.on('close', (code) => {
         if (code === 0) {
-          this.containerManager.updateContainerStatus(containerId, 'stopped');
-          try {
-            // Parse the result from container output
-            const lines = output.trim().split('\n');
-            let result = lines[lines.length - 1];
-            
-            try {
-              result = JSON.parse(result);
-            } catch {
-              result = output.trim();
-            }
-            
-            resolve(result);
-          } catch (parseError) {
-            this.containerManager.updateContainerStatus(containerId, 'failed', parseError.message);
-            reject(new Error(`Failed to parse container result: ${output}`));
-          }
+          this.containerManager.updateContainerStatus(containerId, 'running');
+          resolve(containerPort);
         } else {
-          const errorMsg = error || `Container exited with code ${code}`;
+          const errorMsg = error || `Container failed to start with code ${code}`;
           this.containerManager.updateContainerStatus(containerId, 'failed', errorMsg);
           reject(new Error(errorMsg));
         }
@@ -302,17 +262,74 @@ export class ContainerExecutor {
         this.containerManager.updateContainerStatus(containerId, 'failed', err.message);
         reject(err);
       });
-
-      // Set up timeout to force-kill container if needed
-      setTimeout(async () => {
-        try {
-          await this.stopContainer(containerId);
-          reject(new Error('Container execution timed out'));
-        } catch {
-          // Container may have already stopped
-        }
-      }, this.config.timeout);
     });
+  }
+
+  private async waitForContainerReady(port: number, containerId: string): Promise<void> {
+    const maxAttempts = 60; // 30 seconds total
+    const delay = 500; // 500ms between attempts
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout per request
+        
+        const response = await fetch(`http://localhost:${port}/health`, {
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const health = await response.json();
+          console.log(`✅ Container ${containerId} is ready: ${health.status}`);
+          return;
+        }
+      } catch (error) {
+        // Container not ready yet, continue waiting
+        console.log(`🔄 Waiting for container ${containerId} (attempt ${attempt}/${maxAttempts})...`);
+      }
+      
+      if (attempt === maxAttempts) {
+        throw new Error(`Container ${containerId} failed to become ready after ${maxAttempts * delay}ms`);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  private async makeExecutionRequest(port: number, requestData: any): Promise<any> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+    
+    try {
+      const response = await fetch(`http://localhost:${port}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Flow execution failed');
+      }
+
+      return result.result;
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   }
 
   private async stopContainer(containerId: string): Promise<void> {
