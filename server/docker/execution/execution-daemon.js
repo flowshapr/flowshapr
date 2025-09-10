@@ -149,37 +149,12 @@ class GenkitExecutionServer {
       // Dynamic import the generated flow
       const flowModule = await import(codePath);
       
-      // Look for the flow execution function
-      // The generated code should export a function or have a specific pattern
-      let result;
-      
-      if (typeof flowModule.default === 'function') {
-        // If default export is a function, call it with input
-        result = await flowModule.default(input);
-      } else if (flowModule.executeFlow && typeof flowModule.executeFlow === 'function') {
-        // If there's an executeFlow function, use it
-        result = await flowModule.executeFlow(input);
-      } else if (flowModule.ai && flowModule.flows && Array.isArray(flowModule.flows)) {
-        // If we have Genkit flows defined, execute the first one
-        const flow = flowModule.flows[0];
-        if (flow) {
-          result = await flow(input);
-        } else {
-          throw new Error('No executable flows found in generated code');
-        }
-      } else {
-        // Try to find any exported function that could be a flow
-        const exportedFunctions = Object.keys(flowModule).filter(key => 
-          typeof flowModule[key] === 'function' && !key.startsWith('_')
-        );
-        
-        if (exportedFunctions.length > 0) {
-          const flowFunction = flowModule[exportedFunctions[0]];
-          result = await flowFunction(input);
-        } else {
-          throw new Error('No executable function found in generated code');
-        }
+      // Execute the generated Genkit flow (exported as default)
+      if (typeof flowModule.default !== 'function') {
+        throw new Error('Generated code must export a Genkit flow as default export');
       }
+      
+      const result = await flowModule.default(input);
       
       // Cleanup temp file
       try {

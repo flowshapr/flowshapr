@@ -402,25 +402,12 @@ export const flows = [generatedFlow];`;
 ${aiConfig}
 
 // Define and export the flow for container execution
-const generatedFlow = ai.defineFlow({
+export default ai.defineFlow({
   name: 'generatedFlow',
   inputSchema: ${inputSchema},
   outputSchema: z.any(),
 }, async (input) => {
   ${flowBody}
-});
-
-// Export default function for container execution
-export default async function executeFlow(input) {
-  try {
-    return await generatedFlow(input);
-  } catch (error) {
-    throw new Error(\`Flow execution error: \${error instanceof Error ? error.message : String(error)}\`);
-  }
-}
-
-// Also export ai and flows for alternative execution patterns
-export { ai };
-export const flows = [generatedFlow];`;
+});`;
   }
 }
