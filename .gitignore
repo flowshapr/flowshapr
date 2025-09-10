@@ -139,3 +139,7 @@ dev.log
 # Temporary files
 cookies.txt
 login-payload.json
+/server/.genkit
+/.serena
+/.genkit/traces_idx
+/.claude

@@ -15,6 +15,7 @@ export enum NodeType {
   OUTPUT = 'output',
   CONDITION = 'condition',
   TOOL = 'tool',
+  INTERRUPT = 'interrupt',
   // PROMPT node removed - integrated into AGENT
   // TRANSFORM node removed
 }
@@ -24,15 +25,7 @@ export interface NodeConfig {
 }
 
 export interface InputNodeConfig extends NodeConfig {
-  inputType: 'static' | 'variable';
-  // For static inputs - the actual value to use
-  staticValue?: string;
-  // For variable inputs - the variable definition
-  variableName?: string;
-  variableDescription?: string;
-  // Legacy support
-  defaultValue?: string;
-  schema?: string;
+  description?: string;
 }
 
 // Enhanced Agent node config with integrated prompts and advanced parameters
@@ -90,6 +83,14 @@ export interface ConditionNodeConfig extends NodeConfig {
   condition: string;
   trueLabel: string;
   falseLabel: string;
+}
+
+export interface InterruptNodeConfig extends NodeConfig {
+  interruptType: 'manual-response' | 'restartable';
+  message: string;
+  responseSchema?: string;
+  timeout?: number;
+  allowedResponses?: string[];
 }
 
 export interface FlowConfig {
@@ -151,6 +152,7 @@ export const NODE_TYPES = {
   [NodeType.OUTPUT]: 'Output',
   [NodeType.CONDITION]: 'Condition',
   [NodeType.TOOL]: 'Tool',
+  [NodeType.INTERRUPT]: 'Interrupt',
 };
 
 export const MODEL_PROVIDERS = {

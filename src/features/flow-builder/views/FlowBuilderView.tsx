@@ -4,6 +4,8 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { FlowCanvasWrapper } from '@/features/flow-builder/components/FlowCanvas';
 import { Sidebar } from '@/features/flow-builder/components/Sidebar';
 import { VariablesPanel } from '@/features/flow-builder/components/VariablesPanel';
+import { SettingsPanel } from '@/features/flow-builder/components/SettingsPanel';
+import { SDKPanel } from '@/features/flow-builder/components/SDKPanel';
 import { CodeEditor } from '@/features/code-preview/components/CodeEditor';
 import { TestPanel } from '@/features/testing/views/TestPanel';
 import { ConsolePanel, type ConsoleEntry } from '@/features/flow-builder/views/ConsolePanel';
@@ -87,7 +89,7 @@ export function FlowBuilderView({
   const [viewport, setViewport] = useState<{ x: number; y: number; zoom: number }>({ x: 0, y: 0, zoom: 1 });
   const [startNodeId, setStartNodeId] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [activePanel, setActivePanel] = useState<'code' | 'test' | 'variables' | 'console'>('code');
+  const [activePanel, setActivePanel] = useState<'code' | 'test' | 'variables' | 'console' | 'sdk'>('code');
   const [panelWidth, setPanelWidth] = useState(384); // Default 384px (w-96)
   const [apiKeys, setApiKeys] = useState<{ googleai?: string; openai?: string; anthropic?: string }>({});
   const [connections, setConnections] = useState<Array<{ id: string; name: string; provider: string; apiKey?: string; isActive: boolean }>>([]);
@@ -578,23 +580,8 @@ export function FlowBuilderView({
 
   // Show different views based on activeView
   if (activeView && activeView !== 'flows') {
-    if (activeView === 'access-tokens') {
-      return (
-        <div className="flex-1 p-6">
-          <div className="max-w-xl space-y-6">
-            <h2 className="text-lg font-semibold text-base-content">Access Tokens</h2>
-            <p className="text-sm text-base-content/70">Flow-scoped tokens for Flowshapr SDK/API access. Create and revoke tokens below.</p>
-            <AccessTokensPanel flowId={selectedFlow?.id || ''} />
-          </div>
-        </div>
-      );
-    }
-    if (activeView === 'connections') {
-      return <ConnectionsPanel flowId={selectedFlow?.id || ''} onConnectionsChange={(items) => {
-        setConnections(items);
-        (window as any).__connections = items;
-        window.dispatchEvent(new CustomEvent('connectionsChange', { detail: items }));
-      }} />;
+    if (activeView === 'settings') {
+      return <SettingsPanel selectedFlow={selectedFlow} />;
     }
     if (activeView === 'traces') {
       return <TracesPanel flowId={selectedFlow?.id || ''} />;
@@ -764,6 +751,15 @@ export function FlowBuilderView({
               >
                 Console
               </button>
+              <button
+                role="tab"
+                onClick={() => setActivePanel('sdk')}
+                className={`tab text-sm font-medium ${
+                  activePanel === 'sdk' ? 'tab-active' : ''
+                }`}
+              >
+                SDK
+              </button>
             </div>
               
               <div className="flex-1 overflow-hidden h-full">
@@ -796,106 +792,16 @@ export function FlowBuilderView({
                     onClear={() => setConsoleEntries([])}
                   />
                 )}
+                {activePanel === 'sdk' && (
+                  <SDKPanel
+                    flow={selectedFlow}
+                    nodes={nodes}
+                    edges={edges}
+                  />
+                )}
               </div>
               </div> {/* Close padding div */}
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConnectionsPanel({ flowId, onConnectionsChange }: { flowId: string; onConnectionsChange: (items: Array<{ id: string; name: string; provider: string; apiKey?: string; isActive: boolean }>) => void }) {
-  const [list, setList] = useState<Array<{ id: string; name: string; provider: string; isActive: boolean }>>([]);
-  const [loading, setLoading] = useState(false);
-
-  const load = async () => {
-    if (!flowId) return;
-    setLoading(true);
-    try {
-      const resp = await fetch(`/api/flows/${flowId}/connections`, { cache: 'no-store' });
-      const json = await resp.json();
-      const items = (json?.data || []) as any[];
-      setList(items);
-      onConnectionsChange(items);
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => { load(); }, [flowId]);
-
-  const add = async () => {
-    const name = (document.getElementById('conn-name') as HTMLInputElement)?.value?.trim();
-    const provider = (document.getElementById('conn-provider') as HTMLSelectElement)?.value as any;
-    const apiKey = (document.getElementById('conn-key') as HTMLInputElement)?.value?.trim();
-    if (!flowId || !name || !apiKey) {
-      window.dispatchEvent(new CustomEvent('consoleLog', { detail: { level: 'warn', message: 'Name and API key are required to add a connection' } }));
-      return;
-    }
-    try {
-      const resp = await fetch(`/api/flows/${flowId}/connections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, provider, apiKey }) });
-      if (!resp.ok) {
-        let detail: any = undefined;
-        try { detail = await resp.json(); } catch {}
-        window.dispatchEvent(new CustomEvent('consoleLog', { detail: { level: 'error', message: `Failed to add connection (${resp.status})`, details: detail } }));
-        return;
-      }
-      (document.getElementById('conn-name') as HTMLInputElement).value = '';
-      (document.getElementById('conn-key') as HTMLInputElement).value = '';
-      window.dispatchEvent(new CustomEvent('consoleLog', { detail: { level: 'info', message: 'Connection added' } }));
-      await load();
-    } catch (e: any) {
-      window.dispatchEvent(new CustomEvent('consoleLog', { detail: { level: 'error', message: `Add connection error: ${e?.message || e}` } }));
-    }
-  };
-
-  const del = async (connectionId: string) => {
-    if (!flowId || !connectionId) return;
-    const resp = await fetch(`/api/flows/${flowId}/connections/${connectionId}`, { method: 'DELETE' });
-    if (resp.ok) await load();
-  };
-
-  return (
-    <div className="flex-1 p-6">
-      <div className="max-w-2xl space-y-6">
-        <h2 className="text-lg font-semibold text-base-content">Connections</h2>
-        <p className="text-sm text-base-content/70">Manage provider API keys and other external connections.</p>
-        <div className="space-y-3">
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-base-content/70 mb-1">Name</label>
-              <input className="input input-bordered w-full" id="conn-name" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-1">Provider</label>
-              <select className="select select-bordered" id="conn-provider">
-                <option value="googleai">Google AI</option>
-                <option value="openai">OpenAI</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-base-content/70 mb-1">API Key</label>
-              <input className="input input-bordered w-full" id="conn-key" type="password" />
-            </div>
-            <button className="btn btn-primary" onClick={add} disabled={loading}>Add</button>
-          </div>
-          <div className="divide-y border rounded">
-            {list.length === 0 && (
-              <div className="p-3 text-sm text-base-content/60">{loading ? 'Loading…' : 'No connections yet.'}</div>
-            )}
-            {list.map((c) => (
-              <div key={c.id} className="p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{c.name} <span className="text-xs text-base-content/60">({c.provider})</span></div>
-                  <div className="text-xs text-base-content/60">{c.isActive ? 'Active' : 'Disabled'}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="text-sm text-error" onClick={() => del(c.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -1133,84 +1039,3 @@ function PromptsPanel({ flowId }: { flowId: string }) {
     </div>
   );
 }
-
-function AccessTokensPanel({ flowId }: { flowId: string }) {
-  const [list, setList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [name, setName] = useState('');
-  const [scopes, setScopes] = useState('execute_flow');
-  const [createdToken, setCreatedToken] = useState<string | null>(null);
-  const [limitToFlow, setLimitToFlow] = useState(true);
-
-  const load = async () => {
-    if (!flowId) return;
-    setLoading(true);
-    try {
-      const resp = await fetch(`/api/flows/${flowId}/api-keys`, { cache: 'no-store' });
-      const json = await resp.json();
-      setList(json?.data || []);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, [flowId]);
-
-  const create = async () => {
-    if (!flowId || !name.trim()) return;
-    const scoped = limitToFlow && flowId ? `${scopes},flow:${flowId}` : scopes;
-    const resp = await fetch(`/api/flows/${flowId}/api-keys`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), scopes: scoped.split(',').map(s => s.trim()).filter(Boolean) }),
-    });
-    const json = await resp.json();
-    if (resp.ok) {
-      setCreatedToken(json?.data?.token || null);
-      setName('');
-      await load();
-    }
-  };
-
-  const revoke = async (keyId: string) => {
-    if (!flowId) return;
-    const resp = await fetch(`/api/flows/${flowId}/api-keys/${keyId}`, { method: 'DELETE' });
-    if (resp.ok) await load();
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="p-3 border rounded">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <input className="input input-bordered" placeholder="Token name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input className="input input-bordered" placeholder="Scopes (comma-separated)" value={scopes} onChange={(e) => setScopes(e.target.value)} />
-          <button className="btn btn-primary" onClick={create} disabled={!name.trim()}>Create Token</button>
-        </div>
-        <label className="mt-2 flex items-center gap-2 text-xs text-base-content/70">
-          <input type="checkbox" className="checkbox" checked={limitToFlow} onChange={e => setLimitToFlow(e.target.checked)} /> Limit to this flow
-        </label>
-        {createdToken && (
-          <div className="mt-3 text-xs">
-            <div className="font-medium text-green-700">Token created. Copy it now — it will be shown only once:</div>
-            <code className="block mt-1 p-2 bg-base-200 rounded break-all">{createdToken}</code>
-          </div>
-        )}
-      </div>
-      <div className="border rounded divide-y">
-        {loading && <div className="p-3 text-sm text-base-content/60">Loading…</div>}
-        {!loading && list.filter((k: any) => !limitToFlow || (k.scopes || []).includes(`flow:${flowId}`)).length === 0 && <div className="p-3 text-sm text-base-content/60">No tokens yet.</div>}
-        {list.filter((k: any) => !limitToFlow || (k.scopes || []).includes(`flow:${flowId}`)).map((k: any) => (
-          <div key={k.id} className="p-3 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">{k.name} <span className="text-xs text-base-content/60">({k.prefix}…)</span></div>
-              <div className="text-xs text-base-content/60">{(k.scopes || []).join(', ') || 'no scopes'} {k.expiresAt ? `· expires ${new Date(k.expiresAt).toLocaleString()}` : ''}</div>
-            </div>
-            <button className="text-sm text-error" onClick={() => revoke(k.id)}>Revoke</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// moved to registry

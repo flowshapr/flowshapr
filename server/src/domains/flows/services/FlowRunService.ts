@@ -1,6 +1,7 @@
 import { flowService } from './FlowService';
 import { tracesService } from '../../traces/services/TracesService';
-import { ProcessExecutor, ExecutionConfig } from '../../../services/process-executor';
+import { ContainerPoolService } from '../../../services/container-pool/ContainerPoolService';
+import { ExecutionConfig } from '../../../services/container-pool/ContainerPoolService';
 import { CodeGeneratorService } from '../../blocks/services/CodeGeneratorService';
 import { BlockInstance, FlowEdge, FlowVariable } from '../../blocks/types';
 
@@ -18,34 +19,35 @@ type ExecuteInput = {
 };
 
 export class FlowRunService {
-  private processExecutor: ProcessExecutor;
+  private containerPool: ContainerPoolService;
   private isInitialized = false;
 
   constructor() {
-    this.processExecutor = new ProcessExecutor({
-      timeout: 120000, // 2 minutes for AI calls
-      maxConcurrentProcesses: 8
+    this.containerPool = new ContainerPoolService({
+      poolSize: 3,
+      workTimeout: 120000, // 2 minutes for AI calls
+      healthCheckInterval: 30000 // 30 seconds
     });
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log('🚀 Initializing Flow Execution Service...');
-    await this.processExecutor.initialize();
+    console.log('🚀 Initializing Container Pool Execution Service...');
+    await this.containerPool.initialize();
     this.isInitialized = true;
-    console.log('✅ Flow Execution Service ready');
+    console.log('✅ Container Pool Execution Service ready');
   }
 
   async shutdown(): Promise<void> {
-    await this.processExecutor.shutdown();
+    await this.containerPool.shutdown();
     this.isInitialized = false;
   }
 
   getStatus() {
     return {
       initialized: this.isInitialized,
-      processExecutor: this.processExecutor.getStatus()
+      containerPool: this.containerPool.getStatus()
     };
   }
 
@@ -166,7 +168,7 @@ export class FlowRunService {
         return this.executeStream(generatedCode.code, input, executionConfig, flow, userId, userAgent, ipAddress);
       } else {
         // Regular execution
-        result = await this.processExecutor.executeFlow(generatedCode.code, input, executionConfig);
+        result = await this.containerPool.executeFlow(generatedCode.code, input, executionConfig);
       }
     } catch (error: any) {
       result = {
@@ -236,22 +238,37 @@ export class FlowRunService {
     let error: string | null = null;
 
     try {
-      const streamGenerator = this.processExecutor.streamFlow(code, input, config);
+      // Note: ContainerPoolService doesn't support streaming yet, so we'll execute normally
+      // and yield the result as a single chunk
+      const result = await this.containerPool.executeFlow(code, input, config);
       
-      for await (const chunk of streamGenerator) {
-        if (chunk.event === 'error') {
-          success = false;
-          error = chunk.data.error;
-          yield { error: chunk.data.error, type: 'error' };
-          break;
-        } else if (chunk.event === 'complete') {
-          // Final result
-          finalResult = chunk.data.result;
-          yield { result: chunk.data.result, type: 'complete' };
-        } else {
-          // Progress or other events
-          yield { ...chunk.data, type: 'chunk' };
-        }
+      // Simulate streaming by yielding progress and then the result
+      yield {
+        event: 'progress',
+        data: { message: 'Executing flow in secure container...', instance: 'container' }
+      };
+      
+      if (result.success) {
+        yield {
+          event: 'complete',
+          data: {
+            result: result.result,
+            instance: result.meta?.instance || 'container',
+            duration: result.meta?.duration || 0
+          }
+        };
+        finalResult = result.result;
+      } else {
+        yield {
+          event: 'error',
+          data: {
+            error: result.error,
+            instance: result.meta?.instance || 'container',
+            duration: result.meta?.duration || 0
+          }
+        };
+        error = result.error || 'Container execution failed';
+        success = false;
       }
     } catch (streamError: any) {
       success = false;

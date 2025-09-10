@@ -204,13 +204,40 @@ export class ProcessExecutor {
         // Get the current server port from environment or config
         const serverPort = process.env.PORT || '3001';
         
+        // Create execution context following Genkit best practices
+        const executionContext = {
+          auth: {
+            uid: config.userId || 'anonymous',
+            token: config.authToken ? { decoded: 'placeholder' } : null,
+            rawToken: config.authToken || null
+          },
+          execution: {
+            flowId: config.flowId || executionId,
+            organizationId: config.organizationId || null,
+            executionId: executionId,
+            timestamp: new Date().toISOString()
+          },
+          security: {
+            allowedProviders: this.getAllowedProviders(config),
+            rateLimits: {
+              maxTokens: config.maxTokens || 10000,
+              timeout: this.config.timeout
+            }
+          },
+          telemetry: {
+            enabled: true,
+            serverUrl: `http://localhost:${serverPort}/telemetry`
+          }
+        };
+        
         // Prepare environment variables with API keys set BEFORE child process starts
         const env: NodeJS.ProcessEnv = {
           ...process.env,
           NODE_ENV: 'production',
-          // Pass input and config as environment variables
+          // Pass input, config, and context as environment variables
           FLOW_INPUT: JSON.stringify(input),
           FLOW_CONFIG: JSON.stringify(config),
+          FLOW_CONTEXT: JSON.stringify(executionContext),
           // Configure Genkit telemetry to send traces to our server
           GENKIT_TELEMETRY_SERVER: `http://localhost:${serverPort}/telemetry`,
           GENKIT_ENV: 'dev'
@@ -229,6 +256,8 @@ export class ProcessExecutor {
         if (config.anthropicApiKey) {
           env.ANTHROPIC_API_KEY = config.anthropicApiKey;
         }
+
+        console.log(`🔒 [CONTEXT] Execution context for ${executionId}:`, JSON.stringify(executionContext, null, 2));
 
         // Convert .js to .mjs for ES module support
         const mjsFilepath = filepath.replace('.js', '.mjs');
@@ -306,5 +335,15 @@ export class ProcessExecutor {
         reject(err);
       }
     });
+  }
+
+  private getAllowedProviders(config: ExecutionConfig): string[] {
+    const providers: string[] = [];
+    
+    if (config.googleApiKey) providers.push('googleai');
+    if (config.openaiApiKey) providers.push('openai'); 
+    if (config.anthropicApiKey) providers.push('anthropic');
+    
+    return providers;
   }
 }

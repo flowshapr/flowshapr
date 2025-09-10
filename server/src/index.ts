@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 import { authRoutes } from "./domains/auth/routes";
 import { organizationRoutes } from "./domains/organizations/routes";
 import { teamRoutes } from "./domains/teams/routes";
+import { userRoutes } from "./domains/users/routes";
 import { flowRoutes } from "./domains/flows/routes";
 import { telemetryRoutes } from "./domains/telemetry/routes";
 import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
@@ -130,6 +131,7 @@ app.use("/api/auth", authRoutes);
 // API routes
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/flows", flowRoutes);
 app.use("/telemetry", telemetryRoutes);
 app.use("/api", blocksRoutes);
@@ -179,14 +181,6 @@ process.on("SIGINT", async () => {
     console.error('❌ Error during process executor shutdown:', error.message);
   }
   
-  try {
-    console.log('🛑 Shutting down Genkit telemetry server...');
-    await stopGenkitTelemetryServer();
-    console.log('✅ Genkit telemetry server shut down');
-  } catch (error: any) {
-    console.error('❌ Error during telemetry server shutdown:', error.message);
-  }
-  
   process.exit(0);
 });
 
@@ -198,14 +192,6 @@ process.on("SIGTERM", async () => {
     console.log('✅ Process executor shut down');
   } catch (error: any) {
     console.error('❌ Error during process executor shutdown:', error.message);
-  }
-  
-  try {
-    console.log('🛑 Shutting down Genkit telemetry server...');
-    await stopGenkitTelemetryServer();
-    console.log('✅ Genkit telemetry server shut down');
-  } catch (error: any) {
-    console.error('❌ Error during telemetry server shutdown:', error.message);
   }
   
   process.exit(0);

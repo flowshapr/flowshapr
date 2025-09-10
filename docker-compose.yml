@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Pre-warmed Genkit execution containers
+  genkit-executor-1:
+    build:
+      context: ./server/docker/execution
+      dockerfile: Dockerfile
+    container_name: flowshapr-genkit-executor-1
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-1
+      - WORK_DIR=/app/work
+    volumes:
+      - executor_work_1:/app/work
+      - executor_results_1:/app/results
+    working_dir: /app
+    command: ["node", "/app/execution-daemon.js"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - genkit-network
+
+  genkit-executor-2:
+    build:
+      context: ./server/docker/execution
+      dockerfile: Dockerfile
+    container_name: flowshapr-genkit-executor-2
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-2
+      - WORK_DIR=/app/work
+    volumes:
+      - executor_work_2:/app/work
+      - executor_results_2:/app/results
+    working_dir: /app
+    command: ["node", "/app/execution-daemon.js"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - genkit-network
+
+  genkit-executor-3:
+    build:
+      context: ./server/docker/execution
+      dockerfile: Dockerfile
+    container_name: flowshapr-genkit-executor-3
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-3
+      - WORK_DIR=/app/work
+    volumes:
+      - executor_work_3:/app/work
+      - executor_results_3:/app/results
+    working_dir: /app
+    command: ["node", "/app/execution-daemon.js"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/work/.ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - genkit-network
+
+volumes:
+  executor_work_1:
+    driver: local
+  executor_work_2:
+    driver: local
+  executor_work_3:
+    driver: local
+  executor_results_1:
+    driver: local
+  executor_results_2:
+    driver: local
+  executor_results_3:
+    driver: local
+
+networks:
+  genkit-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

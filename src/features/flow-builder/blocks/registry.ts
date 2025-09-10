@@ -4,6 +4,7 @@ import AgentBlock from './AgentBlock';
 import OutputBlock from './OutputBlock';
 import ConditionBlock from './ConditionBlock';
 import McpToolBlock from './tools/McpToolBlock';
+import InterruptBlock from './InterruptBlock';
 
 // ReactFlow node type registry
 export const nodeTypes = {
@@ -12,6 +13,7 @@ export const nodeTypes = {
   [NodeType.OUTPUT]: OutputBlock,
   [NodeType.CONDITION]: ConditionBlock,
   [NodeType.TOOL]: McpToolBlock,
+  [NodeType.INTERRUPT]: InterruptBlock,
 };
 
 // Visuals per node type
@@ -21,6 +23,7 @@ const nodeColors: Record<NodeType, string> = {
   [NodeType.OUTPUT]: '#ef4444',
   [NodeType.CONDITION]: '#eab308',
   [NodeType.TOOL]: '#14b8a6',
+  [NodeType.INTERRUPT]: '#ea580c',
 };
 
 export function getNodeColor(type: NodeType): string {
@@ -34,6 +37,7 @@ const nodeLabels: Record<NodeType, string> = {
   [NodeType.OUTPUT]: 'Output',
   [NodeType.CONDITION]: 'Condition',
   [NodeType.TOOL]: 'Tool',
+  [NodeType.INTERRUPT]: 'Interrupt',
 };
 
 export function getNodeLabel(type: NodeType): string {
@@ -80,6 +84,14 @@ export function getDefaultConfig(type: NodeType): any {
         apiKey: '',
         selectedTools: [] as string[],
         allowRemote: true,
+      };
+    case NodeType.INTERRUPT:
+      return {
+        interruptType: 'manual-response',
+        message: 'Please review the data and provide your response...',
+        responseSchema: '',
+        timeout: undefined,
+        allowedResponses: [],
       };
     default:
       return {};

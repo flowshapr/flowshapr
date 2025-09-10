@@ -369,9 +369,7 @@ export class FlowController {
         userAgent: (req.headers['user-agent'] as string) || null,
         ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
       });
-      
-      console.log('🎯 FlowController: Got response from flowRunService, sending back:', { status: out.status, hasBody: !!out.body });
-      
+
       // Handle streaming response
       if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
         res.status(out.status).json(out.body);

@@ -167,6 +167,8 @@ export function RegisterForm() {
         </Button>
       </form>
 
+      {/* Social login temporarily hidden - will be enabled later */}
+      {/* 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
@@ -220,6 +222,7 @@ export function RegisterForm() {
           GitHub
         </Button>
       </div>
+      */}
 
       <div className="text-center">
         <p className="text-sm text-base-content/70">

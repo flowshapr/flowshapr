@@ -29,11 +29,23 @@ export class CodeGeneratorService {
     try {
       this.errors = [];
       
+      // Handle empty flow case - return valid empty result
+      if (this.blocks.length === 0) {
+        return {
+          code: this.generateEmptyFlow(),
+          isValid: true,
+          errors: [],
+          imports: ['genkit', 'zod'],
+          dependencies: []
+        };
+      }
+      
       const context: CodeGenerationContext = {
         imports: new Set(),
         dependencies: new Set(),
         plugins: new Set(),
-        variables: this.variables
+        variables: this.variables,
+        attachments: this.buildAttachmentsMap()
       };
 
       // Validate all blocks first
@@ -44,13 +56,13 @@ export class CodeGeneratorService {
         }
       }
 
-      if (this.errors.length > 0) {
+      if (this.hasErrors()) {
         return this.createErrorResult();
       }
 
       // Get execution order
       const executionOrder = this.getExecutionOrder();
-      if (this.errors.length > 0) {
+      if (this.hasErrors()) {
         return this.createErrorResult();
       }
 
@@ -61,10 +73,10 @@ export class CodeGeneratorService {
       const aiConfig = this.generateAIConfig(context);
       
       const code = this.assembleCode(imports, aiConfig, inputSchema, flowBody);
-
+      
       return {
         code,
-        isValid: this.errors.length === 0,
+        isValid: !this.hasErrors(),
         errors: this.errors,
         imports: Array.from(context.imports),
         dependencies: Array.from(context.dependencies)
@@ -88,7 +100,55 @@ export class CodeGeneratorService {
     };
   }
 
+  private hasErrors(): boolean {
+    return this.errors.some(e => e.severity === 'error');
+  }
+
+  private generateEmptyFlow(): string {
+    return `import { genkit } from 'genkit';
+import { z } from 'zod';
+
+// Main execution wrapper
+(async () => {
+  try {
+const ai = genkit({
+  plugins: []
+});
+
+// Define flow
+const generatedFlow = ai.defineFlow({
+  name: 'generatedFlow',
+  inputSchema: z.any(),
+  outputSchema: z.any(),
+}, async (input) => {
+  // Empty flow - return input as output
+  return input;
+});
+
+// Parse input
+const input = JSON.parse(process.env.FLOW_INPUT || '{}');
+
+// Execute flow
+const result = await generatedFlow(input);
+
+console.log(JSON.stringify(result));
+process.exit(0);
+  } catch (error) {
+    console.error('Flow execution error:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+})();`;
+  }
+
   private getExecutionOrder(): BlockInstance[] {
+    // Handle empty flow case
+    if (this.blocks.length === 0) {
+      return [];
+    }
+
+    // Treat only execution edges: ignore edges used for attachments (e.g., tools)
+    const isExecutionEdge = (e: FlowEdge) => e.targetHandle !== 'tool' && e.sourceHandle !== 'tool';
+    const execEdges = this.edges.filter(isExecutionEdge);
     const visited = new Set<string>();
     const visiting = new Set<string>();
     const order: BlockInstance[] = [];
@@ -100,7 +160,7 @@ export class CodeGeneratorService {
 
       visiting.add(blockId);
       
-      const outgoingEdges = this.edges.filter(e => e.source === blockId);
+      const outgoingEdges = execEdges.filter(e => e.source === blockId);
       for (const edge of outgoingEdges) {
         if (hasCycle(edge.target)) return true;
       }
@@ -120,26 +180,33 @@ export class CodeGeneratorService {
       }
     }
 
-    // Find entry points (blocks with no incoming edges)
-    const hasIncomingEdge = new Set(this.edges.map(e => e.target));
-    const entryPoints = this.blocks.filter(b => !hasIncomingEdge.has(b.id));
-
-    if (entryPoints.length === 0) {
+    // Find input blocks - these are always the start points
+    const inputBlocks = this.blocks.filter(b => b.blockType === 'input');
+    
+    if (inputBlocks.length === 0) {
       this.errors.push({
-        message: 'Flow has no entry points (all blocks have incoming connections)',
+        message: 'Flow must have an input block to define the starting point',
         severity: 'error'
       });
       return [];
     }
 
-    // Traverse from entry points
+    if (inputBlocks.length > 1) {
+      this.errors.push({
+        message: 'Flow can only have one input block as the starting point',
+        severity: 'error'
+      });
+      return [];
+    }
+
+    // Traverse from the input block
     const traverse = (block: BlockInstance) => {
       if (visited.has(block.id)) return;
       
       visited.add(block.id);
       order.push(block);
       
-      const outgoingEdges = this.edges.filter(e => e.source === block.id);
+      const outgoingEdges = execEdges.filter(e => e.source === block.id);
       for (const edge of outgoingEdges) {
         const targetBlock = this.blocks.find(b => b.id === edge.target);
         if (targetBlock) {
@@ -148,18 +215,38 @@ export class CodeGeneratorService {
       }
     };
 
-    entryPoints.forEach(traverse);
+    // Start traversal from the input block
+    traverse(inputBlocks[0]);
 
     // Check if all blocks are reachable
     if (order.length < this.blocks.length) {
-      const unreachable = this.blocks.filter(b => !visited.has(b.id));
-      this.errors.push({
-        message: `Unreachable blocks: ${unreachable.map(b => b.blockType).join(', ')}`,
-        severity: 'warning'
-      });
+      // Ignore unattached utility/attachment blocks like tools/interrupts in warning
+      const unreachable = this.blocks.filter(b => !visited.has(b.id) && !['tool','interrupt'].includes(b.blockType));
+      if (unreachable.length > 0) {
+        this.errors.push({
+          message: `Unreachable blocks: ${unreachable.map(b => b.blockType).join(', ')}`,
+          severity: 'warning'
+        });
+      }
     }
 
     return order;
+  }
+
+  // Build map of attachment edges (e.g., tools/interrupts connected to an agent's 'tool' handle)
+  private buildAttachmentsMap(): Record<string, Array<{ id: string; blockType: string; config: any }>> {
+    const map: Record<string, Array<{ id: string; blockType: string; config: any }>> = {};
+    const attachmentEdges = this.edges.filter(e => e.targetHandle === 'tool');
+    for (const edge of attachmentEdges) {
+      const sourceBlock = this.blocks.find(b => b.id === edge.source);
+      const targetBlock = this.blocks.find(b => b.id === edge.target);
+      if (!sourceBlock || !targetBlock) continue;
+      // Only consider supported attachment types
+      if (!['tool', 'interrupt'].includes(sourceBlock.blockType)) continue;
+      const arr = map[targetBlock.id] || (map[targetBlock.id] = []);
+      arr.push({ id: sourceBlock.id, blockType: sourceBlock.blockType, config: sourceBlock.config });
+    }
+    return map;
   }
 
   private generateFlowBody(executionOrder: BlockInstance[], context: CodeGenerationContext): string {
@@ -184,11 +271,43 @@ export class CodeGeneratorService {
         continue;
       }
 
+      // Generate attachment blocks (tools, interrupts) before the current block if needed
+      const attachments = context.attachments && context.attachments[block.id] || [];
+      for (const attachment of attachments) {
+        const attachmentBlock = this.blocks.find(b => b.id === attachment.id);
+        if (attachmentBlock) {
+          const attachmentDefinition = serverBlockRegistry.get(attachmentBlock.blockType);
+          if (attachmentDefinition) {
+            try {
+              context.currentBlockId = attachmentBlock.id;
+              const attachmentCode = attachmentDefinition.generateCode(
+                attachmentBlock.config,
+                context,
+                'undefined', // attachment blocks don't use input
+                `attachment_${attachmentBlock.id.replace(/[^a-zA-Z0-9]/g, '_')}`
+              );
+              statements.push(`// ${attachmentDefinition.name} (${attachmentBlock.blockType}) - attachment`);
+              statements.push(attachmentCode);
+              statements.push('');
+            } catch (error) {
+              this.errors.push({
+                message: `Error generating attachment code for ${attachmentBlock.blockType}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                severity: 'error'
+              });
+            }
+          }
+        }
+      }
+
       // Generate code using block's server-side generator
       try {
         const outputVar = `step${i + 1}`;
+        const sanitizedConfig = block.config;
+        
+        // Expose current block id to code generators
+        context.currentBlockId = block.id;
         const blockCode = blockDefinition.generateCode(
-          block.config,
+          sanitizedConfig,
           context,
           currentVar,
           outputVar
@@ -248,7 +367,8 @@ export class CodeGeneratorService {
 
   private generateImports(context: CodeGenerationContext): string {
     const imports: string[] = [
-      "import { genkit, z } from 'genkit';"
+      "import { genkit } from 'genkit';",
+      "import { z } from 'zod';",
     ];
 
     // Add provider imports based on plugins used
@@ -260,6 +380,9 @@ export class CodeGeneratorService {
     }
     if (context.plugins.has('anthropic()')) {
       imports.push("import { anthropic } from '@genkit-ai/compat-oai/anthropic';");
+    }
+    if (context.plugins.has('mcp()')) {
+      imports.push("import { mcp } from '@genkit-ai/mcp';");
     }
 
     // Add custom imports
@@ -276,36 +399,34 @@ export class CodeGeneratorService {
 });`;
   }
 
+
   private assembleCode(imports: string, aiConfig: string, inputSchema: string, flowBody: string): string {
     return `${imports}
 
 // Main execution wrapper
 (async () => {
   try {
- 
-
 ${aiConfig}
 
+// Define flow
 const generatedFlow = ai.defineFlow({
   name: 'generatedFlow',
   inputSchema: ${inputSchema},
   outputSchema: z.any(),
 }, async (input) => {
-  
   ${flowBody}
 });
 
-
-// Execute the flow and output the result
+// Parse input
 const input = JSON.parse(process.env.FLOW_INPUT || '{}');
 
-
+// Execute flow
 const result = await generatedFlow(input);
 
 console.log(JSON.stringify(result));
-
 process.exit(0);
   } catch (error) {
+    console.error('Flow execution error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 })();`;

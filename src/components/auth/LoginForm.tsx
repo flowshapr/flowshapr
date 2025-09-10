@@ -81,7 +81,7 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">Sign In to Flowshapr</h1>
+
         <p className="text-base-content/70 mt-2">
           Welcome back! Sign in to your account
         </p>
@@ -133,6 +133,8 @@ export function LoginForm() {
         </Button>
       </form>
 
+      {/* Social login temporarily hidden - will be enabled later */}
+      {/* 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
@@ -186,6 +188,7 @@ export function LoginForm() {
           GitHub
         </Button>
       </div>
+      */}
 
       <div className="text-center">
         <p className="text-sm text-base-content/70">

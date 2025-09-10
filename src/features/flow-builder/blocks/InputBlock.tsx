@@ -2,6 +2,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './common/BaseNode';
 import { FlowNodeData, InputNodeConfig } from '@/types/flow';
+import { Play } from 'lucide-react';
 
 export default function InputBlock({ data, selected, id }: NodeProps) {
   const nodeData = data as FlowNodeData;
@@ -15,67 +16,41 @@ export default function InputBlock({ data, selected, id }: NodeProps) {
     }));
   };
 
-  const inputType = config.inputType || 'static';
-
   return (
-    <BaseNode id={id as unknown as string} data={nodeData} selected={selected} showTargetHandle={false}>
-      <div className="space-y-2">
-        <div>
-          <label className="block text-xs font-medium text-base-content/70 mb-1">Input Type</label>
-          <select
-            value={inputType}
-            onChange={(e) => handleConfigChange('inputType', e.target.value)}
-            className="select select-bordered select-xs w-full"
-          >
-            <option value="static">Static Value</option>
-            <option value="variable">Variable</option>
-          </select>
+    <BaseNode 
+      id={id as unknown as string} 
+      data={nodeData} 
+      selected={selected} 
+      showTargetHandle={false}
+    >
+      <div className="space-y-3">
+        {/* Start indicator */}
+        <div className="flex items-center gap-2 text-green-600">
+          <Play className="w-4 h-4 fill-current" />
+          <span className="text-sm font-medium">Flow Start</span>
         </div>
 
-        {inputType === 'static' ? (
-          <div>
-            <label className="block text-xs font-medium text-base-content/70 mb-1">Value</label>
-            <input
-              type="text"
-              value={config.staticValue || config.defaultValue || ''}
-              onChange={(e) => handleConfigChange('staticValue', e.target.value)}
-              placeholder="Enter a static value"
-              className="input input-bordered input-xs w-full text-xs"
-            />
-          </div>
-        ) : (
-          <>
-            <div>
-              <label className="block text-xs font-medium text-base-content/70 mb-1">Variable Name</label>
-              <input
-                type="text"
-                value={config.variableName || ''}
-                onChange={(e) => handleConfigChange('variableName', e.target.value)}
-                placeholder="e.g. userInput"
-                className="input input-bordered input-xs w-full text-xs font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-base-content/70 mb-1">Description (optional)</label>
-              <input
-                type="text"
-                value={config.variableDescription || ''}
-                onChange={(e) => handleConfigChange('variableDescription', e.target.value)}
-                placeholder="Describe this variable..."
-                className="input input-bordered input-xs w-full text-xs"
-              />
-            </div>
-          </>
-        )}
+        {/* Description */}
+        <div>
+          <label className="block text-xs font-medium text-base-content/70 mb-1">
+            Input Description
+          </label>
+          <textarea
+            value={config.description || ''}
+            onChange={(e) => handleConfigChange('description', e.target.value)}
+            placeholder="Describe what input this flow expects..."
+            rows={2}
+            className="textarea textarea-bordered textarea-xs w-full text-xs resize-none"
+          />
+        </div>
 
-        {inputType === 'variable' && config.variableName && (
-          <div className="flex items-center gap-1 mt-1">
-            <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-            <span className="text-xs text-primary font-mono">${config.variableName}</span>
-          </div>
-        )}
+        {/* Input variable indicator */}
+        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+          <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">input</span>
+          <span className="text-xs text-base-content/60">- Flow input data</span>
+        </div>
       </div>
     </BaseNode>
   );
 }
-

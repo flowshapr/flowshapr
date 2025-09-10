@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { BlockInstance } from '@/lib/blocks/types';
+// Minimal interface to support both legacy BlockInstance and current FlowNodeData
+type BaseNodeData = { blockType?: string; type?: string } & Record<string, any>;
 import { useBlocks } from '@/contexts/BlocksContext';
 import { Trash2, FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot } from 'lucide-react';
 
@@ -107,7 +108,7 @@ function getNodeStyle(blockType: string, getBlockMetadata: (type: string) => any
 
 export interface BaseNodeProps {
   id: string;
-  data: BlockInstance;
+  data: BaseNodeData;
   selected?: boolean;
 }
 
@@ -117,7 +118,6 @@ export function BaseNode({ id, data, selected, children, showSourceHandle = true
   const blockType = (data as any).blockType || (data as any).type;
   const blockConfig = getBlockMetadata(blockType);
   const nodeStyle = getNodeStyle(blockType, getBlockMetadata);
-  const isStart = data.config?.isStart === true;
   
   // Fallback if block type not found
   if (!blockConfig) {
@@ -149,24 +149,6 @@ export function BaseNode({ id, data, selected, children, showSourceHandle = true
             <div className="font-semibold text-sm">{blockConfig.name}</div>
           </div>
           <div className="flex items-center gap-2">
-            {isStart ? (
-              <div className="badge badge-success badge-sm">Start</div>
-            ) : (
-              <button
-                type="button"
-                aria-label="Set as start"
-                title="Set as start"
-                className="btn btn-ghost btn-xs"
-                onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  window.dispatchEvent(new CustomEvent('nodeSetStart', { detail: { nodeId: id } }));
-                }}
-              >
-                Set start
-              </button>
-            )}
             <button
               type="button"
               aria-label="Delete node"

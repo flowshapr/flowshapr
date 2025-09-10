@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { ProjectView } from '@/components/navigation/ProjectNavigation';
 
 // Valid flow views
-const VALID_VIEWS: ProjectView[] = ['flows', 'prompts', 'traces', 'access-tokens', 'connections', 'settings'];
+const VALID_VIEWS: ProjectView[] = ['flows', 'prompts', 'traces', 'settings'];
 
 export default function FlowViewPage() {
   const router = useRouter();

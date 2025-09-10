@@ -73,8 +73,8 @@ export const ToolBlockDefinition: ServerBlockDefinition = {
       defaultValue: true,
       visibleWhen: (config: ToolBlockConfig) => config.toolType === 'mcp',
       options: [
-        { value: true, label: 'Yes', description: 'Allow remote MCP server access' },
-        { value: false, label: 'No', description: 'Local access only' }
+        { value: 'true', label: 'Yes', description: 'Allow remote MCP server access' },
+        { value: 'false', label: 'No', description: 'Local access only' }
       ]
     },
     {
@@ -146,7 +146,7 @@ export const ToolBlockDefinition: ServerBlockDefinition = {
 
     switch (toolType) {
       case 'mcp':
-        const tools = selectedTools ? selectedTools.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const tools = selectedTools ? selectedTools.filter(Boolean) : [];
         return `// MCP Tool: ${name}
         const ${outputVar} = await callMcpTool({
           serverUrl: '${serverUrl}',
@@ -171,9 +171,9 @@ export const ToolBlockDefinition: ServerBlockDefinition = {
   },
 
   getImports: (config: ToolBlockConfig) => {
-    const imports = [];
+    const imports: string[] = [];
     if (config.toolType === 'mcp') {
-      imports.push({ module: '@genkit-ai/core', exports: ['tool'] });
+      // imports.push({ module: '@genkit-ai/core', exports: ['tool'] });
     }
     return imports;
   },

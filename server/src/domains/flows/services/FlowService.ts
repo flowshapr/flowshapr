@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, count } from "drizzle-orm";
+import { eq, and, or, like, desc, count, ne } from "drizzle-orm";
 import { db } from "../../../infrastructure/database/connection";
 import * as schema from "../../../infrastructure/database/schema/index";
 import { generateId, generateSlug } from "../../../shared/utils/crypto";
@@ -247,6 +247,10 @@ export class FlowService {
     updateData: {
       name?: string;
       description?: string;
+      alias?: string;
+      status?: "draft" | "published" | "archived";
+      config?: any;
+      deploymentSettings?: any;
     },
     userId: string
   ): Promise<Flow> {
@@ -264,14 +268,41 @@ export class FlowService {
       throw new ForbiddenError("You don't have permission to update this flow");
     }
 
-    // Generate new slug if name is being updated
+    // Check if alias is unique within the organization (if being updated)
+    if (updateData.alias && updateData.alias !== existingFlow.alias) {
+      const existingAliasFlows = await db
+        .select({ id: schema.flow.id })
+        .from(schema.flow)
+        .where(
+          and(
+            eq(schema.flow.alias, updateData.alias),
+            eq(schema.flow.organizationId, existingFlow.organizationId),
+            ne(schema.flow.id, flowId)
+          )
+        )
+        .limit(1);
+
+      if (existingAliasFlows.length > 0) {
+        throw new Error("Flow alias must be unique within the organization");
+      }
+    }
+
+    // Prepare update object with only provided fields
+    const updateFields: any = {
+      updatedAt: new Date(),
+    };
+
+    if (updateData.name !== undefined) updateFields.name = updateData.name;
+    if (updateData.description !== undefined) updateFields.description = updateData.description;
+    if (updateData.alias !== undefined) updateFields.alias = updateData.alias;
+    if (updateData.status !== undefined) updateFields.status = updateData.status;
+    if (updateData.config !== undefined) updateFields.config = updateData.config;
+    if (updateData.deploymentSettings !== undefined) updateFields.deploymentSettings = updateData.deploymentSettings;
+
+    // Update the flow
     await db
       .update(schema.flow)
-      .set({
-        name: updateData.name || existingFlow.name,
-        description: updateData.description,
-        updatedAt: new Date(),
-      })
+      .set(updateFields)
       .where(eq(schema.flow.id, flowId));
 
     const updatedFlow = await this.getFlowById(flowId, userId);

@@ -2,7 +2,7 @@
   "name": "@flowshapr/sdk",
   "version": "0.1.0",
   "description": "Minimal client SDK to execute Flowshapr flows via API key.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

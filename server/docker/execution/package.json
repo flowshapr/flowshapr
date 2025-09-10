@@ -1,0 +1,12 @@
+{
+  "name": "flowshapr-execution-runtime",
+  "version": "1.0.0",
+  "description": "Secure runtime for Flowshapr flow execution",
+  "main": "index.js",
+  "dependencies": {
+    "genkit": "latest",
+    "@genkit-ai/google-genai": "latest",
+    "@genkit-ai/compat-oai": "latest",
+    "zod": "latest"
+  }
+}

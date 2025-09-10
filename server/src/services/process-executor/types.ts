@@ -3,6 +3,10 @@ export interface ExecutionConfig {
   openaiApiKey?: string;
   anthropicApiKey?: string;
   flowId?: string;
+  userId?: string;
+  authToken?: string;
+  organizationId?: string;
+  maxTokens?: number;
 }
 
 export interface ExecutionResult {

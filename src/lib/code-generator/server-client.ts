@@ -88,22 +88,13 @@ function convertEdgesToServerFormat(edges: FlowEdge[]) {
  * Extract variables from input nodes
  */
 function extractVariables(nodes: FlowNode[]): FlowVariable[] {
-  const variables: FlowVariable[] = [];
-  
-  nodes.forEach(node => {
-    if (node.type === 'input' && node.data?.config) {
-      const config = node.data.config;
-      if (config.inputType === 'variable' && config.variableName) {
-        variables.push({
-          name: config.variableName,
-          type: 'string', // Default to string, could be enhanced later
-          description: config.variableDescription
-        });
-      }
-    }
-  });
-  
-  return variables;
+  // Since input nodes now automatically handle the 'input' variable,
+  // we don't need to extract variables from them anymore
+  return [{
+    name: 'input',
+    type: 'object',
+    description: 'Flow input data'
+  }];
 }
 
 /**

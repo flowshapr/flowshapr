@@ -5,12 +5,10 @@ import {
   Workflow,
   MessageSquare,
   Activity,
-  Settings,
-  Database,
-  Key
+  Settings
 } from 'lucide-react';
 
-export type ProjectView = 'flows' | 'prompts' | 'traces' | 'access-tokens' | 'connections' | 'settings';
+export type ProjectView = 'flows' | 'prompts' | 'traces' | 'settings';
 
 interface ProjectNavigationProps {
   isCollapsed?: boolean;
@@ -47,22 +45,10 @@ export function ProjectNavigation({
       description: 'Execution logs and traces'
     },
     {
-      id: 'access-tokens' as ProjectView,
-      icon: Key,
-      label: 'Access Tokens',
-      description: 'Tokens for SDK/API access'
-    },
-    {
-      id: 'connections' as ProjectView,
-      icon: Database,
-      label: 'Connections',
-      description: 'Provider & external keys'
-    },
-    {
       id: 'settings' as ProjectView,
       icon: Settings,
       label: 'Settings',
-      description: 'Project configuration'
+      description: 'Flow configuration & access'
     }
   ];
 
