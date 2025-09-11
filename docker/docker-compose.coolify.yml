@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${DATABASE_NAME:-flowshapr}
       POSTGRES_USER: ${DATABASE_USER:-flowshapr}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -29,10 +29,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://${DATABASE_USER:-flowshapr}:${DATABASE_PASSWORD:?}@postgres:5432/${DATABASE_NAME:-flowshapr}
+      - DATABASE_URL=postgresql://${DATABASE_USER:-flowshapr}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${DATABASE_NAME:-flowshapr}
       
       # Auth Configuration  
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?}
+      - BETTER_AUTH_SECRET=${SERVICE_PASSWORD_AUTH}
       - BETTER_AUTH_URL=${SERVICE_FQDN_API}
       
       # Social Auth Providers
