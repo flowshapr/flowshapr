@@ -24,7 +24,7 @@ services:
   # Backend API Server
   api:
     build:
-      context: ../server
+      context: ./server
       dockerfile: ../docker/backend/Dockerfile
     environment:
       - NODE_ENV=production
@@ -94,7 +94,7 @@ services:
   # Frontend Next.js Application
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/frontend/Dockerfile
     environment:
       - NODE_ENV=production
@@ -139,7 +139,7 @@ services:
   # Genkit Execution Workers (Internal Only)
   genkit-executor-1:
     build:
-      context: execution
+      context: ./docker/execution
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
@@ -162,7 +162,7 @@ services:
 
   genkit-executor-2:
     build:
-      context: execution
+      context: ./docker/execution
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
@@ -185,7 +185,7 @@ services:
 
   genkit-executor-3:
     build:
-      context: execution
+      context: ./docker/execution
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
