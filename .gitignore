@@ -127,20 +127,62 @@ server/dist/
 server/.env*
 server/node_modules/
 server/temp/
+server/logs/
+server/.genkit/
 
 # Development logs
 dev.log
 *.log
+frontend.log
 
 # Cache files
 .cache/
 *.cache
+*.tsbuildinfo
 
 # Temporary files
 cookies.txt
 login-payload.json
-/server/.genkit
-/.serena
-/.genkit/traces_idx
-/.claude
-/.serena
+
+# Tool-specific directories
+/.serena/
+/.genkit/
+/.claude/
+/.codebuddy/
+/.playwright-mcp/
+/.idea/
+
+# OS generated files (additional)
+.DS_Store
+*/.DS_Store
+
+# Test files (should not be committed)
+test_*.js
+test_*.html
+test-*.js
+test-*.mjs
+
+# Build artifacts
+/.next/
+
+# Screenshots and reference images
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+reference.png
+Current.png
+Screenshot*.png
+
+# Development scripts
+restart.sh
+clean-all.sh
+
+# Development artifacts
+implementation-plan.md
+block-architecture.md
+
+# Production data directories (created by Docker Compose)
+data/
+/data/

@@ -1,0 +1,154 @@
+# Coolify Configuration for Flowshapr
+# This file provides Coolify-specific settings and metadata
+
+version: '1.0'
+
+# Application metadata
+name: flowshapr
+description: Visual drag-and-drop interface for building Firebase Genkit AI flows
+type: docker-compose
+
+# Repository settings
+source:
+  type: git
+  branch: main
+  auto_deploy: true
+  dockerfile: docker-compose.prod.yml
+
+# Build settings
+build:
+  context: .
+  args:
+    - NODE_ENV=production
+  cache: true
+
+# Domain configuration
+domains:
+  frontend:
+    host: app.flowshapr.ai
+    port: 3000
+    ssl: true
+    redirect_www: false
+  api:
+    host: api.flowshapr.ai  
+    port: 3001
+    ssl: true
+    redirect_www: false
+
+# Environment variable groups
+environment:
+  # Required variables that must be set
+  required:
+    - DB_PASSWORD
+    - BETTER_AUTH_SECRET
+    - GOOGLE_AI_API_KEY
+  
+  # Optional variables with defaults
+  optional:
+    - OPENAI_API_KEY
+    - ANTHROPIC_API_KEY
+    - GITHUB_CLIENT_ID
+    - GITHUB_CLIENT_SECRET
+    - GOOGLE_CLIENT_ID
+    - GOOGLE_CLIENT_SECRET
+    - MAX_CONCURRENT_CONTAINERS=10
+    - CONTAINER_EXECUTOR_TIMEOUT=60000
+    - RATE_LIMIT_MAX_REQUESTS=100
+
+# Health check configuration
+health_checks:
+  frontend:
+    path: /api/health
+    port: 3000
+    timeout: 10
+    interval: 30
+  api:
+    path: /health
+    port: 3001
+    timeout: 10
+    interval: 30
+
+# Resource requirements
+resources:
+  minimum:
+    cpu: 2
+    memory: 4GB
+    disk: 20GB
+  recommended:
+    cpu: 4
+    memory: 8GB
+    disk: 50GB
+
+# Services configuration
+services:
+  frontend:
+    build: Dockerfile.frontend
+    public: true
+    replicas: 1
+  
+  api:
+    build: server/Dockerfile
+    public: true
+    replicas: 1
+    
+  postgres:
+    image: postgres:16-alpine
+    public: false
+    replicas: 1
+    persistent_volume: true
+    
+  workers:
+    build: server/docker/execution/Dockerfile
+    public: false
+    replicas: 5
+    auto_scale: true
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: 30
+  include:
+    - postgres_data
+    - application_logs
+
+# Monitoring and alerts
+monitoring:
+  enabled: true
+  alerts:
+    - type: health_check_failure
+      threshold: 3
+      action: restart_service
+    - type: high_cpu_usage
+      threshold: 80
+      duration: 5m
+      action: scale_up
+    - type: high_memory_usage
+      threshold: 85
+      duration: 5m
+      action: scale_up
+
+# Deployment hooks
+hooks:
+  pre_deploy:
+    - echo "Starting Flowshapr deployment..."
+  post_deploy:
+    - echo "Flowshapr deployment completed successfully!"
+  
+# Custom commands
+commands:
+  logs:
+    description: "View application logs"
+    command: "docker-compose -f docker-compose.prod.yml logs -f"
+  
+  status:
+    description: "Check service status"
+    command: "docker-compose -f docker-compose.prod.yml ps"
+  
+  db_migrate:
+    description: "Run database migrations"
+    command: "docker-compose -f docker-compose.prod.yml exec api npm run db:migrate"
+  
+  db_backup:
+    description: "Create database backup"
+    command: "docker-compose -f docker-compose.prod.yml exec postgres pg_dump -U flowshapr flowshapr > backup_$(date +%Y%m%d_%H%M%S).sql"

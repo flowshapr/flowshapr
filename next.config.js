@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for Docker deployment
+  output: 'standalone',
+  
   serverExternalPackages: ['genkit'],
   webpack: (config) => {
     config.externals.push({
@@ -7,6 +10,15 @@ const nextConfig = {
       'bufferutil': 'commonjs bufferutil',
     });
     return config;
+  },
+  
+  // Optimize for production
+  poweredByHeader: false,
+  compress: true,
+  
+  // Environment variable configuration
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
 };
 

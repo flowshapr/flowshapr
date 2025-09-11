@@ -40,9 +40,17 @@ USER genkituser
 
 # Set secure environment defaults
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--max-old-space-size=256" \
+    NODE_OPTIONS="--max-old-space-size=512" \
     NPM_CONFIG_CACHE=/tmp/.npm \
-    HOME=/tmp
+    HOME=/tmp \
+    PORT=3000
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Expose port
+EXPOSE 3000
 
 # Remove potentially dangerous binaries (not available in alpine anyway, but explicit)
 # Disable shell access in the final image
