@@ -13,6 +13,12 @@ if (!ENV.BETTER_AUTH_URL || ENV.BETTER_AUTH_URL === "http://localhost:3001") {
   console.warn("⚠️  BETTER_AUTH_URL not provided. Using default localhost:3001.");
 }
 
+// Validate Better Auth URL format
+if (ENV.BETTER_AUTH_URL && !ENV.BETTER_AUTH_URL.startsWith('http://') && !ENV.BETTER_AUTH_URL.startsWith('https://')) {
+  console.error(`❌ Invalid BETTER_AUTH_URL format: ${ENV.BETTER_AUTH_URL}. Must start with http:// or https://`);
+  throw new Error(`Invalid base URL: ${ENV.BETTER_AUTH_URL}. Please provide a valid base URL.`);
+}
+
 export const auth: any = db ? betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",

@@ -10,6 +10,7 @@ export interface ContainerPoolConfig {
   workTimeout: number;
   healthCheckInterval: number;
   volumeBasePath: string;
+  workerUrls?: string[];
 }
 
 export interface ExecutionRequest {
@@ -46,8 +47,7 @@ export interface ExecutionResult {
 interface PoolContainer {
   id: string;
   name: string;
-  workVolume: string;
-  resultsVolume: string;
+  url: string;
   isHealthy: boolean;
   isBusy: boolean;
   lastUsed: Date;
@@ -67,8 +67,18 @@ export class ContainerPoolService extends EventEmitter {
       workTimeout: 120000, // 2 minutes
       healthCheckInterval: 30000, // 30 seconds
       volumeBasePath: '/tmp/flowshapr-pool',
+      workerUrls: this.parseWorkerUrls(),
       ...config
     };
+  }
+
+  private parseWorkerUrls(): string[] {
+    // Check both environment variable names for compatibility
+    const envUrls = process.env.EXECUTOR_URLS || process.env.GENKIT_WORKER_URLS;
+    if (envUrls) {
+      return envUrls.split(',').map(url => url.trim()).filter(Boolean);
+    }
+    return [];
   }
 
   async initialize(): Promise<void> {
@@ -78,16 +88,31 @@ export class ContainerPoolService extends EventEmitter {
     console.log(`   Pool Size: ${this.config.poolSize}`);
     console.log(`   Work Timeout: ${this.config.workTimeout}ms`);
 
-    // Discover existing containers from docker-compose
-    await this.discoverContainers();
+    // Try environment variable configuration first
+    if (this.config.workerUrls && this.config.workerUrls.length > 0) {
+      console.log('🔗 Using worker URLs from environment variables');
+      await this.initializeFromUrls(this.config.workerUrls);
+    } else {
+      // Fallback to Docker discovery
+      console.log('🔍 No worker URLs found, attempting Docker discovery...');
+      const dockerAvailable = await this.checkDockerAvailability();
+      if (!dockerAvailable) {
+        console.warn('⚠️  Docker not available and no worker URLs configured');
+        console.log('⚠️  Container pool will be initialized but no workers will be available');
+        console.log('💡 Set EXECUTOR_URLS or GENKIT_WORKER_URLS environment variable to configure workers');
+        this.isInitialized = true;
+        return;
+      }
+      await this.discoverContainers();
+    }
     
     // Start health monitoring
     this.startHealthChecking();
     
     this.isInitialized = true;
     console.log('✅ Container Pool Service initialized');
-    console.log(`   Discovered ${this.containers.length} containers`);
-    console.log(`   Healthy containers: ${this.containers.filter(c => c.isHealthy).length}`);
+    console.log(`   Discovered ${this.containers.length} workers`);
+    console.log(`   Healthy workers: ${this.containers.filter(c => c.isHealthy).length}`);
   }
 
   async shutdown(): Promise<void> {
@@ -189,6 +214,25 @@ export class ContainerPoolService extends EventEmitter {
     }
   }
 
+  private async initializeFromUrls(urls: string[]): Promise<void> {
+    console.log(`🔗 Initializing ${urls.length} workers from URLs:`);
+    urls.forEach(url => console.log(`   - ${url}`));
+    
+    this.containers = urls.map((url, index) => ({
+      id: `worker-${index + 1}`,
+      name: `worker-${index + 1}`,
+      url: url,
+      isHealthy: false,
+      isBusy: false,
+      lastUsed: new Date(),
+      executions: 0
+    }));
+
+    // Initial health check
+    console.log('🏥 Running initial health checks...');
+    await this.checkAllContainerHealth();
+  }
+
   private async discoverContainers(): Promise<void> {
     console.log('🔍 Discovering containers from docker-compose...');
     
@@ -202,8 +246,7 @@ export class ContainerPoolService extends EventEmitter {
       this.containers = containers.map(container => ({
         id: container.id,
         name: container.name,
-        workVolume: container.workVolume,
-        resultsVolume: container.resultsVolume,
+        url: container.url,
         isHealthy: false,
         isBusy: false,
         lastUsed: new Date(),
@@ -243,25 +286,24 @@ export class ContainerPoolService extends EventEmitter {
         error += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on('close', async (code) => {
         if (code === 0) {
           try {
             const lines = output.trim().split('\n').filter(line => line.trim());
-            const containers = lines.map(line => {
+            const containers = await Promise.all(lines.map(async (line) => {
               const containerInfo = JSON.parse(line);
               const name = containerInfo.Names;
               const id = containerInfo.ID;
               
-              // Determine volume names based on container name
-              const executorNum = name.match(/executor-(\d+)/)?.[1] || '1';
+              // Get container's exposed port
+              const port = await this.getContainerPortFromId(id);
               
               return {
                 id,
                 name,
-                workVolume: `genkit-builder_executor_work_${executorNum}`,
-                resultsVolume: `genkit-builder_executor_results_${executorNum}`
+                url: `http://localhost:${port}`
               };
-            });
+            }));
             
             resolve(containers);
           } catch (parseError) {
@@ -312,14 +354,11 @@ export class ContainerPoolService extends EventEmitter {
   }
 
   private async makeHttpRequest(container: PoolContainer, requestData: any): Promise<{ result: any }> {
-    // Get container's exposed port
-    const containerPort = await this.getContainerPort(container);
-    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.workTimeout);
     
     try {
-      const response = await fetch(`http://localhost:${containerPort}/execute`, {
+      const response = await fetch(`${container.url}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,10 +386,10 @@ export class ContainerPoolService extends EventEmitter {
     }
   }
 
-  private async getContainerPort(container: PoolContainer): Promise<number> {
+  private async getContainerPortFromId(containerId: string): Promise<number> {
     try {
       const result = await this.dockerCommand([
-        'port', container.name, '3000'
+        'port', containerId, '3000'
       ]);
       
       if (result.code !== 0) {
@@ -403,12 +442,10 @@ export class ContainerPoolService extends EventEmitter {
   private async checkContainerHealth(container: PoolContainer): Promise<boolean> {
     try {
       // Check container health via HTTP endpoint
-      const containerPort = await this.getContainerPort(container);
-      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
-      const response = await fetch(`http://localhost:${containerPort}/health`, {
+      const response = await fetch(`${container.url}/health`, {
         method: 'GET',
         signal: controller.signal
       });
@@ -422,6 +459,15 @@ export class ContainerPoolService extends EventEmitter {
       
       return false;
     } catch {
+      return false;
+    }
+  }
+
+  private async checkDockerAvailability(): Promise<boolean> {
+    try {
+      const result = await this.dockerCommand(['--version']);
+      return result.code === 0;
+    } catch (error) {
       return false;
     }
   }
