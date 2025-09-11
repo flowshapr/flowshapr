@@ -84,35 +84,34 @@ export function AppLayout({ user, children }: AppLayoutProps) {
 
   const handleCreateFlowSubmit = async (flowData: { name: string; alias: string; description?: string }) => {
     try {
-      // Get the first organization (for now) - in a real app, this would be selected
-      const orgResponse = await fetch('/api/organizations', { credentials: 'include' });
-      if (!orgResponse.ok) throw new Error('Failed to fetch organizations');
-      const orgResult = await orgResponse.json();
+      console.log('Creating flow with data:', flowData);
       
-      if (!orgResult.data || orgResult.data.length === 0) {
-        throw new Error('No organization found. Please create an organization first.');
-      }
-
       const response = await fetch('/api/flows', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          ...flowData,
-          organizationId: orgResult.data[0].id,
-        }),
+        body: JSON.stringify(flowData),
       });
 
-      if (!response.ok) throw new Error('Failed to create flow');
+      console.log('Flow creation response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Flow creation failed:', errorText);
+        throw new Error(`Failed to create flow: ${response.status} ${errorText}`);
+      }
       
       const result = await response.json();
+      console.log('Flow created successfully:', result);
       setSelectedFlow(result.data);
+      setShowCreateModal(false);
       
       // Refresh the flow list by triggering a re-fetch (could be improved with state management)
       window.location.reload();
     } catch (error) {
-      console.warn('Failed to create flow:', error);
-      alert('Failed to create flow. Please try again.');
+      console.error('Failed to create flow:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to create flow: ${errorMessage}`);
+      setShowCreateModal(false);
     }
   };
 

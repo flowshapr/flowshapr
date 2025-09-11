@@ -52,7 +52,7 @@ export const createFlowSchema = z.object({
     .regex(/^[a-z0-9-_]+$/, "Alias can only contain lowercase letters, numbers, hyphens, and underscores")
     .transform(alias => alias.toLowerCase().trim()),
   description: descriptionSchema,
-  organizationId: z.string().min(1, "Organization ID is required"),
+  organizationId: z.string().min(1, "Organization ID is required").optional(),
   teamId: z.string().optional(),
 });
 

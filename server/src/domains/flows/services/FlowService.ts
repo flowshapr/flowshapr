@@ -11,7 +11,7 @@ export class FlowService {
       name: string;
       alias: string;
       description?: string;
-      organizationId: string;
+      organizationId?: string;
       teamId?: string;
     },
     createdBy: string
@@ -23,20 +23,33 @@ export class FlowService {
     try {
       const slug = generateSlug(data.name);
 
-      // Check if alias is unique within the organization
-      const existingAlias = await db
-        .select()
-        .from(schema.flow)
-        .where(
-          and(
-            eq(schema.flow.alias, data.alias),
-            eq(schema.flow.organizationId, data.organizationId)
+      // Check if alias is unique within the organization (if organization is provided) or globally
+      let aliasCheck;
+      if (data.organizationId) {
+        aliasCheck = await db
+          .select()
+          .from(schema.flow)
+          .where(
+            and(
+              eq(schema.flow.alias, data.alias),
+              eq(schema.flow.organizationId, data.organizationId)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
+      } else {
+        // When no organization, check for global alias uniqueness
+        aliasCheck = await db
+          .select()
+          .from(schema.flow)
+          .where(eq(schema.flow.alias, data.alias))
+          .limit(1);
+      }
 
-      if (existingAlias.length > 0) {
-        throw new ConflictError(`Flow with alias '${data.alias}' already exists in this organization`);
+      if (aliasCheck.length > 0) {
+        const errorMsg = data.organizationId 
+          ? `Flow with alias '${data.alias}' already exists in this organization`
+          : `Flow with alias '${data.alias}' already exists`;
+        throw new ConflictError(errorMsg);
       }
 
       // Create the initial flow (flows are top-level)
@@ -53,7 +66,7 @@ export class FlowService {
         edges: [],
         metadata: {},
         config: {},
-        organizationId: data.organizationId,
+        organizationId: data.organizationId || null,
         createdBy,
       };
 
@@ -62,7 +75,7 @@ export class FlowService {
       return {
         ...newFlow,
         slug,
-        organizationId: data.organizationId,
+        organizationId: data.organizationId || null,
         teamId: undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
