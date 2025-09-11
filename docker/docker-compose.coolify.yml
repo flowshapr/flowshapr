@@ -104,6 +104,9 @@ services:
       - NEXT_PUBLIC_APP_URL=${SERVICE_FQDN_FRONTEND}
       - NEXT_PUBLIC_BETTER_AUTH_URL=${SERVICE_FQDN_API}
       
+      # Server-side backend URL (for internal Docker communication)
+      - BACKEND_URL=http://api:3001
+      
       # Public Social Auth Client IDs
       - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - NEXT_PUBLIC_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
