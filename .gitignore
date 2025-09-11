@@ -9,6 +9,14 @@ node_modules/
 .next/
 out/
 
+# Security - never commit credentials
+**/login-payload.json
+**/*-payload.json
+**/*credentials*.json
+*.env.local
+*.env.production
+.env.*.local
+
 # Environment variables
 .env
 .env*.local
