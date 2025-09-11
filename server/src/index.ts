@@ -45,7 +45,18 @@ const defaultOrigins = [
   'http://127.0.0.1:3004',
   'http://127.0.0.1:3005',
 ];
-const envOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+// Auto-fix CORS origins missing protocol
+const rawEnvOrigins = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+const envOrigins = rawEnvOrigins.map(origin => {
+  if (origin && !origin.startsWith('http://') && !origin.startsWith('https://')) {
+    console.warn(`⚠️  CORS_ORIGIN missing protocol: ${origin}`);
+    const corrected = `https://${origin}`;
+    console.log(`✅ Auto-corrected CORS origin to: ${corrected}`);
+    return corrected;
+  }
+  return origin;
+});
+
 const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);
 
 app.use(cors({
