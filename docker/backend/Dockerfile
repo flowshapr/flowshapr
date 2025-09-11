@@ -25,15 +25,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 
+# Install tsc-alias for path resolution
+RUN npm install tsc-alias --no-save
+
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
-
-# Install tsc-alias to resolve path aliases
-RUN npm install tsc-alias --no-save
-RUN npx tsc-alias -p tsconfig.json
+# Build the application and resolve path aliases
+RUN npm run build && npx tsc-alias -p tsconfig.json
 
 # Production stage
 FROM base AS runner
