@@ -137,20 +137,37 @@ export async function proxyPassthrough(request: NextRequest) {
   const isBodyless = request.method === 'GET' || request.method === 'HEAD';
   const body = isBodyless ? undefined : await request.text();
 
-  const resp = await fetch(backendUrl, {
-    method: request.method,
-    headers: {
-      ...Object.fromEntries(request.headers.entries()),
-      host: new URL(backendBaseUrl()).host,
-    } as HeadersInit,
-    body,
-  });
+  console.log(`[PROXY] ${request.method} ${request.url} -> ${backendUrl}`);
+  console.log(`[PROXY] Backend base URL: ${backendBaseUrl()}`);
+  
+  try {
+    const resp = await fetch(backendUrl, {
+      method: request.method,
+      headers: {
+        ...Object.fromEntries(request.headers.entries()),
+        host: new URL(backendBaseUrl()).host,
+      } as HeadersInit,
+      body,
+    });
 
-  const respBody = await resp.text();
-  return new Response(respBody, {
-    status: resp.status,
-    statusText: resp.statusText,
-    headers: resp.headers,
-  });
+    console.log(`[PROXY] Response: ${resp.status} ${resp.statusText}`);
+    const respBody = await resp.text();
+    
+    return new Response(respBody, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: resp.headers,
+    });
+  } catch (error) {
+    console.error(`[PROXY] Error connecting to backend:`, error);
+    return new Response(JSON.stringify({
+      error: 'Backend connection failed',
+      details: error instanceof Error ? error.message : String(error),
+      backendUrl
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
