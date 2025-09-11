@@ -1,17 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { userService, UpdateUserProfileData } from '../services/UserService';
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        name: string;
-        email: string;
-      };
-    }
-  }
-}
 
 export class UserController {
   async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {

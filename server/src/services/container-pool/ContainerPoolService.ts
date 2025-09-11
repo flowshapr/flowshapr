@@ -329,7 +329,7 @@ export class ContainerPoolService extends EventEmitter {
       });
 
       clearTimeout(timeoutId);
-      const result = await response.json();
+      const result = await response.json() as any;
 
       if (!response.ok) {
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
@@ -365,7 +365,8 @@ export class ContainerPoolService extends EventEmitter {
       
       return parseInt(portMatch[1], 10);
     } catch (error) {
-      throw new Error(`Failed to get container port: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get container port: ${errorMessage}`);
     }
   }
 
@@ -415,7 +416,7 @@ export class ContainerPoolService extends EventEmitter {
       clearTimeout(timeoutId);
       
       if (response.ok) {
-        const health = await response.json();
+        const health = await response.json() as any;
         return health.status === 'healthy';
       }
       

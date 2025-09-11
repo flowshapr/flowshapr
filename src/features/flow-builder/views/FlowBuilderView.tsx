@@ -348,7 +348,7 @@ export function FlowBuilderView({
     setEdges(newEdges);
   }, []);
 
-  const handleAddNode = useCallback((type: NodeType, position?: { x: number; y: number }) => {
+  const handleAddNode = useCallback((type: string, position?: { x: number; y: number }) => {
     const defaultPosition = position || {
       x: 100 + (nodes.length * 250),
       y: 100,
@@ -766,7 +766,14 @@ export function FlowBuilderView({
                 {activePanel === 'code' && (
                   <CodeEditor
                     code={generatedCode.code}
-                    errors={generatedCode.errors}
+                    errors={generatedCode.errors
+                      .filter(err => err.severity !== 'info')
+                      .map(err => ({
+                        message: err.message,
+                        line: err.field ? undefined : undefined,
+                        column: undefined,
+                        severity: err.severity as 'error' | 'warning'
+                      }))}
                     height="100%"
                   />
                 )}

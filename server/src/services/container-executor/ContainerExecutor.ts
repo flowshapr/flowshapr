@@ -176,7 +176,8 @@ export class ContainerExecutor {
       return result;
       
     } catch (error) {
-      this.containerManager.updateContainerStatus(containerId, 'failed', error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.containerManager.updateContainerStatus(containerId, 'failed', errorMessage);
       throw error;
     }
   }
@@ -225,7 +226,7 @@ export class ContainerExecutor {
     dockerArgs.push(this.config.imageName);
 
     console.log(`🔒 Starting HTTP server container on port ${containerPort}: ${containerId}`);
-    this.containerManager.updateContainerStatus(containerId, 'starting');
+    this.containerManager.updateContainerStatus(containerId, 'creating');
 
     return new Promise((resolve, reject) => {
       const child = spawn('docker', dockerArgs, {
@@ -282,7 +283,7 @@ export class ContainerExecutor {
         clearTimeout(timeoutId);
         
         if (response.ok) {
-          const health = await response.json();
+          const health = await response.json() as any;
           console.log(`✅ Container ${containerId} is ready: ${health.status}`);
           return;
         }
@@ -314,7 +315,7 @@ export class ContainerExecutor {
       });
 
       clearTimeout(timeoutId);
-      const result = await response.json();
+      const result = await response.json() as any;
 
       if (!response.ok) {
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
@@ -359,8 +360,9 @@ export class ContainerExecutor {
     const result: Partial<ExecutionConfig> = {};
     
     safeFields.forEach(field => {
-      if (sanitized[field as keyof ExecutionConfig]) {
-        result[field as keyof ExecutionConfig] = sanitized[field as keyof ExecutionConfig];
+      const key = field as keyof ExecutionConfig;
+      if (sanitized[key] !== undefined) {
+        (result as any)[key] = sanitized[key];
       }
     });
     

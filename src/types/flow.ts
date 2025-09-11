@@ -2,7 +2,7 @@ import { Node, Edge } from '@xyflow/react';
 
 export interface FlowNodeData extends Record<string, unknown> {
   label: string;
-  type: NodeType;
+  type: string;
   config: NodeConfig;
 }
 

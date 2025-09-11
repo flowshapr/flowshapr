@@ -95,7 +95,7 @@ export class ServerBlockRegistry {
   }
 
   private getBlockColor(category: string): string {
-    const colors = {
+    const colors: Record<string, string> = {
       'input': '#1e40af',
       'genai': '#059669', 
       'output': '#dc2626',
@@ -107,7 +107,7 @@ export class ServerBlockRegistry {
   }
 
   private getBlockIcon(type: string): string {
-    const icons = {
+    const icons: Record<string, string> = {
       'input': 'FileText',
       'agent': 'Bot',
       'output': 'Download',

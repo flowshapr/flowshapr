@@ -10,6 +10,7 @@ export type Subjects =
   | 'Dataset' 
   | 'Trace' 
   | 'ApiKey'
+  | 'User'
   | 'all';
 
 // Define actions that can be performed

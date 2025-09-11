@@ -40,13 +40,15 @@ const nodeLabels: Record<NodeType, string> = {
   [NodeType.INTERRUPT]: 'Interrupt',
 };
 
-export function getNodeLabel(type: NodeType): string {
-  return nodeLabels[type] || 'Node';
+export function getNodeLabel(type: NodeType | string): string {
+  const nodeType = typeof type === 'string' ? type as NodeType : type;
+  return nodeLabels[nodeType] || 'Node';
 }
 
 // Default config factories per node type
-export function getDefaultConfig(type: NodeType): any {
-  switch (type) {
+export function getDefaultConfig(type: NodeType | string): any {
+  const nodeType = typeof type === 'string' ? type as NodeType : type;
+  switch (nodeType) {
     case NodeType.INPUT:
       return {
         inputType: 'static',

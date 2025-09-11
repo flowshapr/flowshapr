@@ -7,7 +7,7 @@ import { Trash2, FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot
 
 // Icon mapping function to convert server icon strings to React components
 const getIconComponent = (iconName: string) => {
-  const iconMap = {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     'FileText': FileText,
     'Brain': Brain,
     'Download': Download, 
@@ -145,7 +145,7 @@ export function BaseNode({ id, data, selected, children, showSourceHandle = true
       <div className="card-body">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            {getIconComponent(blockConfig.icon)}
+            {getIconComponent(blockConfig.icon || 'Square')}
             <div className="font-semibold text-sm">{blockConfig.name}</div>
           </div>
           <div className="flex items-center gap-2">

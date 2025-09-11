@@ -12,7 +12,7 @@ export interface UpdateUserProfileData {
 export class UserService {
   async updateProfile(userId: string, updates: UpdateUserProfileData): Promise<any> {
     // Authorization check - users can only update their own profile
-    await requireUserAbility(userId, 'update', 'user', userId);
+    await requireUserAbility(userId, 'update', 'User', userId);
 
     // Validate that at least one field is provided
     if (!updates.name && !updates.email && updates.image === undefined) {
@@ -21,6 +21,9 @@ export class UserService {
 
     // Check if email is already taken (if email is being updated)
     if (updates.email) {
+      if (!db) {
+        throw new Error('Database connection not available');
+      }
       const existingUsers = await db
         .select({ id: user.id })
         .from(user)
@@ -42,6 +45,9 @@ export class UserService {
     if (updates.image !== undefined) updateData.image = updates.image || null;
 
     // Update user profile
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
     const updatedUsers = await db
       .update(user)
       .set(updateData)
@@ -67,8 +73,11 @@ export class UserService {
 
   async getProfile(requestingUserId: string, targetUserId: string): Promise<any> {
     // Authorization check - users can view their own profile, or if they have permission
-    await requireUserAbility(requestingUserId, 'read', 'user', targetUserId);
+    await requireUserAbility(requestingUserId, 'read', 'User', targetUserId);
 
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
     const users = await db
       .select({
         id: user.id,

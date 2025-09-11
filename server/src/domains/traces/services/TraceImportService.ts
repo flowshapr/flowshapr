@@ -170,9 +170,9 @@ export class TraceImportService {
       // Handle different possible response formats - could be trace IDs or full traces
       let traces: GenkitTraceData[] = [];
       if (Array.isArray(responseData)) {
-        traces = responseData.filter(item => typeof item === 'object' && item.traceId);
-      } else if (responseData.traces && Array.isArray(responseData.traces)) {
-        traces = responseData.traces.filter(item => typeof item === 'object' && item.traceId);
+        traces = (responseData as any[]).filter((item: any) => typeof item === 'object' && item.traceId);
+      } else if ((responseData as any).traces && Array.isArray((responseData as any).traces)) {
+        traces = ((responseData as any).traces as any[]).filter((item: any) => typeof item === 'object' && item.traceId);
       } else {
         console.warn('[TraceImport] Unexpected response format from Genkit server');
         return;

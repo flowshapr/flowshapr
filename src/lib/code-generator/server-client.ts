@@ -16,7 +16,7 @@ export interface CodeGenerationResult {
 
 export interface FlowNode {
   id: string;
-  type: string;
+  type?: string;
   position: { x: number; y: number };
   data: {
     label?: string;
@@ -29,8 +29,8 @@ export interface FlowEdge {
   id: string;
   source: string;
   target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
 }
 
 export interface FlowVariable {

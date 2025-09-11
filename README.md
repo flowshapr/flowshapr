@@ -1,15 +1,14 @@
-# Flowshapr
+# Flowshapr for Genkit
 
-Flowshapr is a visual drag-and-drop interface for building Firebase Genkit AI flows that allows users to create, manage, and deploy genkit flows to various platforms (Firebase, Google Cloud, AWS, or keep with us). Developers use a thin SDK to call flows remotely.
+Flowshapr for Genkit is a visual drag-and-drop interface for building Firebase Genkit AI flows that allows users to create, manage, and deploy Genkit flows to various platforms (Firebase, Google Cloud, AWS, or keep with us). Developers use a thin SDK to call flows remotely.
 
 ## Architecture
 
 ### Backend (Express.js)
 - **Authentication**: Better Auth with PostgreSQL
 - **Database**: PostgreSQL with Drizzle ORM
-- **Social Providers**: Google, GitHub, Microsoft, Apple
-- **Domain-Driven Design**: Organizations, Teams, Users
 - **API**: RESTful API with role-based access control
+- **Domain-Driven Design**
 
 ### Frontend (Next.js)
 - **UI Framework**: React with TypeScript
@@ -24,7 +23,6 @@ Flowshapr is a visual drag-and-drop interface for building Firebase Genkit AI fl
 
 - Node.js 18+ 
 - PostgreSQL database
-- Social OAuth credentials (Google, GitHub, etc.)
 
 ### 1. Database Setup
 
@@ -80,31 +78,6 @@ npm run dev
 ```
 
 The frontend will run on http://localhost:3000
-
-### 4. OAuth Setup
-
-#### Google OAuth
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add redirect URI: `http://localhost:3001/api/auth/callback/google`
-
-#### GitHub OAuth
-1. Go to GitHub Settings → Developer settings → OAuth Apps
-2. Create new OAuth App
-3. Authorization callback URL: `http://localhost:3001/api/auth/callback/github`
-
-#### Microsoft OAuth
-1. Go to [Azure Portal](https://portal.azure.com/)
-2. Register new application
-3. Add redirect URI: `http://localhost:3001/api/auth/callback/microsoft`
-
-#### Apple OAuth
-1. Go to [Apple Developer](https://developer.apple.com/)
-2. Create new Service ID
-3. Configure Sign In with Apple
-4. Add redirect URI: `http://localhost:3001/api/auth/callback/apple`
 
 ## Development Commands
 
