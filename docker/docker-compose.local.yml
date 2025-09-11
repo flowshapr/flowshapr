@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: flowshapr-postgres-prod
+    environment:
+      - POSTGRES_DB=flowshapr
+      - POSTGRES_USER=flowshapr
+      - POSTGRES_PASSWORD=flowshapr_test_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowshapr -d flowshapr"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Backend API Server  
+  api:
+    build:
+      context: ../server
+      dockerfile: ../docker/backend/Dockerfile
+    container_name: flowshapr-api-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://flowshapr:flowshapr_test_password@postgres:5432/flowshapr
+      - BETTER_AUTH_SECRET=test_auth_secret_for_local_production_testing
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Frontend Next.js App
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    container_name: flowshapr-frontend-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - HOSTNAME=0.0.0.0
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-network
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Genkit Execution Workers
+  genkit-executor-1:
+    build:
+      context: execution
+      dockerfile: Dockerfile
+    container_name: flowshapr-executor-1-prod
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-1
+      - PORT=3000
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  genkit-executor-2:
+    build:
+      context: execution
+      dockerfile: Dockerfile
+    container_name: flowshapr-executor-2-prod
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-2
+      - PORT=3000
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

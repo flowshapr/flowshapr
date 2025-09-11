@@ -9,12 +9,14 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production --ignore-scripts
+RUN npm ci --omit=dev
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Install ALL dependencies (including dev dependencies needed for build)
+COPY package.json package-lock.json* ./
+RUN npm ci
 COPY . .
 
 # Environment variables for build time
@@ -47,22 +49,7 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Create directories for runtime
-RUN mkdir -p /app/logs /app/tmp && \
-    chown -R nextjs:nodejs /app/logs /app/tmp
-
-USER nextjs
-
-EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node healthcheck.js || exit 1
-
-# Create a simple health check script
+# Create a simple health check script (as root)
 RUN echo 'const http = require("http"); \
 const options = { \
   hostname: "localhost", \
@@ -81,6 +68,21 @@ const req = http.request(options, (res) => { \
 req.on("error", () => process.exit(1)); \
 req.on("timeout", () => process.exit(1)); \
 req.end();' > healthcheck.js
+
+# Create directories for runtime and set ownership
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R nextjs:nodejs /app/logs /app/tmp /app/healthcheck.js
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node healthcheck.js || exit 1
 
 # Start the application
 CMD ["node", "server.js"]

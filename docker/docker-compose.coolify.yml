@@ -1,0 +1,237 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-flowshapr}
+      POSTGRES_USER: ${DATABASE_USER:-flowshapr}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-flowshapr} -d ${DATABASE_NAME:-flowshapr}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=database"
+      - "coolify.name=postgres"
+
+  # Backend API Server
+  api:
+    build:
+      context: ../server
+      dockerfile: ../docker/backend/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://${DATABASE_USER:-flowshapr}:${DATABASE_PASSWORD:?}@postgres:5432/${DATABASE_NAME:-flowshapr}
+      
+      # Auth Configuration  
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?}
+      - BETTER_AUTH_URL=${SERVICE_FQDN_API}
+      
+      # Social Auth Providers
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+      - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
+      
+      # AI Provider Keys
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      
+      # App URLs
+      - APP_URL=${SERVICE_FQDN_FRONTEND}
+      - API_URL=${SERVICE_FQDN_API}
+      - CORS_ORIGIN=${SERVICE_FQDN_FRONTEND}
+      
+      # Execution Configuration
+      - EXECUTOR_URLS=http://genkit-executor-1:3000,http://genkit-executor-2:3000,http://genkit-executor-3:3000
+      - CONTAINER_EXECUTOR_TIMEOUT=${CONTAINER_EXECUTOR_TIMEOUT:-60000}
+      - MAX_CONCURRENT_CONTAINERS=${MAX_CONCURRENT_CONTAINERS:-10}
+      
+      # Rate Limiting
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      genkit-executor-1:
+        condition: service_healthy
+      genkit-executor-2:
+        condition: service_healthy
+      genkit-executor-3:
+        condition: service_healthy
+    
+    volumes:
+      - api_logs:/app/logs
+      - api_temp:/app/temp
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.name=api"
+      - "traefik.enable=true"
+      - "traefik.http.routers.flowshapr-api.rule=Host(`${SERVICE_FQDN_API}`)"
+      - "traefik.http.routers.flowshapr-api.entrypoints=websecure"
+      - "traefik.http.routers.flowshapr-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.flowshapr-api.loadbalancer.server.port=3001"
+
+  # Frontend Next.js Application
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_API_URL=${SERVICE_URL_API}
+      - NEXT_PUBLIC_APP_URL=${SERVICE_URL_FRONTEND}
+      - NEXT_PUBLIC_BETTER_AUTH_URL=${SERVICE_URL_API}
+      
+      # Public Social Auth Client IDs
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - NEXT_PUBLIC_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+    
+    depends_on:
+      api:
+        condition: service_healthy
+    
+    volumes:
+      - frontend_logs:/app/logs
+      - frontend_tmp:/app/tmp
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.name=frontend"
+      - "traefik.enable=true"
+      - "traefik.http.routers.flowshapr-frontend.rule=Host(`${SERVICE_FQDN_FRONTEND}`)"
+      - "traefik.http.routers.flowshapr-frontend.entrypoints=websecure"
+      - "traefik.http.routers.flowshapr-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.flowshapr-frontend.loadbalancer.server.port=3000"
+
+  # Genkit Execution Workers (Internal Only)
+  genkit-executor-1:
+    build:
+      context: execution
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-1
+      - PORT=3000
+      - GEMINI_API_KEY=${GOOGLE_AI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${ANTHROPIC_API_KEY}
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=service"
+      - "coolify.name=genkit-executor-1"
+
+  genkit-executor-2:
+    build:
+      context: execution
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-2
+      - PORT=3000
+      - GEMINI_API_KEY=${GOOGLE_AI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${ANTHROPIC_API_KEY}
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=service"
+      - "coolify.name=genkit-executor-2"
+
+  genkit-executor-3:
+    build:
+      context: execution
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - EXECUTOR_ID=executor-3
+      - PORT=3000
+      - GEMINI_API_KEY=${GOOGLE_AI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${ANTHROPIC_API_KEY}
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=service"
+      - "coolify.name=genkit-executor-3"
+
+volumes:
+  postgres_data:
+    labels:
+      - "coolify.managed=true"
+  api_logs:
+    labels:
+      - "coolify.managed=true"
+  api_temp:
+    labels:
+      - "coolify.managed=true"
+  frontend_logs:
+    labels:
+      - "coolify.managed=true"
+  frontend_tmp:
+    labels:
+      - "coolify.managed=true"

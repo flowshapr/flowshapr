@@ -179,10 +179,6 @@ Screenshot*.png
 restart.sh
 clean-all.sh
 
-# Development artifacts
-implementation-plan.md
-block-architecture.md
-
 # Production data directories (created by Docker Compose)
 data/
 /data/

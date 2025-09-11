@@ -61,7 +61,7 @@ jest.config.js
 .eslintrc.*
 .prettierrc
 .prettierignore
-tsconfig.json
+# tsconfig.json - needed for build path resolution
 
 # Screenshots and images
 screenshots/
