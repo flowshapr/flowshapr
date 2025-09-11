@@ -15,7 +15,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --only=production --ignore-scripts && npm cache clean --force
+RUN npm ci --only=production --ignore-scripts && \
+    npm install drizzle-kit --no-save && \
+    npm cache clean --force
 
 # Build stage
 FROM base AS builder
@@ -47,11 +49,14 @@ COPY --from=deps --chown=flowshapr:flowshapr /app/node_modules ./node_modules
 COPY --from=builder --chown=flowshapr:flowshapr /app/dist ./dist
 COPY --from=builder --chown=flowshapr:flowshapr /app/package*.json ./
 COPY --from=builder --chown=flowshapr:flowshapr /app/drizzle ./drizzle
+COPY --from=builder --chown=flowshapr:flowshapr /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder --chown=flowshapr:flowshapr /app/scripts/start-production.sh ./start-production.sh
 
-# Create necessary directories
+# Create necessary directories and make startup script executable
 RUN mkdir -p /app/logs /app/temp /app/uploads && \
     chown -R flowshapr:flowshapr /app/logs /app/temp /app/uploads && \
-    chmod 755 /app/logs /app/temp /app/uploads
+    chmod 755 /app/logs /app/temp /app/uploads && \
+    chmod +x /app/start-production.sh
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -71,5 +76,5 @@ EXPOSE 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Start the application with migrations
+CMD ["./start-production.sh"]
