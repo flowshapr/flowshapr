@@ -13,10 +13,12 @@ if (!ENV.BETTER_AUTH_URL || ENV.BETTER_AUTH_URL === "http://localhost:3001") {
   console.warn("⚠️  BETTER_AUTH_URL not provided. Using default localhost:3001.");
 }
 
-// Validate Better Auth URL format
-if (ENV.BETTER_AUTH_URL && !ENV.BETTER_AUTH_URL.startsWith('http://') && !ENV.BETTER_AUTH_URL.startsWith('https://')) {
-  console.error(`❌ Invalid BETTER_AUTH_URL format: ${ENV.BETTER_AUTH_URL}. Must start with http:// or https://`);
-  throw new Error(`Invalid base URL: ${ENV.BETTER_AUTH_URL}. Please provide a valid base URL.`);
+// Auto-fix Better Auth URL format if missing protocol
+let betterAuthUrl = ENV.BETTER_AUTH_URL;
+if (betterAuthUrl && !betterAuthUrl.startsWith('http://') && !betterAuthUrl.startsWith('https://')) {
+  console.warn(`⚠️  BETTER_AUTH_URL missing protocol: ${betterAuthUrl}`);
+  betterAuthUrl = `https://${betterAuthUrl}`;
+  console.log(`✅ Auto-corrected to: ${betterAuthUrl}`);
 }
 
 export const auth: any = db ? betterAuth({
@@ -31,7 +33,7 @@ export const auth: any = db ? betterAuth({
     },
   }),
   secret: ENV.BETTER_AUTH_SECRET!,
-  baseURL: ENV.BETTER_AUTH_URL!,
+  baseURL: betterAuthUrl!,
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false, // Disabled for testing
@@ -40,22 +42,22 @@ export const auth: any = db ? betterAuth({
     google: {
       clientId: ENV.GOOGLE_CLIENT_ID as string,
       clientSecret: ENV.GOOGLE_CLIENT_SECRET as string,
-      redirectURI: `${ENV.BETTER_AUTH_URL}/api/auth/callback/google`,
+      redirectURI: `${betterAuthUrl}/api/auth/callback/google`,
     },
     github: {
       clientId: ENV.GITHUB_CLIENT_ID as string,
       clientSecret: ENV.GITHUB_CLIENT_SECRET as string,
-      redirectURI: `${ENV.BETTER_AUTH_URL}/api/auth/callback/github`,
+      redirectURI: `${betterAuthUrl}/api/auth/callback/github`,
     },
     microsoft: {
       clientId: ENV.MICROSOFT_CLIENT_ID as string,
       clientSecret: ENV.MICROSOFT_CLIENT_SECRET as string,
-      redirectURI: `${ENV.BETTER_AUTH_URL}/api/auth/callback/microsoft`,
+      redirectURI: `${betterAuthUrl}/api/auth/callback/microsoft`,
     },
     apple: {
       clientId: ENV.APPLE_CLIENT_ID as string,
       clientSecret: ENV.APPLE_CLIENT_SECRET as string,
-      redirectURI: `${ENV.BETTER_AUTH_URL}/api/auth/callback/apple`,
+      redirectURI: `${betterAuthUrl}/api/auth/callback/apple`,
     },
   },
   plugins: [
