@@ -47,7 +47,7 @@ export interface FlowMember {
 export interface CreateFlowRequest {
   name: string;
   description?: string;
-  organizationId: string;
+  organizationId?: string;
   teamId?: string;
 }
 

@@ -6,6 +6,41 @@ import { ConflictError, NotFoundError, ForbiddenError } from "../../../shared/ut
 import { Flow, FlowMember } from "../types";
 
 export class FlowService {
+  private async getOrCreateDefaultOrganization(userId: string): Promise<string> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
+    // Check if user already has a default organization
+    const existingOrgs = await db
+      .select({ id: schema.organization.id })
+      .from(schema.organization)
+      .where(
+        and(
+          eq(schema.organization.ownerId, userId),
+          eq(schema.organization.name, "Personal")
+        )
+      )
+      .limit(1);
+
+    if (existingOrgs.length > 0) {
+      return existingOrgs[0].id;
+    }
+
+    // Create a default personal organization
+    const orgId = generateId();
+    const orgSlug = `personal-${userId.slice(0, 8)}`;
+    
+    await db.insert(schema.organization).values({
+      id: orgId,
+      name: "Personal",
+      slug: orgSlug,
+      description: "Personal workspace",
+      ownerId: userId,
+    });
+
+    return orgId;
+  }
   async createFlow(
     data: {
       name: string;
@@ -23,33 +58,23 @@ export class FlowService {
     try {
       const slug = generateSlug(data.name);
 
-      // Check if alias is unique within the organization (if organization is provided) or globally
-      let aliasCheck;
-      if (data.organizationId) {
-        aliasCheck = await db
-          .select()
-          .from(schema.flow)
-          .where(
-            and(
-              eq(schema.flow.alias, data.alias),
-              eq(schema.flow.organizationId, data.organizationId)
-            )
+      // Get or create organization
+      const organizationId = data.organizationId || await this.getOrCreateDefaultOrganization(createdBy);
+
+      // Check if alias is unique within the organization
+      const aliasCheck = await db
+        .select()
+        .from(schema.flow)
+        .where(
+          and(
+            eq(schema.flow.alias, data.alias),
+            eq(schema.flow.organizationId, organizationId)
           )
-          .limit(1);
-      } else {
-        // When no organization, check for global alias uniqueness
-        aliasCheck = await db
-          .select()
-          .from(schema.flow)
-          .where(eq(schema.flow.alias, data.alias))
-          .limit(1);
-      }
+        )
+        .limit(1);
 
       if (aliasCheck.length > 0) {
-        const errorMsg = data.organizationId 
-          ? `Flow with alias '${data.alias}' already exists in this organization`
-          : `Flow with alias '${data.alias}' already exists`;
-        throw new ConflictError(errorMsg);
+        throw new ConflictError(`Flow with alias '${data.alias}' already exists in this organization`);
       }
 
       // Create the initial flow (flows are top-level)
@@ -66,7 +91,7 @@ export class FlowService {
         edges: [],
         metadata: {},
         config: {},
-        organizationId: data.organizationId || null,
+        organizationId: organizationId,
         createdBy,
       };
 
@@ -75,7 +100,6 @@ export class FlowService {
       return {
         ...newFlow,
         slug,
-        organizationId: data.organizationId || null,
         teamId: undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
