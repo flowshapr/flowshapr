@@ -1,13 +1,18 @@
 import { config } from "dotenv";
 import { resolve } from "path";
 
-// Load environment variables
+// Load environment variables (optional .env file)
 const result = config({ path: resolve(process.cwd(), ".env") });
 
 if (result.error) {
-  console.error("Failed to load .env file:", result.error);
+  // Only warn if the error is not "file not found"
+  if (result.error.code !== 'ENOENT') {
+    console.error("Failed to load .env file:", result.error);
+  } else {
+    console.log("ℹ️  No .env file found, using environment variables from system");
+  }
 } else {
-  console.log("✅ Environment variables loaded successfully");
+  console.log("✅ Environment variables loaded successfully from .env file");
 }
 
 // Export environment variables with defaults

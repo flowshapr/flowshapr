@@ -31,6 +31,10 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Install tsc-alias to resolve path aliases
+RUN npm install tsc-alias --no-save
+RUN npx tsc-alias -p tsconfig.json
+
 # Production stage
 FROM base AS runner
 WORKDIR /app
