@@ -79,7 +79,9 @@ export function AppLayout({ user, children }: AppLayoutProps) {
   };
 
   const handleCreateFlow = () => {
+    console.log('handleCreateFlow called, setting modal to true');
     setShowCreateModal(true);
+    console.log('showCreateModal state should now be:', true);
   };
 
   const handleCreateFlowSubmit = async (flowData: { name: string; alias: string; description?: string }) => {

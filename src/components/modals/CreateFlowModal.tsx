@@ -44,11 +44,12 @@ export function CreateFlowModal({
     }
   };
 
+  console.log('CreateFlowModal render - isOpen:', isOpen);
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="modal-box bg-base-100 max-w-md w-full">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <div className="bg-base-100 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-base-content">Create New Flow</h2>
           <button
@@ -59,7 +60,7 @@ export function CreateFlowModal({
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
               <label htmlFor="flowName" className="block text-sm font-medium text-base-content mb-2">
