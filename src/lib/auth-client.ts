@@ -2,6 +2,7 @@
 function resolveAuthUrl(): string {
   const envUrl =
     process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.BACKEND_URL;
 
@@ -12,8 +13,15 @@ function resolveAuthUrl(): string {
     const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     const host = isLocal ? "localhost" : window.location.hostname;
     const protocol = window.location.protocol === "https:" ? "https" : "http";
-    const port = isLocal ? 3001 : (window.location.port || 3000); // default dev to 3001
-    return `${protocol}://${host}:${port}`;
+    
+    if (isLocal) {
+      // Development: use specific port
+      const port = 3001;
+      return `${protocol}://${host}:${port}`;
+    } else {
+      // Production: no port needed (handled by reverse proxy)
+      return `${protocol}://${host}`;
+    }
   }
 
   // Server-side fallback for dev
