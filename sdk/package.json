@@ -1,14 +1,51 @@
 {
-  "name": "@flowshapr/sdk",
+  "name": "@flowshapr/client",
   "version": "0.1.0",
-  "description": "Minimal client SDK to execute Flowshapr flows via API key.",
+  "description": "JavaScript/TypeScript client SDK for executing Flowshapr AI flows via API",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "flowshapr",
+    "ai",
+    "genkit",
+    "flows",
+    "client",
+    "sdk",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flowshapr/flowshapr.git",
+    "directory": "sdk"
+  },
+  "homepage": "https://flowshapr.com",
+  "bugs": {
+    "url": "https://github.com/flowshapr/flowshapr/issues"
+  },
+  "author": {
+    "name": "Flowshapr Team",
+    "url": "https://flowshapr.com"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch ./examples/run-sample.ts"
+    "dev": "tsx watch ./examples/run-sample.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0",

@@ -35,7 +35,7 @@ export default function(input) {
     const result = await poolService.executeFlow(simpleCode, input, config);
 
     expect(result.success).toBe(true);
-    expect(result.runtime).toBe('container-pool');
+    expect(result.runtime).toBe('flowshapr');
     expect(result.result).toBeDefined();
     expect(result.result.result).toBe('Hello from pool: Pool Test');
     expect(result.result.executedBy).toBe('container-pool');
@@ -58,7 +58,7 @@ export default function(input) {
     const result = await poolService.executeFlow(invalidCode, input, config);
 
     expect(result.success).toBe(false);
-    expect(result.runtime).toBe('container-pool');
+    expect(result.runtime).toBe('flowshapr');
     expect(result.error).toBeDefined();
     expect(result.error).toContain('Test error from pool container');
     expect(result.meta).toBeDefined();

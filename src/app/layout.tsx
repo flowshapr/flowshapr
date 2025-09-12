@@ -7,6 +7,11 @@ import { GA_TRACKING_ID } from '@/lib/analytics';
 export const metadata: Metadata = {
   title: 'Flowshapr - Visual AI Flow Builder',
   description: 'Create, manage, and deploy Genkit AI flows with a visual interface',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

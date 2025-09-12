@@ -1,87 +1,170 @@
-# Flowshapr for Genkit
+# Flowshapr
 
-Flowshapr for Genkit is a visual drag-and-drop interface for building Firebase Genkit AI flows that allows users to create, manage, and deploy Genkit flows to various platforms (Firebase, Google Cloud, AWS, or keep with us). Developers use a thin SDK to call flows remotely.
+<div align="center">
+  <img src="public/images/logo.png" alt="Flowshapr Logo" width="200"/>
+  
+  **Visual drag-and-drop interface for building Firebase Genkit AI flows**
 
-## Architecture
+  [![GitHub](https://img.shields.io/github/stars/flowshapr/flowshapr?style=social)](https://github.com/flowshapr/flowshapr)
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-### Backend (Express.js)
-- **Authentication**: Better Auth with PostgreSQL
-- **Database**: PostgreSQL with Drizzle ORM
-- **API**: RESTful API with role-based access control
-- **Domain-Driven Design**
+</div>
 
-### Frontend (Next.js)
-- **UI Framework**: React with TypeScript
-- **Styling**: Tailwind CSS
-- **Flow Editor**: React Flow for visual editing
-- **Code Generation**: Real-time TypeScript generation
-- **Authentication**: Better Auth client integration
+---
 
-## Getting Started
+## 🚀 Try Flowshapr Cloud
+
+**Want to get started immediately?** Try Flowshapr on our hosted platform:
+
+**[👉 Get started at flowshapr.ai](https://flowshapr.ai)**
+
+No installation required - build and deploy your first Genkit flow in minutes!
+
+---
+
+## ⚠️ Early Development Notice
+
+**Flowshapr is in very early development with active daily updates.** Bugs and breaking changes are likely. We appreciate your patience and feedback as we build this tool.
+
+🐛 **Found a bug?** Please [report it here](https://github.com/flowshapr/flowshapr/issues)
+
+---
+
+## 📸 Screenshot
+
+![Flowshapr Interface](public/images/screenshot.png)
+
+---
+
+## What is Flowshapr?
+
+Flowshapr is a visual drag-and-drop interface for building [Firebase Genkit](https://firebase.google.com/docs/genkit) AI flows. Create, manage, and deploy Genkit flows to various platforms (Firebase, Google Cloud, AWS, or locally) using an intuitive visual editor. Developers use our thin SDK to call flows remotely.
+
+### Key Features
+
+- 🎨 **Visual Flow Builder** - Drag-and-drop interface powered by React Flow
+- 🚀 **Real-time Code Generation** - Live TypeScript code generation from visual flows  
+- ⚡ **Instant Execution** - Test and debug flows in real-time
+- 🔗 **Multi-platform Deployment** - Deploy to Firebase, Google Cloud, AWS, or our platform
+- 📱 **Remote SDK** - Thin SDK for calling flows from any application
+- 🤝 **Team Collaboration** - Organization and team management with role-based access
+- 🔧 **Node Types** - Input, Model, Prompt, Transform, Output, and Condition nodes
+
+### Built with Firebase Genkit
+
+Flowshapr is powered by [Firebase Genkit](https://firebase.google.com/docs/genkit), Google's AI application framework. Join the Genkit community on [Discord](https://discord.gg/qXt5zzQKpc) for support and discussions.
+
+---
+
+## 🐳 Quick Start with Docker
+
+The fastest way to run Flowshapr locally is using Docker Compose:
 
 ### Prerequisites
 
-- Node.js 18+ 
-- PostgreSQL database
+- Docker and Docker Compose installed
+- Node.js 20+ (for local development)
 
-### 1. Database Setup
-
-Create a PostgreSQL database and note the connection string.
-
-### 2. Backend Setup
+### 1. Clone and Start
 
 ```bash
-# Navigate to server directory
+# Clone the repository
+git clone https://github.com/flowshapr/flowshapr.git
+cd flowshapr
+
+# Start all services
+docker compose -f docker/docker-compose.local.yml up -d
+```
+
+### 2. Access the Application
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **PostgreSQL**: localhost:5432 (user: `flowshapr`, password: `flowshapr_test_password`)
+
+### 3. Environment Configuration
+
+For production use, copy and customize the environment files:
+
+```bash
+# Backend environment
+cp server/.env.example server/.env
+
+# Frontend environment  
+cp .env.local.example .env.local
+```
+
+Edit these files with your:
+- Database connection strings
+- OAuth provider credentials (Google, GitHub, etc.)
+- AI model API keys (OpenAI, Google AI, etc.)
+- Authentication secrets
+
+### 4. Docker Services
+
+The Docker setup includes:
+- **PostgreSQL** - Database with automatic migrations
+- **Backend API** - Express.js server with domain-driven architecture
+- **Frontend** - Next.js application
+- **Genkit Executors** - Isolated containers for AI flow execution
+
+### 5. Stop Services
+
+```bash
+docker compose -f docker/docker-compose.local.yml down
+```
+
+---
+
+## 🛠️ Development Setup
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL database
+- AI provider API keys (optional for basic functionality)
+
+### Backend Setup
+
+```bash
 cd server
-
-# Copy environment file
-cp .env.example .env
-
-# Edit .env with your database URL and OAuth credentials
-# DATABASE_URL=postgresql://username:password@localhost:5432/flowshapr
-# BETTER_AUTH_SECRET=your-secret-key
-# GOOGLE_CLIENT_ID=your-google-client-id
-# ... etc
 
 # Install dependencies
 npm install
 
-# Generate database schema
-npm run db:generate
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your database URL and other settings
 
-# Run database migrations
+# Generate and run database migrations
+npm run db:generate
 npm run db:migrate
 
 # Start development server
 npm run dev
 ```
 
-The backend server will run on http://localhost:3001
+Backend runs on http://localhost:3001
 
-### 3. Frontend Setup
+### Frontend Setup
 
 ```bash
 # From project root
-# Copy environment file
-cp .env.local.example .env.local
-
-# Edit .env.local with your configuration
-# BACKEND_URL=http://localhost:3001
-# NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3001
-# ... etc
-
-# Install dependencies
 npm install
+
+# Copy and configure environment
+cp .env.local.example .env.local
+# Edit .env.local with your backend URL and other settings
 
 # Start development server
 npm run dev
 ```
 
-The frontend will run on http://localhost:3000
+Frontend runs on http://localhost:3000
 
-## Development Commands
+### Development Commands
 
-### Backend
+**Backend:**
 ```bash
 cd server
 npm run dev          # Start development server
@@ -92,7 +175,7 @@ npm run db:migrate   # Run migrations
 npm run db:studio    # Open Drizzle Studio
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 npm run dev          # Start development server
 npm run build        # Build for production
@@ -101,48 +184,111 @@ npm run lint         # Run ESLint
 npm run type-check   # Run TypeScript checks
 ```
 
-## Project Structure
+---
+
+## 🏗️ Architecture
+
+### System Overview
+
+Flowshapr follows a three-layer architecture:
+
+1. **Visual Editor Layer** - React Flow canvas for drag-and-drop flow building
+2. **Code Generation Layer** - Template-based TypeScript code generation
+3. **Execution Layer** - Firebase Genkit integration for AI workflow execution
+
+### Backend (Express.js)
+- **Authentication** - Better Auth with social providers
+- **Database** - PostgreSQL with Drizzle ORM
+- **API** - RESTful API with role-based access control
+- **Architecture** - Domain-driven design with clear separation of concerns
+
+### Frontend (Next.js)
+- **UI Framework** - React with TypeScript and Tailwind CSS
+- **Flow Editor** - React Flow for visual editing
+- **Code Preview** - Monaco Editor with syntax highlighting
+- **State Management** - Zustand for client state
+
+### Node Types
+
+- **Input Node** - Define flow inputs (text, JSON, files)
+- **Model Node** - Select AI models (Gemini, OpenAI, Claude)
+- **Prompt Node** - Create templates with variables
+- **Transform Node** - Data transformation logic
+- **Output Node** - Configure flow outputs
+- **Condition Node** - Conditional branching
+
+### Project Structure
 
 ```
+├── docker/                 # Docker configuration
 ├── server/                 # Express.js backend
 │   ├── src/
-│   │   ├── domains/       # Domain logic (auth, orgs, teams)
-│   │   ├── shared/        # Shared utilities and types
-│   │   └── infrastructure/ # Database, auth configuration
+│   │   ├── domains/       # Business domains (auth, flows, etc.)
+│   │   ├── shared/        # Shared utilities and middleware
+│   │   └── infrastructure/ # Database and external integrations
 │   └── drizzle/           # Database migrations
 ├── src/                   # Next.js frontend
-│   ├── app/              # App Router pages
+│   ├── app/              # App Router pages and API routes
 │   ├── components/       # React components
+│   ├── features/         # Feature-specific components
 │   └── lib/              # Utilities and configurations
+├── sdk/                   # Remote execution SDK
 └── docs/                 # Documentation
 ```
 
-## Features
+---
 
-### Current
-- ✅ User authentication (email/password + social)
-- ✅ Organization and team management
-- ✅ Role-based access control (admin/developer)
-- ✅ Visual flow builder (existing)
-- ✅ Code generation (existing)
-- ✅ Real-time execution (existing)
+## 🤝 Contributing
 
-### Planned
-- 🚧 Flow deployment to multiple platforms
-- 🚧 SDK for remote flow execution
-- 🚧 Flow versioning and rollback
-- 🚧 Team collaboration features
-- 🚧 Analytics and monitoring
-- 🚧 Flow marketplace
+We welcome contributions! Flowshapr is in active development and there are many ways to help:
 
-## Contributing
+1. **Report Bugs** - Create detailed issue reports
+2. **Feature Requests** - Suggest new capabilities
+3. **Code Contributions** - Submit pull requests
+4. **Documentation** - Help improve our docs
+5. **Community Support** - Help others in discussions
+
+### Development Process
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Make your changes following our coding standards
+4. Test your changes thoroughly
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
-## License
+### Code Standards
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Follow existing code style and patterns
+- Use TypeScript with proper typing
+- Write tests for new functionality
+- Follow domain-driven design principles in backend
+- Keep components focused and reusable in frontend
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+See the [LICENSE](LICENSE) file for full details.
+
+---
+
+## 🔗 Links
+
+- **Website**: [flowshapr.ai](https://flowshapr.ai)
+- **Documentation**: [docs.flowshapr.ai](https://docs.flowshapr.ai)
+- **Firebase Genkit**: [firebase.google.com/docs/genkit](https://firebase.google.com/docs/genkit)
+- **Genkit Discord**: [discord.gg/qXt5zzQKpc](https://discord.gg/qXt5zzQKpc)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/flowshapr/flowshapr/issues)
+
+---
+
+<div align="center">
+  
+**Made with ❤️ by the Flowshapr Team**
+
+[⭐ Star us on GitHub](https://github.com/flowshapr/flowshapr) • [🐛 Report Issues](https://github.com/flowshapr/flowshapr/issues) • [💬 Join Discord](https://discord.gg/qXt5zzQKpc)
+
+</div>
