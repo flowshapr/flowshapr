@@ -10,7 +10,7 @@
 */
 import { FlowshaprClient } from '../src/index.js';
 async function main() {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:8787';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
     const apiKey = "fs_5d1d09d6ac03a6adf9a02880605149c59b98a1c9df7ce20b181f5b1688b6eda0";
     if (!apiKey)
         throw new Error('Set API_KEY env var to a flow API key');

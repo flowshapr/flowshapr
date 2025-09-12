@@ -8,7 +8,9 @@ export class FlowshaprClient {
         this.apiKey = config.apiKey;
     }
     async runByAlias(alias, input, options) {
-        // Prefer the server's by-alias execute endpoint (avoids list lookups and enforces token scoping)
+        // Use the server's by-alias execute endpoint (enforces token scoping).
+        // Surface server errors directly to the caller instead of falling back,
+        // so 401/403/404 are visible.
         const directUrl = `${this.baseUrl}/api/flows/by-alias/${encodeURIComponent(alias)}/execute`;
         const directRes = await fetch(directUrl, {
             method: 'POST',
@@ -16,13 +18,15 @@ export class FlowshaprClient {
             body: JSON.stringify({ input }),
             signal: options?.signal,
         });
+        const data = await this.safeJson(directRes);
         if (directRes.ok) {
-            const data = await this.safeJson(directRes);
             return data;
         }
-        // Fallback: resolve ID via list
-        const flowId = await this.resolveFlowIdByAlias(alias, options);
-        return this.runById(flowId, input, options);
+        return {
+            success: false,
+            error: (data && (data.error ?? data)) || directRes.statusText,
+            meta: { status: directRes.status },
+        };
     }
     async runById(flowId, input, options) {
         const url = `${this.baseUrl}/api/flows/${encodeURIComponent(flowId)}/execute`;

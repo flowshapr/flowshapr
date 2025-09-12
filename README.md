@@ -5,6 +5,7 @@
   
   **Visual drag-and-drop interface for building Firebase Genkit AI flows**
 
+  [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/flowshapr/flowshapr/releases)
   [![GitHub](https://img.shields.io/github/stars/flowshapr/flowshapr?style=social)](https://github.com/flowshapr/flowshapr)
   [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -185,6 +186,72 @@ npm run type-check   # Run TypeScript checks
 ```
 
 ---
+
+## 📡 Using the SDK
+
+Once you've built and deployed your flows with Flowshapr, you can call them from any application using our lightweight SDK.
+
+### Installation
+
+```bash
+npm install @flowshapr/client
+```
+
+### Quick Start
+
+```typescript
+import { FlowshaprClient } from '@flowshapr/client';
+
+// Initialize the client
+const client = new FlowshaprClient({
+  apiKey: 'your-api-key',
+  baseUrl: 'https://api.flowshapr.ai' // or your self-hosted instance
+});
+
+// Call a flow
+const result = await client.executeFlow('your-flow-id', {
+  input: 'Hello, world!'
+});
+
+console.log(result.data);
+```
+
+### Authentication
+
+Get your API key from your Flowshapr dashboard:
+
+1. Go to your flow settings
+2. Navigate to the "Access Tokens" section
+3. Create a new API key for your application
+4. Use it in your SDK initialization
+
+### Examples
+
+**Simple Text Processing:**
+```typescript
+const response = await client.executeFlow('text-summarizer', {
+  text: 'Your long text here...',
+  maxLength: 100
+});
+```
+
+
+### Error Handling
+
+```typescript
+try {
+  const result = await client.executeFlow('my-flow', { input: 'test' });
+} catch (error) {
+  if (error.code === 'FLOW_NOT_FOUND') {
+    console.log('Flow does not exist');
+  } else if (error.code === 'QUOTA_EXCEEDED') {
+    console.log('API quota exceeded');
+  } else {
+    console.log('Unexpected error:', error.message);
+  }
+}
+```
+
 
 ## 🏗️ Architecture
 
