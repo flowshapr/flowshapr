@@ -33,6 +33,7 @@ services:
       - DATABASE_URL=postgresql://flowshapr:flowshapr_dev_password@postgres:5432/flowshapr
       - BETTER_AUTH_SECRET=dev_auth_secret_for_development
       - BETTER_AUTH_URL=http://localhost:3001
+      - EXECUTOR_URLS=http://genkit-executor:3000
     volumes:
       - ../server:/app:cached
       - api_node_modules:/app/node_modules
@@ -43,6 +44,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      genkit-executor:
+        condition: service_started
     command: sh -c "npm install && npm run db:migrate && npm run dev"
     restart: unless-stopped
 

@@ -3,6 +3,9 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Temporary execution files
+docker/execution/flows/
+
 # Production builds
 /build
 /dist

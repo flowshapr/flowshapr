@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+
+# Temporary flow files
+flows/
+
+# Log files
+*.log
+
+# Environment files
+.env*

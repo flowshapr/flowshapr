@@ -192,7 +192,7 @@ describe('FlowRunService', () => {
         body: {
           success: false,
           error: 'Execution failed',
-          runtime: 'container-executor',
+          runtime: 'flowshapr',
         },
       });
       expect(mockTracesService.createTrace).toHaveBeenCalledWith(
@@ -213,7 +213,7 @@ describe('FlowRunService', () => {
         body: {
           success: false,
           error: 'Timeout',
-          runtime: 'container-executor',
+          runtime: 'flowshapr',
         },
       });
     });
@@ -232,7 +232,7 @@ describe('FlowRunService', () => {
         body: {
           success: false,
           error: { message: 'Code generation failed', errors: ['Code generation failed'] },
-          runtime: 'container-executor',
+          runtime: 'flowshapr',
         },
       });
     });

@@ -114,15 +114,26 @@ class GenkitExecutionServer {
   }
 
   setupEnvironmentFromConfig(config, input) {
-    // API keys are already set as environment variables by the container executor
-    // Just verify they're available and log for debugging
+    // Extract API keys from config and set as environment variables
+    if (config.googleApiKey) {
+      process.env.GEMINI_API_KEY = config.googleApiKey;
+      process.env.GOOGLE_API_KEY = config.googleApiKey; // Some providers use this variant
+    }
+    if (config.openaiApiKey) {
+      process.env.OPENAI_API_KEY = config.openaiApiKey;
+    }
+    if (config.anthropicApiKey) {
+      process.env.ANTHROPIC_API_KEY = config.anthropicApiKey;
+    }
+    
+    // Log available API keys for debugging
     const apiKeys = {
-      google: process.env.GEMINI_API_KEY,
+      google: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       openai: process.env.OPENAI_API_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY
     };
     
-    console.log('🔑 Available API keys:', {
+    console.log('🔑 API keys from config:', {
       google: apiKeys.google ? '✅ Set' : '❌ Missing',
       openai: apiKeys.openai ? '✅ Set' : '❌ Missing', 
       anthropic: apiKeys.anthropic ? '✅ Set' : '❌ Missing'
@@ -136,16 +147,17 @@ class GenkitExecutionServer {
   }
 
   async executeGenkitFlow(code, input, executionId) {
+    const tempDir = '/app/flows';
+    const moduleId = `flow_${executionId}`;
+    const codePath = path.join(tempDir, `${moduleId}.mjs`);
+    
     try {
-      // Create a unique module identifier to avoid caching issues
-      const moduleId = `flow_${executionId}`;
-      
-      // Write the code to app directory where node_modules is available
-      const tempDir = '/app/flows';
+      // Create temp directory
       await fs.mkdir(tempDir, { recursive: true });
       
-      const codePath = path.join(tempDir, `${moduleId}.mjs`);
+      // Write the code to temp file
       await fs.writeFile(codePath, code);
+      console.log(`📝 Created temp flow file: ${codePath}`);
       
       // Dynamic import the generated flow
       const flowModule = await import(codePath);
@@ -156,31 +168,51 @@ class GenkitExecutionServer {
       }
       
       const result = await flowModule.default(input);
-      
-      // Cleanup temp file
-      try {
-        await fs.unlink(codePath);
-      } catch (error) {
-        console.warn(`⚠️ Failed to cleanup temp file: ${error.message}`);
-      }
+      console.log(`✅ Flow execution completed: ${executionId}`);
       
       return result;
       
     } catch (error) {
-      // Enhanced error handling for common issues
-      if (error.message.includes('Cannot resolve module')) {
-        throw new Error(`Missing dependency: ${error.message}`);
-      } else if (error.message.includes('SyntaxError')) {
-        throw new Error(`Code syntax error: ${error.message}`);
-      } else if (error.message.includes('API_KEY')) {
-        throw new Error(`Missing API key: ${error.message}`);
-      } else {
-        throw error;
+      console.error(`❌ Flow execution error in ${executionId}:`, error.message);
+      throw error;
+    } finally {
+      // Always cleanup temp file in finally block
+      try {
+        await fs.unlink(codePath);
+        console.log(`🗑️  Cleaned up temp file: ${codePath}`);
+      } catch (cleanupError) {
+        console.warn(`⚠️ Failed to cleanup temp file ${codePath}: ${cleanupError.message}`);
       }
     }
   }
 
+  async cleanupTempFiles() {
+    const tempDir = '/app/flows';
+    try {
+      const files = await fs.readdir(tempDir);
+      const flowFiles = files.filter(file => file.startsWith('flow_') && file.endsWith('.mjs'));
+      
+      if (flowFiles.length > 0) {
+        console.log(`🗑️  Cleaning up ${flowFiles.length} leftover temp files...`);
+        for (const file of flowFiles) {
+          try {
+            await fs.unlink(path.join(tempDir, file));
+            console.log(`   Removed: ${file}`);
+          } catch (error) {
+            console.warn(`   Failed to remove: ${file}`);
+          }
+        }
+      }
+    } catch (error) {
+      // Temp directory doesn't exist yet, which is fine
+      console.log('📁 Temp directory will be created on first execution');
+    }
+  }
+
   async start() {
+    // Clean up any leftover temp files from previous runs
+    await this.cleanupTempFiles();
+    
     return new Promise((resolve) => {
       const server = this.app.listen(PORT, () => {
         console.log(`✅ Genkit HTTP Execution Server ready on port ${PORT}`);

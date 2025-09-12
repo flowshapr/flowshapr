@@ -160,7 +160,7 @@ export class ContainerPoolService extends EventEmitter {
           instance: executionId,
           duration: Date.now() - startTime
         },
-        runtime: 'container-pool'
+        runtime: 'flowshapr'
       };
     }
 
@@ -191,7 +191,7 @@ export class ContainerPoolService extends EventEmitter {
           duration,
           containerId: container.id
         },
-        runtime: 'container-pool'
+        runtime: 'flowshapr'
       };
 
     } catch (error: any) {
@@ -206,7 +206,7 @@ export class ContainerPoolService extends EventEmitter {
           duration,
           containerId: container.id
         },
-        runtime: 'container-pool'
+        runtime: 'flowshapr'
       };
     } finally {
       // Mark container as available
@@ -266,10 +266,10 @@ export class ContainerPoolService extends EventEmitter {
 
   private async getDockerComposeContainers(): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      // List containers with genkit-executor label
+      // List containers with executor label - matches both dev and prod naming
       const child = spawn('docker', [
         'ps',
-        '--filter', 'name=flowshapr-genkit-executor',
+        '--filter', 'name=flowshapr-executor',
         '--format', 'json'
       ], {
         stdio: ['ignore', 'pipe', 'pipe']
@@ -295,14 +295,27 @@ export class ContainerPoolService extends EventEmitter {
               const name = containerInfo.Names;
               const id = containerInfo.ID;
               
-              // Get container's exposed port
-              const port = await this.getContainerPortFromId(id);
+              // Use internal Docker network for communication when running in Docker
+              // Check if we're running in Docker by looking for container hostname
+              const isRunningInDocker = process.env.HOSTNAME === '0.0.0.0' || process.env.NODE_ENV === 'development';
               
-              return {
-                id,
-                name,
-                url: `http://localhost:${port}`
-              };
+              if (isRunningInDocker && name.includes('executor')) {
+                // Use internal Docker service name for communication
+                const serviceName = name.replace('-dev', '').replace('flowshapr-', '');
+                return {
+                  id,
+                  name,
+                  url: `http://${serviceName}:3000`
+                };
+              } else {
+                // Fallback to localhost with exposed port
+                const port = await this.getContainerPortFromId(id);
+                return {
+                  id,
+                  name,
+                  url: `http://localhost:${port}`
+                };
+              }
             }));
             
             resolve(containers);
