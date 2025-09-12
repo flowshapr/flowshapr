@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/images/logo-flowshapr.png" alt="Flowshapr Logo" width="200"/>
   
-  **Visual drag-and-drop interface for building Firebase Genkit AI flows**
+  **Visual drag-and-drop canvas for Genkit AI flows**
 
   [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/flowshapr/flowshapr/releases)
   [![GitHub](https://img.shields.io/github/stars/flowshapr/flowshapr?style=social)](https://github.com/flowshapr/flowshapr)
