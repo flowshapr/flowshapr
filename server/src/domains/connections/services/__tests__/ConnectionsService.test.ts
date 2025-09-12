@@ -1,16 +1,26 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+// Create mock database object first
+const mockDb = {
+  select: jest.fn(),
+  insert: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  transaction: jest.fn(),
+};
+
+// Mock the database connection before importing ConnectionsService
+jest.mock('../../../../infrastructure/database/connection', () => ({
+  db: mockDb,
+}));
+
+// Now import after mocking
 import { ConnectionsService } from '../ConnectionsService';
 import {
-  mockDb,
   resetDbMocks,
   createMockConnection,
   createMockUser,
 } from '../../../../test-utils';
-
-// Mock the database connection
-jest.mock('../../../../infrastructure/database/connection', () => ({
-  db: mockDb,
-}));
 
 describe('ConnectionsService', () => {
   let connectionsService: ConnectionsService;

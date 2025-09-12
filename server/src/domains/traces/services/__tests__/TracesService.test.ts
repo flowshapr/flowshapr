@@ -1,16 +1,26 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+// Create mock database object first
+const mockDb = {
+  select: jest.fn(),
+  insert: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  transaction: jest.fn(),
+};
+
+// Mock the database connection before importing TracesService
+jest.mock('../../../../infrastructure/database/connection', () => ({
+  db: mockDb,
+}));
+
+// Now import after mocking
 import { TracesService } from '../TracesService';
 import {
-  mockDb,
   resetDbMocks,
   createMockTrace,
   createMockUser,
 } from '../../../../test-utils';
-
-// Mock the database connection
-jest.mock('../../../../infrastructure/database/connection', () => ({
-  db: mockDb,
-}));
 
 describe('TracesService', () => {
   let tracesService: TracesService;
@@ -128,7 +138,7 @@ describe('TracesService', () => {
   });
 
   describe('createTrace', () => {
-    const createTraceInput = {
+    const getCreateTraceInput = () => ({
       executionId: 'exec-123',
       flowId: 'flow-123',
       status: 'completed' as const,
@@ -141,9 +151,10 @@ describe('TracesService', () => {
       userAgent: 'test-agent',
       ipAddress: '127.0.0.1',
       executedBy: mockUser.id,
-    };
+    });
 
     it('should create trace successfully with all fields', async () => {
+      const createTraceInput = getCreateTraceInput();
       mockDb.insert.mockReturnValue({
         values: jest.fn().mockResolvedValue(undefined),
       });
@@ -199,7 +210,7 @@ describe('TracesService', () => {
 
     it('should handle failed trace creation', async () => {
       const failedTraceInput = {
-        ...createTraceInput,
+        ...getCreateTraceInput(),
         status: 'failed' as const,
         errorMessage: 'Execution failed',
         output: null,
@@ -224,7 +235,7 @@ describe('TracesService', () => {
       });
 
       await expect(
-        tracesService.createTrace(createTraceInput)
+        tracesService.createTrace(getCreateTraceInput())
       ).rejects.toThrow('Database error');
     });
 

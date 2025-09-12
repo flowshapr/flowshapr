@@ -695,31 +695,16 @@ export function FlowBuilderView({
       {/* Flow Builder Toolbar */}
       <div className="h-12 bg-base-100 border-b border flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <Button
-            onClick={async () => {
-              if (!selectedFlow) return;
-              try {
-                const resp = await fetch(`/api/flows/${selectedFlow.id}/publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-                if (!resp.ok) throw new Error('Deploy failed');
-              } catch (e) {
-                console.error('Deploy failed', e);
-              }
-            }}
-            size="sm"
-            className="gap-2"
-          >
-            <Rocket className="w-4 h-4" />
-            Deploy
-          </Button>
+          {/* Left side content can go here if needed in the future */}
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
           <Button onClick={handleSaveFlow} variant="ghost" size="icon" title="Save">
             <Save className="w-4 h-4" />
           </Button>
           <Button onClick={handleLoadFlow} variant="ghost" size="icon" title="Load">
             <FolderOpen className="w-4 h-4" />
           </Button>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs">
           {autosaveStatus === 'saving' && (
             <>
               <div className="w-3 h-3 border border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>

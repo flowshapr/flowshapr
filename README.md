@@ -1,7 +1,7 @@
 # Flowshapr
 
 <div align="center">
-  <img src="public/images/logo.png" alt="Flowshapr Logo" width="200"/>
+  <img src="public/images/logo-flowshapr.png" alt="Flowshapr Logo" width="200"/>
   
   **Visual drag-and-drop interface for building Firebase Genkit AI flows**
 

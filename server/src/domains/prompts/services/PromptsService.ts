@@ -141,7 +141,7 @@ export class PromptsService {
       // Prepare update data with proper validation
       const updateData: any = { updatedAt: new Date() };
       
-      if (updates.name && typeof updates.name === 'string') {
+      if (updates.name !== undefined && typeof updates.name === 'string') {
         const trimmedName = updates.name.trim();
         if (!trimmedName) {
           throw new ValidationError("Prompt name cannot be empty");
@@ -149,7 +149,7 @@ export class PromptsService {
         updateData.name = trimmedName;
       }
       
-      if (updates.template && typeof updates.template === 'string') {
+      if (updates.template !== undefined && typeof updates.template === 'string') {
         if (!updates.template.trim()) {
           throw new ValidationError("Prompt template cannot be empty");
         }

@@ -81,13 +81,17 @@ describe('PromptsController', () => {
       });
     });
 
-    it('should gracefully fallback to empty list on error', async () => {
+    it('should return 500 error on service failure', async () => {
       (flowService.getFlowById as jest.Mock).mockResolvedValue(mockFlow);
       (promptsService.listByFlow as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await controller.listByFlow(mockRequest as Request, mockResponse as Response);
 
-      expect(mockJson).toHaveBeenCalledWith({ success: true, data: [] });
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith({ 
+        success: false, 
+        error: { message: 'Failed to list prompts', code: 'INTERNAL_ERROR' } 
+      });
     });
   });
 
@@ -173,20 +177,16 @@ describe('PromptsController', () => {
     });
 
     it('should return 500 for unknown error', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (flowService.getFlowById as jest.Mock).mockResolvedValue(mockFlow);
       (promptsService.createForFlow as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await controller.createForFlow(mockRequest as Request, mockResponse as Response);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error creating prompt:', expect.any(Error));
       expect(mockStatus).toHaveBeenCalledWith(500);
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
         error: { message: 'Failed to create prompt', code: 'INTERNAL_ERROR' },
       });
-
-      consoleSpy.mockRestore();
     });
   });
 

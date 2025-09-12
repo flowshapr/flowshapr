@@ -30,6 +30,16 @@ export const createMockFlow = (overrides: any = {}) => ({
   ...overrides,
 });
 
+// User factory
+export const createMockUser = (overrides: any = {}) => ({
+  id: randomUuid(),
+  name: `User ${randomString()}`,
+  email: randomEmail(),
+  createdAt: randomDate(),
+  updatedAt: randomDate(),
+  ...overrides,
+});
+
 // Flow node factory
 export const createMockFlowNode = (overrides: any = {}) => ({
   id: randomUuid(),

@@ -262,6 +262,15 @@ describe('PromptsService', () => {
     it('should throw ValidationError for whitespace-only name', async () => {
       const invalidData = { name: '   ' };
 
+      // Mock prompt exists check
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([mockPrompt]),
+          }),
+        }),
+      });
+
       await expect(
         promptsService.updateForFlow(flowId, promptId, invalidData, mockUser.id)
       ).rejects.toThrow('Prompt name cannot be empty');
@@ -286,6 +295,15 @@ describe('PromptsService', () => {
 
     it('should throw ValidationError for whitespace-only template', async () => {
       const invalidData = { template: '   ' };
+
+      // Mock prompt exists check
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([mockPrompt]),
+          }),
+        }),
+      });
 
       await expect(
         promptsService.updateForFlow(flowId, promptId, invalidData, mockUser.id)
@@ -316,6 +334,15 @@ describe('PromptsService', () => {
     it('should handle unique constraint violation (23505)', async () => {
       const dbError = { code: '23505' };
       
+      // Mock prompt exists check
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([mockPrompt]),
+          }),
+        }),
+      });
+
       mockDb.update.mockReturnValue({
         set: jest.fn().mockReturnValue({
           where: jest.fn().mockRejectedValue(dbError),

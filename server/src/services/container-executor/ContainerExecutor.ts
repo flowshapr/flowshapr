@@ -113,7 +113,9 @@ export class ContainerExecutor {
 
   private async buildDockerImage(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const dockerBuildPath = path.join(process.cwd(), 'docker', 'execution');
+      // Navigate to project root (one level up from server directory)
+      const projectRoot = path.resolve(process.cwd(), '..');
+      const dockerBuildPath = path.join(projectRoot, 'docker', 'execution');
       const child = spawn('docker', [
         'build',
         '-t', this.config.imageName,
