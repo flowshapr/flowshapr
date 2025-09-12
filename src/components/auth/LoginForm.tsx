@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { auth } from "@/lib/auth-client";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function LoginForm() {
+  const analytics = useAnalytics();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,9 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Track login attempt
+    analytics.trackAuth('login', 'email');
 
     try {
       const result = await auth.signIn.email(email, password);
@@ -31,6 +36,9 @@ export function LoginForm() {
         } else {
           setError(`Login failed: ${errorMessage}`);
         }
+        
+        // Track login failure
+        analytics.trackAppError(errorMessage, 'LoginForm', 'medium');
       } else {
         // Mirror session cookie on frontend domain for server-side proxy routes
         const sessionId = result?.data?.session?.id;
@@ -45,6 +53,13 @@ export function LoginForm() {
         if (uid) {
           try { document.cookie = `uid=${uid}; Path=/; SameSite=Lax`; } catch {}
         }
+        
+        // Track successful login
+        analytics.track('login_success', 'authentication', 'email', undefined, {
+          user_id: uid,
+          session_id: sessionId,
+        });
+        
         // Redirect to app
         window.location.href = "/app";
       }
@@ -61,6 +76,9 @@ export function LoginForm() {
       } else {
         setError(`Login failed: ${err.message || "An unexpected error occurred"}`);
       }
+      
+      // Track login error
+      analytics.trackAppError(err.message || "An unexpected error occurred", 'LoginForm', 'high');
     } finally {
       setLoading(false);
     }
@@ -68,6 +86,9 @@ export function LoginForm() {
 
   const handleSocialLogin = async (provider: "google" | "github" | "microsoft" | "apple") => {
     setLoading(true);
+    
+    // Track social login attempt
+    analytics.trackAuth('login', provider);
     setError("");
 
     try {

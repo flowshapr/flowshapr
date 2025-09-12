@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ExecutionResult, ExecutionTrace } from '@/types/flow';
 import { formatTimestamp } from '@/lib/utils';
 import { Play, Square, Clock, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight, Terminal } from 'lucide-react';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface TestPanelProps {
   onExecute?: (input: any) => Promise<ExecutionResult>;
@@ -14,6 +15,7 @@ interface TestPanelProps {
 }
 
 export function TestPanel({ onExecute, isExecuting = false, canExecute = false }: TestPanelProps) {
+  const analytics = useAnalytics();
   const [input, setInput] = useState('');
   const [inputType, setInputType] = useState<'text' | 'json'>('text');
   const [results, setResults] = useState<ExecutionResult[]>([]);
@@ -22,29 +24,65 @@ export function TestPanel({ onExecute, isExecuting = false, canExecute = false }
   const handleExecute = async () => {
     if (!onExecute) return;
 
+    // Track test execution attempt
+    analytics.trackFeatureUsage('test_execution');
+
+    const startTime = Date.now();
+
     try {
       let parsedInput = input;
       if (inputType === 'json' && input.trim()) {
         try {
           parsedInput = JSON.parse(input);
         } catch (error) {
-          setResults([...results, { success: false, error: 'Invalid JSON input', traces: [] }]);
+          const errorMsg = 'Invalid JSON input';
+          setResults([...results, { success: false, error: errorMsg, traces: [] }]);
+          
+          // Track JSON parsing error
+          analytics.trackAppError(errorMsg, 'TestPanel', 'medium');
           return;
         }
       }
+      
       const result = await onExecute(parsedInput);
       setResults([...results, result]);
+
+      // Track execution result
+      const executionTime = Date.now() - startTime;
+      if (result.success) {
+        analytics.trackTest('success', 'test_flow', executionTime);
+      } else {
+        analytics.trackTest('error', 'test_flow', executionTime);
+        if (result.error) {
+          analytics.trackAppError(result.error, 'TestPanel', 'medium');
+        }
+      }
     } catch (error) {
-      setResults([...results, { success: false, error: `Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`, traces: [] }]);
+      const errorMsg = `Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      setResults([...results, { success: false, error: errorMsg, traces: [] }]);
+      
+      // Track execution error
+      const executionTime = Date.now() - startTime;
+      analytics.trackTest('error', 'test_flow', executionTime);
+      analytics.trackAppError(errorMsg, 'TestPanel', 'high');
     }
   };
 
-  const handleClearResults = () => setResults([]);
+  const handleClearResults = () => {
+    setResults([]);
+    analytics.trackFeatureUsage('clear_test_results');
+  };
 
   const toggleTraceExpansion = (resultIndex: number, traceId: string) => {
     const key = `${resultIndex}-${traceId}`;
     const next = new Set(expandedTraces);
-    if (next.has(key)) next.delete(key); else next.add(key);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+      // Track trace expansion
+      analytics.trackFeatureUsage('expand_execution_trace');
+    }
     setExpandedTraces(next);
   };
 
@@ -66,7 +104,15 @@ export function TestPanel({ onExecute, isExecuting = false, canExecute = false }
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-base-content mb-1">Input Type</label>
-            <select value={inputType} onChange={(e) => setInputType(e.target.value as 'text' | 'json')} className="w-full text-xs border rounded px-2 py-1">
+            <select 
+              value={inputType} 
+              onChange={(e) => {
+                const newType = e.target.value as 'text' | 'json';
+                setInputType(newType);
+                analytics.trackFeatureUsage(`input_type_${newType}`);
+              }} 
+              className="w-full text-xs border rounded px-2 py-1"
+            >
               <option value="text">Text</option>
               <option value="json">JSON</option>
             </select>

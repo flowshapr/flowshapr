@@ -27,6 +27,7 @@ import { nodeTypes, getNodeColor } from '@/features/flow-builder/blocks/registry
 import { DeletableEdge } from './edges/DeletableEdge';
 import { FlowNode, FlowEdge, NodeType, FlowNodeData } from '@/types/flow';
 import { generateId } from '@/lib/utils';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface FlowCanvasProps {
   nodes: FlowNode[];
@@ -52,6 +53,7 @@ export function FlowCanvas({
   onViewportChange,
   onDraggingChange
 }: FlowCanvasProps) {
+  const analytics = useAnalytics();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   
@@ -88,8 +90,11 @@ export function FlowCanvas({
       const newEdge = addEdge({ ...params, type: 'deletable', animated: false, data: { kind: isTool ? 'tool' : 'flow' } }, edges);
       setEdges(newEdge);
       onEdgesChange?.(newEdge);
+
+      // Track connection creation
+      analytics.trackNode('connect', isTool ? 'tool_connection' : 'flow_connection');
     },
-    [edges, setEdges, onEdgesChange]
+    [edges, setEdges, onEdgesChange, analytics]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -172,6 +177,21 @@ export function FlowCanvas({
         onMoveEnd={(_, vp) => {
           // vp: { x, y, zoom }
           onViewportChange?.(vp as any);
+          
+          // Track viewport changes (pan/zoom)
+          analytics.trackCanvas('pan');
+        }}
+        onMove={(_, vp) => {
+          // Track zoom when zoom level changes significantly
+          if (Math.abs(vp.zoom - (viewport?.zoom || 1)) > 0.1) {
+            analytics.trackCanvas('zoom');
+          }
+        }}
+        onSelectionChange={(params) => {
+          // Track node selections
+          if (params?.nodes && params.nodes.length > 0) {
+            analytics.trackCanvas('select', `${params.nodes.length}_nodes`);
+          }
         }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

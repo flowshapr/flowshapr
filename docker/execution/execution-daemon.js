@@ -114,18 +114,19 @@ class GenkitExecutionServer {
   }
 
   setupEnvironmentFromConfig(config, input) {
-    // Set API keys from config
-    if (config.googleApiKey) {
-      process.env.GEMINI_API_KEY = config.googleApiKey;
-      process.env.GOOGLE_API_KEY = config.googleApiKey;
-      process.env.GOOGLE_GENAI_API_KEY = config.googleApiKey;
-    }
-    if (config.openaiApiKey) {
-      process.env.OPENAI_API_KEY = config.openaiApiKey;
-    }
-    if (config.anthropicApiKey) {
-      process.env.ANTHROPIC_API_KEY = config.anthropicApiKey;
-    }
+    // API keys are already set as environment variables by the container executor
+    // Just verify they're available and log for debugging
+    const apiKeys = {
+      google: process.env.GEMINI_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      anthropic: process.env.ANTHROPIC_API_KEY
+    };
+    
+    console.log('🔑 Available API keys:', {
+      google: apiKeys.google ? '✅ Set' : '❌ Missing',
+      openai: apiKeys.openai ? '✅ Set' : '❌ Missing', 
+      anthropic: apiKeys.anthropic ? '✅ Set' : '❌ Missing'
+    });
     
     // Set execution environment
     process.env.NODE_ENV = 'production';

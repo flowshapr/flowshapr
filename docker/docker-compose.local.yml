@@ -57,6 +57,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - BACKEND_URL=http://api:3001
       - HOSTNAME=0.0.0.0
     depends_on:
       api:

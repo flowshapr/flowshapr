@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { auth } from "@/lib/auth-client";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function RegisterForm() {
+  const analytics = useAnalytics();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,14 +20,19 @@ export function RegisterForm() {
     setLoading(true);
     setError("");
 
+    // Track registration attempt
+    analytics.trackAuth('register', 'email');
+
     if (password !== confirmPassword) {
       setError("Passwords don't match");
+      analytics.trackAppError("Passwords don't match", 'RegisterForm', 'low');
       setLoading(false);
       return;
     }
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters");
+      analytics.trackAppError("Password too short", 'RegisterForm', 'low');
       setLoading(false);
       return;
     }
@@ -44,7 +51,15 @@ export function RegisterForm() {
         } else {
           setError(`Registration failed: ${errorMessage}`);
         }
+        
+        // Track registration failure
+        analytics.trackAppError(errorMessage, 'RegisterForm', 'medium');
       } else {
+        // Track successful registration
+        analytics.track('registration_success', 'authentication', 'email', undefined, {
+          user_id: result?.data?.user?.id,
+        });
+        
         // Show success message or redirect
         window.location.href = "/app";
       }
@@ -61,6 +76,9 @@ export function RegisterForm() {
       } else {
         setError(`Registration failed: ${err.message || "An unexpected error occurred"}`);
       }
+      
+      // Track registration error
+      analytics.trackAppError(err.message || "An unexpected error occurred", 'RegisterForm', 'high');
     } finally {
       setLoading(false);
     }

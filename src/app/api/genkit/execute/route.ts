@@ -122,33 +122,15 @@ async function simulateNodeExecution(node: { id: string; type: string; config: a
       return template.replace('{{input}}', JSON.stringify(input));
     
     case 'model':
-      // Simulate AI model response
+      // Simulate AI model response - this is frontend simulation only
       const prompt = typeof input === 'string' ? input : JSON.stringify(input);
       
-      if (process.env.GOOGLE_AI_API_KEY) {
-        try {
-          // In a real implementation, you'd use the actual Genkit AI here
-          // For now, we'll return a simulated response
-          return {
-            text: `AI Response: I processed your input "${prompt}" using ${node.config.model}. Here's my analysis and response.`,
-            model: node.config.model,
-            provider: node.config.provider,
-          };
-        } catch (error) {
-          console.error('AI model error:', error);
-          return {
-            text: `Simulated AI Response: I processed your input "${prompt}". (Note: Add GOOGLE_AI_API_KEY for real AI responses)`,
-            model: node.config.model,
-            provider: node.config.provider,
-          };
-        }
-      } else {
-        return {
-          text: `Simulated AI Response: I processed your input "${prompt}". (Note: Add GOOGLE_AI_API_KEY for real AI responses)`,
-          model: node.config.model,
-          provider: node.config.provider,
-        };
-      }
+      // Note: This is a simulation endpoint - real execution uses connection-based API keys only
+      return {
+        text: `Simulated AI Response: I processed your input "${prompt}" using ${node.config.model}. This is a frontend simulation - real execution uses connection-based API keys.`,
+        model: node.config.model,
+        provider: node.config.provider,
+      };
     
     case 'transform':
       // Simulate data transformation

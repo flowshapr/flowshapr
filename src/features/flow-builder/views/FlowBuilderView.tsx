@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { getDefaultConfig, getNodeLabel } from '@/features/flow-builder/blocks/registry';
 import { Save, FolderOpen, Rocket } from 'lucide-react';
 import { SidebarList, SidebarListHeader, SidebarListItem } from '@/components/ui/SidebarList';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface Flow {
   id: string;
@@ -79,6 +80,12 @@ export function FlowBuilderView({
   isNavCollapsed,
   session 
 }: FlowBuilderViewProps) {
+  // Initialize analytics with user context
+  const analytics = useAnalytics({
+    userId: session?.user?.id,
+    organizationId: selectedFlow?.organizationId,
+  });
+
   const [nodes, setNodes] = useState<FlowNode[]>([]);
   const [edges, setEdges] = useState<FlowEdge[]>([]);
   const [generatedCode, setGeneratedCode] = useState<GeneratedCode>({
@@ -252,6 +259,7 @@ export function FlowBuilderView({
             }
             if (flow.metadata?.connections) setConnections(flow.metadata.connections);
             if (flow.metadata?.apiKeys) setApiKeys(flow.metadata.apiKeys);
+            
             setFlowLoading(false);
             return;
           }
@@ -279,6 +287,27 @@ export function FlowBuilderView({
       } catch (err) {
         console.error('Failed to load flow state:', err);
       }
+      
+      // Load fresh connections from API to ensure agent nodes have latest data (always executes)
+      try {
+        console.log('Loading connections for flow:', selectedFlow.id);
+        const connectionsResp = await fetch(`/api/flows/${selectedFlow.id}/connections`, { cache: 'no-store' });
+        if (connectionsResp.ok) {
+          const connectionsJson = await connectionsResp.json();
+          const freshConnections = (connectionsJson?.data || []) as Array<{ id: string; name: string; provider: string; isActive: boolean }>;
+          console.log('Loaded connections:', freshConnections);
+          setConnections(freshConnections);
+          
+          // Update window globals for AgentBlock.tsx
+          (window as any).__connections = freshConnections;
+          window.dispatchEvent(new CustomEvent('connectionsChange', { detail: freshConnections }));
+        } else {
+          console.error('Failed to load connections - HTTP status:', connectionsResp.status);
+        }
+      } catch (e) {
+        console.error('Failed to load fresh connections:', e);
+      }
+      
       setFlowLoading(false);
     };
     // Clear current graph before loading new one
@@ -303,8 +332,17 @@ export function FlowBuilderView({
     const handleNodeDelete = (event: CustomEvent) => {
       const { nodeId } = event.detail || {};
       if (!nodeId) return;
+      
+      // Find the node being deleted to get its type
+      const nodeToDelete = nodes.find(n => n.id === nodeId);
+      
       setNodes(prev => prev.filter(n => n.id !== nodeId));
       setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+
+      // Track node deletion
+      if (nodeToDelete) {
+        analytics.trackNode('delete', nodeToDelete.data?.type || 'unknown', nodeId);
+      }
     };
 
     const handleNodeSetStart = (event: CustomEvent) => {
@@ -338,7 +376,7 @@ export function FlowBuilderView({
       window.removeEventListener('consoleLog', handleConsoleLog as EventListener);
       window.removeEventListener('navigate', handleNavigate as EventListener);
     };
-  }, [pushConsole]);
+  }, [pushConsole, nodes, analytics]);
 
   const handleNodesChange = useCallback((newNodes: FlowNode[]) => {
     setNodes(newNodes);
@@ -366,10 +404,15 @@ export function FlowBuilderView({
     };
 
     setNodes(prev => [...prev, newNode]);
-  }, [nodes.length]);
+
+    // Track node addition
+    analytics.trackNodeAdd(type, position);
+  }, [nodes.length, analytics]);
 
   const handleExecuteFlow = useCallback(async (input: any): Promise<ExecutionResult> => {
     setIsExecuting(true);
+    const startTime = analytics.trackExecutionStart(selectedFlow?.id || 'unknown');
+    
     try {
       if (!selectedFlow) throw new Error('No flow selected');
       const body = {
@@ -404,15 +447,25 @@ export function FlowBuilderView({
         throw new Error(msg);
       }
       pushConsole({ level: 'info', message: 'Execution completed successfully' });
-      return (json || { success: false, error: 'Empty response', traces: [] }) as ExecutionResult;
+      const result = (json || { success: false, error: 'Empty response', traces: [] }) as ExecutionResult;
+      
+      // Track successful execution
+      analytics.trackExecutionEnd(selectedFlow.id, startTime, result.success);
+      
+      return result;
     } catch (error) {
       const message = (error as Error).message;
       pushConsole({ level: 'error', message: `Execution failed: ${message}` });
+      
+      // Track failed execution
+      analytics.trackExecutionEnd(selectedFlow?.id || 'unknown', startTime, false);
+      analytics.trackAppError(message, 'FlowExecution', 'high');
+      
       return { success: false, error: message, traces: [] };
     } finally {
       setIsExecuting(false);
     }
-  }, [nodes, edges, startNodeId, viewport, connections, selectedFlow]);
+  }, [nodes, edges, startNodeId, viewport, connections, selectedFlow, analytics]);
 
   const handleClearFlow = useCallback(() => {
     setNodes([]);
@@ -425,6 +478,11 @@ export function FlowBuilderView({
     setNodes(prev => prev.filter(n => !selectedIds.has(n.id)) as FlowNode[]);
     setEdges(prev => prev.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target)) as FlowEdge[]);
   }, [nodes]);
+
+  const handlePanelChange = useCallback((panel: 'code' | 'test' | 'variables' | 'console' | 'sdk') => {
+    setActivePanel(panel);
+    analytics.trackFeatureUsage(`panel_${panel}`);
+  }, [analytics]);
 
   const handleSaveFlow = useCallback(() => {
     const flowData = {
@@ -445,7 +503,14 @@ export function FlowBuilderView({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [nodes, edges, session, selectedFlow]);
+
+    // Track flow save/export
+    analytics.trackFlow('save', selectedFlow?.id, { 
+      node_count: nodes.length, 
+      edge_count: edges.length,
+      export_format: 'json'
+    });
+  }, [nodes, edges, session, selectedFlow, analytics]);
 
   const handleLoadFlow = useCallback(() => {
     const input = document.createElement('input');
@@ -717,7 +782,7 @@ export function FlowBuilderView({
             <div role="tablist" className="tabs tabs-bordered">
               <button
                 role="tab"
-                onClick={() => setActivePanel('code')}
+                onClick={() => handlePanelChange('code')}
                 className={`tab text-sm font-medium ${
                   activePanel === 'code' ? 'tab-active' : ''
                 }`}
@@ -726,7 +791,7 @@ export function FlowBuilderView({
               </button>
               <button
                 role="tab"
-                onClick={() => setActivePanel('test')}
+                onClick={() => handlePanelChange('test')}
                 className={`tab text-sm font-medium ${
                   activePanel === 'test' ? 'tab-active' : ''
                 }`}
@@ -735,7 +800,7 @@ export function FlowBuilderView({
               </button>
               <button
                 role="tab"
-                onClick={() => setActivePanel('variables')}
+                onClick={() => handlePanelChange('variables')}
                 className={`tab text-sm font-medium ${
                   activePanel === 'variables' ? 'tab-active' : ''
                 }`}
@@ -744,7 +809,7 @@ export function FlowBuilderView({
               </button>
               <button
                 role="tab"
-                onClick={() => setActivePanel('console')}
+                onClick={() => handlePanelChange('console')}
                 className={`tab text-sm font-medium ${
                   activePanel === 'console' ? 'tab-active' : ''
                 }`}
@@ -753,7 +818,7 @@ export function FlowBuilderView({
               </button>
               <button
                 role="tab"
-                onClick={() => setActivePanel('sdk')}
+                onClick={() => handlePanelChange('sdk')}
                 className={`tab text-sm font-medium ${
                   activePanel === 'sdk' ? 'tab-active' : ''
                 }`}

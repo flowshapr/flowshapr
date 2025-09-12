@@ -388,10 +388,24 @@ export const flows = [generatedFlow];`;
   }
 
   private generateAIConfig(context: CodeGenerationContext): string {
-    const plugins = Array.from(context.plugins);
+    const plugins = [];
+    
+    // Configure plugins with API keys from environment variables
+    if (context.plugins.has('googleAI()')) {
+      plugins.push('googleAI({ apiKey: process.env.GEMINI_API_KEY })');
+    }
+    if (context.plugins.has('openai()')) {
+      plugins.push('openai({ apiKey: process.env.OPENAI_API_KEY })');
+    }
+    if (context.plugins.has('anthropic()')) {
+      plugins.push('anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })');
+    }
+    if (context.plugins.has('mcp()')) {
+      plugins.push('mcp()'); // MCP might not need API keys in the same way
+    }
     
     return `const ai = genkit({
-  plugins: [${plugins.length > 0 ? plugins.join(', ') : ''}]
+  plugins: [${plugins.join(', ')}]
 });`;
   }
 
