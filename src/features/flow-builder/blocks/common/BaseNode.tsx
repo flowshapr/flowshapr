@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 // Minimal interface to support both legacy BlockInstance and current FlowNodeData
 type BaseNodeData = { blockType?: string; type?: string } & Record<string, any>;
-import { useBlocks } from '@/contexts/BlocksContext';
+import { useBlocksStore } from '@/stores';
 import { Trash2, FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot } from 'lucide-react';
 
 // Icon mapping function to convert server icon strings to React components
@@ -113,7 +113,7 @@ export interface BaseNodeProps {
 }
 
 export function BaseNode({ id, data, selected, children, showSourceHandle = true, showTargetHandle = true }: React.PropsWithChildren<BaseNodeProps & { showSourceHandle?: boolean; showTargetHandle?: boolean }>) {
-  const { getBlockMetadata } = useBlocks();
+  const getBlockMetadata = useBlocksStore(state => state.getBlockMetadata);
   // Handle both BlockInstance (data.blockType) and FlowNodeData (data.type) interfaces
   const blockType = (data as any).blockType || (data as any).type;
   const blockConfig = getBlockMetadata(blockType);

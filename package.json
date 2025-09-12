@@ -27,13 +27,15 @@
     "clsx": "^2.0.0",
     "genkit": "^1.19.1",
     "genkit-cli": "^1.19.2",
+    "immer": "^10.1.3",
     "lucide-react": "^0.294.0",
     "next": "^15.5.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^2.0.0",
     "uuid": "^9.0.1",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.36",

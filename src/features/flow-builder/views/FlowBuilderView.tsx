@@ -17,6 +17,7 @@ import { getDefaultConfig, getNodeLabel } from '@/features/flow-builder/blocks/r
 import { Save, FolderOpen, Rocket } from 'lucide-react';
 import { SidebarList, SidebarListHeader, SidebarListItem } from '@/components/ui/SidebarList';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useConnectionStore } from '@/stores';
 
 interface Flow {
   id: string;
@@ -99,7 +100,10 @@ export function FlowBuilderView({
   const [activePanel, setActivePanel] = useState<'code' | 'test' | 'variables' | 'console' | 'sdk'>('code');
   const [panelWidth, setPanelWidth] = useState(384); // Default 384px (w-96)
   const [apiKeys, setApiKeys] = useState<{ googleai?: string; openai?: string; anthropic?: string }>({});
-  const [connections, setConnections] = useState<Array<{ id: string; name: string; provider: string; apiKey?: string; isActive: boolean }>>([]);
+  
+  // Use Zustand store for connections
+  const { loadConnections, clearConnections, connections } = useConnectionStore();
+  
   const [prompts, setPrompts] = useState<any[]>([]);
   const [flowLoading, setFlowLoading] = useState(false);
   const flowVersionRef = React.useRef(0);
@@ -235,16 +239,28 @@ export function FlowBuilderView({
   // Load flow from backend when selectedFlow changes; fallback to localStorage
   useEffect(() => {
     const load = async () => {
-      if (!selectedFlow) return;
+      if (!selectedFlow) {
+        clearConnections();
+        return;
+      }
+      
+      // Prevent duplicate loading - check if already loading
+      if (flowLoading) {
+        console.log('🔄 Flow already loading, skipping duplicate request');
+        return;
+      }
+      
       setFlowLoading(true);
       flowVersionRef.current += 1;
-      // clear global resources to avoid cross-flow bleed
+      
+      // Clear connections and prompts to avoid cross-flow bleed
+      clearConnections();
       try {
-        (window as any).__connections = [];
-        window.dispatchEvent(new CustomEvent('connectionsChange', { detail: [] }));
         (window as any).__prompts = [];
         window.dispatchEvent(new CustomEvent('promptsChange', { detail: [] }));
       } catch {}
+      
+      // Try to load flow from API first
       try {
         const resp = await fetch(`/api/flows/${selectedFlow.id}`, { cache: 'no-store' });
         if (resp.ok) {
@@ -257,17 +273,19 @@ export function FlowBuilderView({
             if (flow.metadata?.viewport && typeof flow.metadata.viewport.zoom === 'number') {
               setViewport({ x: flow.metadata.viewport.x || 0, y: flow.metadata.viewport.y || 0, zoom: flow.metadata.viewport.zoom });
             }
-            if (flow.metadata?.connections) setConnections(flow.metadata.connections);
             if (flow.metadata?.apiKeys) setApiKeys(flow.metadata.apiKeys);
             
             setFlowLoading(false);
+            // Load connections using Zustand store
+            await loadConnections(selectedFlow.id);
             return;
           }
         }
       } catch (e) {
         console.warn('Failed to load flow from backend, falling back to localStorage');
       }
-      // fallback to localStorage
+      
+      // Fallback to localStorage
       try {
         const storageKey = `flow_${selectedFlow.id}`;
         const savedFlow = localStorage.getItem(storageKey);
@@ -281,40 +299,26 @@ export function FlowBuilderView({
             const vp = flowData.metadata?.viewport || flowData.viewport;
             if (vp && typeof vp.zoom === 'number') setViewport({ x: vp.x || 0, y: vp.y || 0, zoom: vp.zoom });
             if (flowData.metadata?.apiKeys) setApiKeys(flowData.metadata.apiKeys);
-            if (flowData.metadata?.connections) setConnections(flowData.metadata.connections);
           }
         }
       } catch (err) {
         console.error('Failed to load flow state:', err);
       }
       
-      // Load fresh connections from API to ensure agent nodes have latest data (always executes)
-      try {
-        console.log('Loading connections for flow:', selectedFlow.id);
-        const connectionsResp = await fetch(`/api/flows/${selectedFlow.id}/connections`, { cache: 'no-store' });
-        if (connectionsResp.ok) {
-          const connectionsJson = await connectionsResp.json();
-          const freshConnections = (connectionsJson?.data || []) as Array<{ id: string; name: string; provider: string; isActive: boolean }>;
-          console.log('Loaded connections:', freshConnections);
-          setConnections(freshConnections);
-          
-          // Update window globals for AgentBlock.tsx
-          (window as any).__connections = freshConnections;
-          window.dispatchEvent(new CustomEvent('connectionsChange', { detail: freshConnections }));
-        } else {
-          console.error('Failed to load connections - HTTP status:', connectionsResp.status);
-        }
-      } catch (e) {
-        console.error('Failed to load fresh connections:', e);
-      }
-      
       setFlowLoading(false);
+      // Load connections using Zustand store - only call once at the end
+      try {
+        await loadConnections(selectedFlow.id);
+      } catch (err) {
+        console.error('Failed to load connections:', err);
+      }
     };
+    
     // Clear current graph before loading new one
     setNodes([]);
     setEdges([]);
     load();
-  }, [selectedFlow?.id]);
+  }, [selectedFlow?.id, loadConnections, clearConnections]);
 
   // Listen for node config changes
   useEffect(() => {
@@ -593,37 +597,44 @@ export function FlowBuilderView({
   useEffect(() => {
     (window as any).__flowVars = computedVars;
     (window as any).__apiKeys = apiKeys;
-    (window as any).__connections = connections;
     // projectId deprecated; flows are top-level containers
     window.dispatchEvent(new CustomEvent('apiKeysChange', { detail: apiKeys }));
-  }, [computedVars]);
+  }, [computedVars, apiKeys]);
 
   useEffect(() => {
     (window as any).__apiKeys = apiKeys;
     window.dispatchEvent(new CustomEvent('apiKeysChange', { detail: apiKeys }));
   }, [apiKeys]);
 
-  useEffect(() => {
-    (window as any).__connections = connections;
-    window.dispatchEvent(new CustomEvent('connectionsChange', { detail: connections }));
-  }, [connections]);
+  // Connections are now managed by Zustand store - no window globals needed
 
   // Load prompts for flow (via flow-scoped API) and expose globally
   useEffect(() => {
     const loadPrompts = async () => {
       const fid = selectedFlow?.id;
       if (!fid) return;
+      
+      // Prevent duplicate loading during flow loading
+      if (flowLoading) {
+        console.log('📦 Skipping prompts load during flow loading');
+        return;
+      }
+      
       try {
+        console.log('🔄 Loading prompts for flow:', fid);
         const resp = await fetch(`/api/flows/${fid}/prompts`, { cache: 'no-store' });
         const json = await resp.json();
         const arr = json?.data || [];
         setPrompts(arr);
         (window as any).__prompts = arr;
         window.dispatchEvent(new CustomEvent('promptsChange', { detail: arr }));
-      } catch {}
+        console.log('✅ Loaded prompts:', arr.length);
+      } catch (err) {
+        console.error('❌ Failed to load prompts:', err);
+      }
     };
     loadPrompts();
-  }, [selectedFlow?.id]);
+  }, [selectedFlow?.id, flowLoading]); // Add flowLoading as dependency
 
   // Optional: keyboard delete support (when canvas is focused)
   useEffect(() => {

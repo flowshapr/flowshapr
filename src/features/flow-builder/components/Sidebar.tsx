@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clientBlockService } from '@/lib/blocks/client-service';
 import { BlockCategory, ClientBlockMetadata } from '@/lib/blocks/client-types';
+import { useBlocksStore } from '@/stores';
 import { Search, FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot } from 'lucide-react';
 
 // Icon mapping function to convert server icon strings to React components
@@ -27,15 +28,21 @@ interface SidebarProps {
 export function Sidebar({ onAddNode }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<BlockCategory | 'all'>('all');
-  const [blocks, setBlocks] = useState<ClientBlockMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use Zustand store for blocks
+  const { blocks, loading, error, setBlocks, setLoading, setError } = useBlocksStore();
 
-  // Load blocks from server
+  // Load blocks from server only once
   useEffect(() => {
+    if (blocks.length > 0) {
+      console.log('📦 Using cached blocks:', blocks.length);
+      return; // Already loaded
+    }
+
     const loadBlocks = async () => {
       try {
         setLoading(true);
+        setError(null);
         const blocksData = await clientBlockService.getBlocksMetadata();
         setBlocks(blocksData);
         console.log('✅ Loaded blocks from server:', blocksData.length);
@@ -48,7 +55,7 @@ export function Sidebar({ onAddNode }: SidebarProps) {
     };
 
     loadBlocks();
-  }, []);
+  }, []); // Remove blocks dependency to prevent re-loading
 
   const handleDragStart = (event: React.DragEvent, blockType: string) => {
     event.dataTransfer.setData('application/reactflow', blockType);

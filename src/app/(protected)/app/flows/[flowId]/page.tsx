@@ -4,7 +4,6 @@ import { useRouter, useParams } from 'next/navigation';
 import { useRequireAuth } from '@/components/auth/AuthProvider';
 import { AppLayout } from '@/components/navigation/AppLayout';
 import { FlowBuilderView } from '@/features/flow-builder/views/FlowBuilderView';
-import { BlocksProvider } from '@/contexts/BlocksContext';
 import { useEffect, useState } from 'react';
 
 export default function FlowPage() {
@@ -114,14 +113,12 @@ export default function FlowPage() {
 
   return (
     <AppLayout user={mockSession.user}>
-      <BlocksProvider>
-        <FlowBuilderView 
-          session={mockSession} 
-          selectedFlow={selectedFlow}
-          activeView="flows"
-          isNavCollapsed={false}
-        />
-      </BlocksProvider>
+      <FlowBuilderView 
+        session={mockSession} 
+        selectedFlow={selectedFlow}
+        activeView="flows"
+        isNavCollapsed={false}
+      />
     </AppLayout>
   );
 }

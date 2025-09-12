@@ -2,37 +2,26 @@ import React from 'react';
 import { NodeProps, Handle, Position } from '@xyflow/react';
 import { BaseNode, InsertVarButton } from './common/BaseNode';
 import { FlowNodeData, AgentNodeConfig, AVAILABLE_MODELS, DEFAULT_MODEL_PARAMS, ProviderStatus } from '@/types/flow';
+import { useProviderStatus } from '@/stores';
 
-export default function AgentBlock({ data, selected, id }: NodeProps) {
+const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodeProps) {
   const nodeData = data as FlowNodeData;
   const config = nodeData.config as AgentNodeConfig;
-  const [providerStatus, setProviderStatus] = React.useState<ProviderStatus[]>([
-    { provider: 'googleai', isActive: true, hasApiKey: false },
-    { provider: 'openai', isActive: true, hasApiKey: false },
-    { provider: 'anthropic', isActive: true, hasApiKey: false },
-  ]);
-  const [connections, setConnections] = React.useState<Array<{ id: string; name: string; provider: string }>>([]);
+  
+  // Use optimized combined selector to prevent multiple subscriptions
+  const { hasGoogleKey, hasOpenaiKey, hasAnthropicKey } = useProviderStatus();
+  
   const [prompts, setPrompts] = React.useState<Array<{ id: string; name: string; template?: string }>>([]);
 
+  // Compute provider status from connections
+  const providerStatus: ProviderStatus[] = [
+    { provider: 'googleai', isActive: true, hasApiKey: hasGoogleKey },
+    { provider: 'openai', isActive: true, hasApiKey: hasOpenaiKey },
+    { provider: 'anthropic', isActive: true, hasApiKey: hasAnthropicKey },
+  ];
+
   React.useEffect(() => {
-    const conns = ((window as any).__connections || []) as Array<{ id: string; name: string; provider: string }>;
-    setConnections(conns.map(c => ({ id: c.id, name: c.name, provider: c.provider })));
-    const status: ProviderStatus[] = [
-      { provider: 'googleai', isActive: true, hasApiKey: conns.some(c => c.provider === 'googleai') },
-      { provider: 'openai', isActive: true, hasApiKey: conns.some(c => c.provider === 'openai') },
-      { provider: 'anthropic', isActive: true, hasApiKey: conns.some(c => c.provider === 'anthropic') },
-    ];
-    setProviderStatus(status);
-    const handler = (e: any) => {
-      const list = e?.detail || (window as any).__connections || [];
-      setConnections(list.map((c: any) => ({ id: c.id, name: c.name, provider: c.provider })));
-      setProviderStatus([
-        { provider: 'googleai', isActive: true, hasApiKey: list.some((c: any) => c.provider === 'googleai') },
-        { provider: 'openai', isActive: true, hasApiKey: list.some((c: any) => c.provider === 'openai') },
-        { provider: 'anthropic', isActive: true, hasApiKey: list.some((c: any) => c.provider === 'anthropic') },
-      ]);
-    };
-    window.addEventListener('connectionsChange', handler as EventListener);
+    // Load prompts (keep existing prompts logic for now)
     const ph = (ev: any) => {
       const arr = ev?.detail || (window as any).__prompts || [];
       setPrompts(arr.map((p: any) => ({ id: p.id, name: p.name, template: p.template })));
@@ -43,7 +32,6 @@ export default function AgentBlock({ data, selected, id }: NodeProps) {
     } catch {}
     window.addEventListener('promptsChange', ph as EventListener);
     return () => {
-      window.removeEventListener('connectionsChange', handler as EventListener);
       window.removeEventListener('promptsChange', ph as EventListener);
     };
   }, []);
@@ -64,7 +52,7 @@ export default function AgentBlock({ data, selected, id }: NodeProps) {
   };
 
   // determine allowed providers based on connections (hasApiKey)
-  const allowedProviders = React.useMemo(() => providerStatus.filter(p => p.hasApiKey).map(p => p.provider), [providerStatus]);
+  const allowedProviders = React.useMemo(() => providerStatus.filter(p => p.hasApiKey).map(p => p.provider), [hasGoogleKey, hasOpenaiKey, hasAnthropicKey]);
 
   // if current provider is not allowed, auto-switch to first allowed
   React.useEffect(() => {
@@ -318,4 +306,6 @@ export default function AgentBlock({ data, selected, id }: NodeProps) {
       />
     </BaseNode>
   );
-}
+});
+
+export default AgentBlock;
