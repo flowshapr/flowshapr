@@ -4,8 +4,9 @@ set -e
 echo "🧹 Cleaning up existing containers..."
 docker-compose -f docker-compose.dev.yml down -v --remove-orphans
 
-echo "🗂️ Removing old database volume..."
-docker volume rm docker_postgres_dev_data 2>/dev/null || true
+#Optional if we want to start from scratch with db
+#echo "🗂️ Removing old database volume..."
+#docker volume rm docker_postgres_dev_data 2>/dev/null || true
 
 echo "🚀 Starting fresh development environment..."
 docker-compose -f docker-compose.dev.yml up -d

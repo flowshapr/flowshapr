@@ -1,41 +1,25 @@
 # Flowshapr
 
 <div align="center">
-  <img src="public/images/logo-flowshapr.png" alt="Flowshapr Logo" width="200"/>
+  <img src="frontend/public/images/logo-flowshapr.png" alt="Flowshapr Logo" width="200"/>
   
-  **Visual drag-and-drop canvas for Genkit AI flows**
+  **Visual drag-and-drop canvas for Genkit AI flows. Build, manage and deploy flows remotely. **
 
   [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/flowshapr/flowshapr/releases)
   [![GitHub](https://img.shields.io/github/stars/flowshapr/flowshapr?style=social)](https://github.com/flowshapr/flowshapr)
   [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-</div>
 
----
-
-## 🚀 Try Flowshapr Cloud
-
-**Want to get started immediately?** Try Flowshapr on our hosted platform:
-
-**[👉 Get started at flowshapr.ai](https://flowshapr.ai)**
-
-No installation required - build and deploy your first Genkit flow in minutes!
-
----
-
-## ⚠️ Early Development Notice
+### ⚠️ Early Development Notice ⚠️
 
 **Flowshapr is in very early development with active daily updates.** Bugs and breaking changes are likely. We appreciate your patience and feedback as we build this tool.
 
 🐛 **Found a bug?** Please [report it here](https://github.com/flowshapr/flowshapr/issues)
+</div>
 
----
+![Flowshapr Interface](frontend/public/images/screenshot.png)
 
-## 📸 Screenshot
-
-![Flowshapr Interface](public/images/screenshot.png)
-
----
+--
 
 ## What is Flowshapr?
 
@@ -44,7 +28,7 @@ Flowshapr is a visual drag-and-drop interface for building [Firebase Genkit](htt
 ### Key Features
 
 - 🎨 **Visual Flow Builder** - Drag-and-drop interface powered by React Flow
-- 🚀 **Real-time Code Generation** - Live TypeScript code generation from visual flows  
+- 🚀 **Real-time Code Generation** - Live TypeScript code generation from visual flows
 - ⚡ **Instant Execution** - Test and debug flows in real-time
 - 🔗 **Multi-platform Deployment** - Deploy to Firebase, Google Cloud, AWS, or our platform
 - 📱 **Remote SDK** - Thin SDK for calling flows from any application
@@ -55,18 +39,24 @@ Flowshapr is a visual drag-and-drop interface for building [Firebase Genkit](htt
 
 Flowshapr is powered by [Firebase Genkit](https://firebase.google.com/docs/genkit), Google's AI application framework. Join the Genkit community on [Discord](https://discord.gg/qXt5zzQKpc) for support and discussions.
 
----
+## Get started
 
-## 🐳 Quick Start with Docker
+### 🚀 Flowshapr Cloud
+
+**Want to get started immediately?** Try Flowshapr on our hosted platform:
+
+**[👉 Get started at flowshapr.ai](https://flowshapr.ai)**
+
+### 🐳 Quick Start with Docker
 
 The fastest way to run Flowshapr locally is using Docker Compose:
 
-### Prerequisites
+#### Prerequisites
 
 - Docker and Docker Compose installed
 - Node.js 20+ (for local development)
 
-### 1. Clone and Start
+#### 1. Clone and Start
 
 ```bash
 # Clone the repository
@@ -77,13 +67,13 @@ cd flowshapr
 docker compose -f docker/docker-compose.local.yml up -d
 ```
 
-### 2. Access the Application
+#### 2. Access the Application
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001
 - **PostgreSQL**: localhost:5432 (user: `flowshapr`, password: `flowshapr_test_password`)
 
-### 3. Environment Configuration
+#### 3. Environment Configuration
 
 For production use, copy and customize the environment files:
 
@@ -101,7 +91,7 @@ Edit these files with your:
 - AI model API keys (OpenAI, Google AI, etc.)
 - Authentication secrets
 
-### 4. Docker Services
+#### 4. Docker Services
 
 The Docker setup includes:
 - **PostgreSQL** - Database with automatic migrations
@@ -109,23 +99,21 @@ The Docker setup includes:
 - **Frontend** - Next.js application
 - **Genkit Executors** - Isolated containers for AI flow execution
 
-### 5. Stop Services
+#### 5. Stop Services
 
 ```bash
 docker compose -f docker/docker-compose.local.yml down
 ```
 
----
+### 🛠️ Development Setup
 
-## 🛠️ Development Setup
-
-### Prerequisites
+#### Prerequisites
 
 - Node.js 20+
 - PostgreSQL database
 - AI provider API keys (optional for basic functionality)
 
-### Backend Setup
+#### Backend Setup
 
 ```bash
 cd server
@@ -147,7 +135,7 @@ npm run dev
 
 Backend runs on http://localhost:3001
 
-### Frontend Setup
+#### Frontend Setup
 
 ```bash
 # From project root
@@ -164,7 +152,7 @@ npm run dev
 
 Frontend runs on http://localhost:3000
 
-### Development Commands
+#### Development Commands
 
 **Backend:**
 ```bash
@@ -195,9 +183,7 @@ npm run lint --workspace=frontend     # Lint frontend
 npm run type-check --workspace=frontend # Type-check frontend
 ```
 
----
-
-## 📡 Using the SDK
+## 📡 Using the SDK / Accessing flows
 
 The execution endpoints are fully compatible with the [Genkit Client](https://genkit.dev/docs/client/) and you can call them using the URL provided in the SDK tab. 
 Alternatively we provide a lightweight SDK to call flows via alias only and protected behind the tokens. 
@@ -280,20 +266,37 @@ Flowshapr follows a three-layer architecture:
 ### Project Structure
 
 ```
-├── docker/                 # Docker configuration
-├── server/                 # Express.js backend
+flowshapr/
+├── frontend/               # Next.js visual flow builder
 │   ├── src/
-│   │   ├── domains/       # Business domains (auth, flows, etc.)
+│   │   ├── app/           # App Router pages and API routes
+│   │   ├── components/    # React components
+│   │   │   ├── flow-builder/  # Visual flow editor components
+│   │   │   ├── code-preview/  # Monaco editor integration
+│   │   │   └── auth/          # Authentication components
+│   │   ├── stores/        # Zustand state management
+│   │   └── lib/           # Utilities and code generation
+│   ├── public/           # Static assets
+│   └── CLAUDE.md         # Frontend development guide
+├── server/                # Express.js API backend
+│   ├── src/
+│   │   ├── domains/       # Business domains (DDD architecture)
+│   │   │   ├── auth/          # Authentication domain
+│   │   │   ├── flows/         # Flow CRUD and execution
+│   │   │   ├── organizations/ # Multi-tenant organization management
+│   │   │   └── traces/        # Execution trace storage
 │   │   ├── shared/        # Shared utilities and middleware
 │   │   └── infrastructure/ # Database and external integrations
-│   └── drizzle/           # Database migrations
-├── src/                   # Next.js frontend
-│   ├── app/              # App Router pages and API routes
-│   ├── components/       # React components
-│   ├── features/         # Feature-specific components
-│   └── lib/              # Utilities and configurations
-├── sdk/                   # Remote execution SDK
-└── docs/                 # Documentation
+│   ├── drizzle/          # Database migrations
+│   └── CLAUDE.md         # Backend development guide
+├── sdk/                   # JavaScript/TypeScript client SDK
+│   ├── src/              # SDK implementation
+│   ├── examples/         # Usage examples
+│   └── CLAUDE.md         # SDK development guide
+├── docker/               # Container configurations
+├── scripts/              # Build and deployment scripts
+├── testapps/            # Integration test applications
+└── docs/                # Project documentation
 ```
 
 ---
