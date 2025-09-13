@@ -15,8 +15,10 @@ fi
 
 # Build frontend
 echo "📦 Building frontend..."
+cd frontend
 if npm run build; then
     echo "✅ Frontend build completed successfully"
+    cd ..
 else
     echo "❌ Frontend build failed"
     exit 1
@@ -26,4 +28,4 @@ echo "🎉 All builds completed successfully!"
 echo ""
 echo "To start the servers:"
 echo "1. Backend: cd server && npm start"
-echo "2. Frontend: npm start"
+echo "2. Frontend: cd frontend && npm start"

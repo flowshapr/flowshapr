@@ -93,8 +93,9 @@ jspm_packages/
 .cache
 .parcel-cache
 
-# Next.js build output
-.next
+# Next.js build output (frontend specific)
+frontend/.next/
+frontend/out/
 
 # Nuxt.js build / generate output
 .nuxt
@@ -172,8 +173,9 @@ test_*.html
 test-*.js
 test-*.mjs
 
-# Build artifacts
-/.next/
+# Frontend-specific environment files
+frontend/.env*
+frontend/*.env.local
 
 # Screenshots and reference images
 screenshots/

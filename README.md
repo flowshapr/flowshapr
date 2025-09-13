@@ -151,6 +151,7 @@ Backend runs on http://localhost:3001
 
 ```bash
 # From project root
+cd frontend
 npm install
 
 # Copy and configure environment
@@ -178,6 +179,7 @@ npm run db:studio    # Open Drizzle Studio
 
 **Frontend:**
 ```bash
+cd frontend
 npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
@@ -185,19 +187,27 @@ npm run lint         # Run ESLint
 npm run type-check   # Run TypeScript checks
 ```
 
+**Root (Workspace Commands):**
+```bash
+npm run dev                           # Start frontend (workspace)
+npm run build                         # Build frontend and backend
+npm run lint --workspace=frontend     # Lint frontend
+npm run type-check --workspace=frontend # Type-check frontend
+```
+
 ---
 
 ## 📡 Using the SDK
 
-Once you've built and deployed your flows with Flowshapr, you can call them from any application using our lightweight SDK.
+The execution endpoints are fully compatible with the [Genkit Client](https://genkit.dev/docs/client/) and you can call them using the URL provided in the SDK tab. 
+Alternatively we provide a lightweight SDK to call flows via alias only and protected behind the tokens. 
 
-### Installation
+### Usage with flowshapr SDK
 
+Install
 ```bash
 npm install @flowshapr/client
 ```
-
-### Quick Start
 
 ```typescript
 import { FlowshaprClient } from '@flowshapr/client';
@@ -205,7 +215,7 @@ import { FlowshaprClient } from '@flowshapr/client';
 // Initialize the client
 const client = new FlowshaprClient({
   apiKey: 'your-api-key',
-  baseUrl: 'https://api.flowshapr.ai' // or your self-hosted instance
+  baseUrl: 'https://app.flowshapr.ai' // or your self-hosted instance
 });
 
 // Call a flow
@@ -216,40 +226,23 @@ const result = await client.executeFlow('your-flow-id', {
 console.log(result.data);
 ```
 
-### Authentication
+### Usage with Genkit Client
 
-Get your API key from your Flowshapr dashboard:
-
-1. Go to your flow settings
-2. Navigate to the "Access Tokens" section
-3. Create a new API key for your application
-4. Use it in your SDK initialization
-
-### Examples
-
-**Simple Text Processing:**
-```typescript
-const response = await client.executeFlow('text-summarizer', {
-  text: 'Your long text here...',
-  maxLength: 100
-});
+Install
+```bash
+npm install genkit
 ```
 
-
-### Error Handling
-
 ```typescript
-try {
-  const result = await client.executeFlow('my-flow', { input: 'test' });
-} catch (error) {
-  if (error.code === 'FLOW_NOT_FOUND') {
-    console.log('Flow does not exist');
-  } else if (error.code === 'QUOTA_EXCEEDED') {
-    console.log('API quota exceeded');
-  } else {
-    console.log('Unexpected error:', error.message);
-  }
-}
+import { runFlow } from 'genkit/beta/client';
+
+// Call a flow using the Flowshapr proxy URL
+const result = await runFlow({
+  url: 'https://app.flowshapr.ai/flows/your-flow-alias/execute',
+  input: 'Hello, world!'
+});
+
+console.log(result);
 ```
 
 

@@ -12,8 +12,8 @@ NC='\033[0m'
 echo -e "${BLUE}🎨 Restarting Flowshapr Frontend${NC}"
 echo "=============================="
 
-# Navigate to project root
-cd "$(dirname "$0")/.."
+# Navigate to frontend directory
+cd "$(dirname "$0")/../frontend"
 
 # Kill existing Next.js processes
 echo -e "${YELLOW}🔪 Stopping existing Next.js processes...${NC}"

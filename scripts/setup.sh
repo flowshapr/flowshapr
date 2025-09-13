@@ -27,10 +27,10 @@ fi
 echo "✅ Node.js version $NODE_VERSION is compatible"
 
 # Create environment files if they don't exist
-if [ ! -f ".env.local" ]; then
+if [ ! -f "frontend/.env.local" ]; then
     echo "📝 Creating frontend environment file..."
-    cp .env.local.example .env.local
-    echo "✅ Created .env.local - Please configure your environment variables"
+    cp frontend/.env.local.example frontend/.env.local
+    echo "✅ Created frontend/.env.local - Please configure your environment variables"
 fi
 
 if [ ! -f "server/.env" ]; then
@@ -41,7 +41,9 @@ fi
 
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
+cd frontend
 npm install
+cd ..
 
 # Install backend dependencies
 echo "📦 Installing backend dependencies..."
@@ -56,7 +58,7 @@ echo "🎉 Setup complete!"
 echo ""
 echo "Next steps:"
 echo "1. Configure your environment variables:"
-echo "   - Edit .env.local for frontend settings"
+echo "   - Edit frontend/.env.local for frontend settings"
 echo "   - Edit server/.env for backend settings (database, OAuth credentials)"
 echo ""
 echo "2. Set up your PostgreSQL database and run migrations:"
@@ -68,8 +70,8 @@ echo "3. Start the development servers:"
 echo "   # Terminal 1 - Backend"
 echo "   cd server && npm run dev"
 echo ""
-echo "   # Terminal 2 - Frontend" 
-echo "   npm run dev"
+echo "   # Terminal 2 - Frontend"
+echo "   cd frontend && npm run dev"
 echo ""
 echo "4. Visit http://localhost:3000 to start using Flowshapr!"
 echo ""
