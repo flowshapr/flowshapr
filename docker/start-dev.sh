@@ -1,12 +1,49 @@
 #!/bin/bash
 set -e
 
-echo "🧹 Cleaning up existing containers..."
-docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+# Parse command line arguments
+PRESERVE_DB=true
+CLEAN_ALL=false
 
-#Optional if we want to start from scratch with db
-#echo "🗂️ Removing old database volume..."
-#docker volume rm docker_postgres_dev_data 2>/dev/null || true
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --clean-db|--reset-db)
+      PRESERVE_DB=false
+      shift
+      ;;
+    --clean-all)
+      CLEAN_ALL=true
+      PRESERVE_DB=false
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $0 [OPTIONS]"
+      echo "Options:"
+      echo "  --clean-db, --reset-db    Reset the database (remove volume)"
+      echo "  --clean-all              Reset everything (all volumes)"
+      echo "  -h, --help               Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option $1"
+      echo "Use -h or --help for usage information"
+      exit 1
+      ;;
+  esac
+done
+
+echo "🧹 Cleaning up existing containers..."
+if [ "$CLEAN_ALL" = true ]; then
+  echo "   ⚠️  Removing ALL volumes (including database and node_modules)..."
+  docker-compose -f docker-compose.dev.yml down -v --remove-orphans
+elif [ "$PRESERVE_DB" = false ]; then
+  echo "   ⚠️  Removing database volume..."
+  docker-compose -f docker-compose.dev.yml down --remove-orphans
+  docker volume rm docker_postgres_dev_data 2>/dev/null || true
+else
+  echo "   ✅ Preserving database volume..."
+  docker-compose -f docker-compose.dev.yml down --remove-orphans
+fi
 
 echo "🚀 Starting fresh development environment..."
 docker-compose -f docker-compose.dev.yml up -d
@@ -30,3 +67,8 @@ echo "   docker-compose -f docker-compose.dev.yml logs -f"
 echo ""
 echo "🛠️ Stop everything:"
 echo "   docker-compose -f docker-compose.dev.yml down"
+echo ""
+echo "🔄 Restart options:"
+echo "   ./start-dev.sh                    # Preserve database"
+echo "   ./start-dev.sh --clean-db         # Reset database only"
+echo "   ./start-dev.sh --clean-all        # Reset everything"
