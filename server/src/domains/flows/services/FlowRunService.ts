@@ -1,9 +1,11 @@
 import { flowService } from './FlowService';
 import { tracesService } from '../../traces/services/TracesService';
-import { ContainerPoolService } from '../../../services/container-pool/ContainerPoolService';
-import { ExecutionConfig } from '../../../services/container-pool/ContainerPoolService';
+import { ContainerPoolService } from '../../../infrastructure/container-pool/ContainerPoolService';
+import { ExecutionConfig } from '../../../infrastructure/container-pool/ContainerPoolService';
 import { CodeGeneratorService } from '../../blocks/services/CodeGeneratorService';
 import { BlockInstance, FlowEdge, FlowVariable } from '../../blocks/types';
+import { flowValidator } from './FlowValidator';
+import { connectionsService } from '../../connections/services/ConnectionsService';
 
 type ExecuteInput = {
   flowId: string;
@@ -32,11 +34,9 @@ export class FlowRunService {
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
-    console.log('🚀 Initializing Container Pool Execution Service...');
+
     await this.containerPool.initialize();
     this.isInitialized = true;
-    console.log('✅ Container Pool Execution Service ready');
   }
 
   async shutdown(): Promise<void> {
@@ -51,13 +51,13 @@ export class FlowRunService {
     };
   }
 
-  async execute(params: ExecuteInput) {
+  async execute(params: ExecuteInput): Promise<any> {
     const { flowId, userId, input, nodes, edges, metadata, connections, userAgent, ipAddress, stream } = params;
-    
+
     // Get flow definition
     const flow = await flowService.getFlowById(flowId, userId);
     if (!flow && (!nodes || !edges)) {
-      return { status: 404, body: { success: false, error: { message: 'Flow not found' } } };
+      throw new Error('Flow not found');
     }
     
     const flowDef: any = (!nodes || !edges)
@@ -68,14 +68,13 @@ export class FlowRunService {
     let flowConnections = connections;
     if (!flowConnections && flow) {
       try {
-        const { connectionsService } = await import('../../connections/services/ConnectionsService.js');
         const list = await connectionsService.listByFlow(flow.id);
-        flowConnections = list.map((c: any) => ({ 
-          id: c.id, 
-          name: c.name, 
-          provider: c.provider, 
-          apiKey: c.apiKey, 
-          isActive: c.isActive 
+        flowConnections = list.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          provider: c.provider,
+          apiKey: c.apiKey,
+          isActive: c.isActive
         }));
       } catch {
         flowConnections = [];
@@ -84,27 +83,17 @@ export class FlowRunService {
 
     // Validate flow definition
     try {
-      const { flowValidator } = await import('./FlowValidator.js');
       const issues = await flowValidator.validate(flowDef);
       if (issues.length > 0) {
-        return { 
-          status: 400, 
-          body: { 
-            success: false, 
-            error: { message: 'Flow validation failed', issues }, 
-            runtime: 'flowshapr' 
-          } 
-        };
+        const error = new Error('Flow validation failed');
+        (error as any).issues = issues;
+        throw error;
       }
     } catch (e: any) {
-      return { 
-        status: 500, 
-        body: { 
-          success: false, 
-          error: { message: 'Validator error', details: e?.message || String(e) }, 
-          runtime: 'flowshapr' 
-        } 
-      };
+      if (e.issues) {
+        throw e; // Re-throw validation error with issues
+      }
+      throw new Error(`Validator error: ${e?.message || String(e)}`);
     }
 
     // Convert frontend flow format to server block format
@@ -117,17 +106,9 @@ export class FlowRunService {
     const generatedCode = codeGeneratorService.generate();
     
     if (!generatedCode.isValid) {
-      return {
-        status: 400,
-        body: {
-          success: false,
-          error: { 
-            message: 'Code generation failed', 
-            errors: generatedCode.errors 
-          },
-          runtime: 'flowshapr'
-        }
-      };
+      const error = new Error('Code generation failed');
+      (error as any).errors = generatedCode.errors;
+      throw error;
     }
 
     // Prepare API keys configuration
@@ -171,14 +152,36 @@ export class FlowRunService {
         result = await this.containerPool.executeFlow(generatedCode.code, input, executionConfig);
       }
     } catch (error: any) {
-      result = {
-        success: false,
-        error: error.message,
-        meta: {
-          instance: 'unknown',
-          duration: Date.now() - execStart
-        }
-      };
+      // Store execution trace for failed execution
+      if (flow) {
+        const duration = Date.now() - execStart;
+        const executionId = `exec_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        const tracePromise = tracesService.createTrace({
+          executionId,
+          input,
+          output: null,
+          nodeTraces: [],
+          duration,
+          status: 'failed',
+          errorMessage: error.message,
+          version: (flow as any)?.version || null,
+          userAgent: userAgent || null,
+          ipAddress: ipAddress || null,
+          flowId: (flow as any).id,
+          executedBy: userId?.startsWith('token_') ? null : (userId || null),
+        });
+
+        Promise.race([
+          tracePromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Trace persistence timeout')), 5000)
+          )
+        ]).catch(e => {
+          console.warn('Trace persist failed:', (e as any)?.message || e);
+        });
+      }
+
+      throw error; // Re-throw the original error
     }
 
     const duration = Date.now() - execStart;
@@ -213,14 +216,12 @@ export class FlowRunService {
       });
     }
 
-    return {
-      status: result.success ? 200 : 400,
-      body: { 
-        ...result, 
-        runtime: 'flowshapr',
-        traces: [] // Add empty traces array for frontend compatibility
-      },
-    };
+    // Return direct result for Genkit compatibility
+    if (!result.success) {
+      throw new Error(result.error || 'Flow execution failed');
+    }
+
+    return result.result;
   }
 
   private async *executeStream(

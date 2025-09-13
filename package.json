@@ -11,12 +11,19 @@
     "restart": "./scripts/restart-frontend.sh",
     "restart:all": "cd server && npm run restart",
     "clean": "cd server && npm run clean",
-    "mcp:playwright": "mcp-server-playwright --host 127.0.0.1 --port 8899 --output-dir .playwright-mcp --isolated"
+    "mcp:playwright": "mcp-server-playwright --host 127.0.0.1 --port 8899 --output-dir .playwright-mcp --isolated",
+    "testapps:install": "cd testapps/flowshapr-sdk-basic && npm install && cd ../genkit-client-compatibility && npm install && cd ../streaming-flows && npm install",
+    "testapps:sdk-basic": "cd testapps/flowshapr-sdk-basic && npm test",
+    "testapps:genkit-compat": "cd testapps/genkit-client-compatibility && npm test",
+    "testapps:streaming": "cd testapps/streaming-flows && npm test",
+    "testapps:all": "npm run testapps:sdk-basic && npm run testapps:genkit-compat && npm run testapps:streaming",
+    "testapps": "npm run testapps:all"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@flowshapr/client": "file:./sdk",
     "@genkit-ai/core": "^1.19.1",
     "@genkit-ai/dotprompt": "^1.0.0-rc.5",
     "@genkit-ai/googleai": "^1.19.1",

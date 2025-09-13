@@ -3,7 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useRequireAuth } from '@/components/auth/AuthProvider';
 import { AppLayout } from '@/components/navigation/AppLayout';
-import { FlowBuilderView } from '@/features/flow-builder/views/FlowBuilderView';
+import { FlowBuilderView } from '@/components/flow-builder/views/FlowBuilderView';
 import { useEffect, useState } from 'react';
 import { ProjectView } from '@/components/navigation/ProjectNavigation';
 

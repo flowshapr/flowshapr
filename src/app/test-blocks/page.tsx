@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Sidebar } from '@/features/flow-builder/components/Sidebar';
+import { Sidebar } from '@/components/flow-builder/components/Sidebar';
 import { clientBlockService } from '@/lib/blocks/client-service';
 
 export default function TestBlocksPage() {

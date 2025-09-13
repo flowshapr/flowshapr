@@ -114,86 +114,117 @@ export function SDKPanel({ flow, nodes, edges }: SDKPanelProps) {
   const inputSchema = getInputSchema();
 
   // Generate code samples
-  const javascriptSample = `// JavaScript/TypeScript SDK
-import { FlowshaprClient } from '@flowshapr/sdk';
-
-const client = new FlowshaprClient({
-  apiKey: 'your-api-key-here', // Get from project settings
-  baseUrl: 'https://app.flowshapr.ai', // Optional: defaults to production
-});
+  const javascriptSample = `// FlowShapr SDK - Simple API with flow aliases
+import { runFlow } from '@flowshapr/client';
 
 async function executeFlow() {
   try {
-    const result = await client.executeFlow('${flow?.slug || 'your-flow-slug'}', ${
-      inputSchema.type === 'object' 
-        ? `{\n      ${Object.keys(inputSchema.properties || {}).map(key => 
+    // Clean API - just flow alias and input!
+    const result = await runFlow(
+      '${flow?.slug || 'your-flow-alias'}',
+      ${inputSchema.type === 'object'
+        ? `{\n      ${Object.keys(inputSchema.properties || {}).map(key =>
             `${key}: "your-${key.toLowerCase()}-value"`
           ).join(',\n      ')}\n    }`
         : `"your-input-value"`
-    });
-    
+      },
+      {
+        headers: {
+          Authorization: 'Bearer your-api-key-here'
+        }
+      }
+    );
+
     console.log('Flow result:', result);
     return result;
   } catch (error) {
     console.error('Flow execution failed:', error);
-    // Handle specific error types
-    if (error.response?.status === 401) {
-      console.error('Authentication failed - check your API key');
-    } else if (error.response?.status === 404) {
-      console.error('Flow not found - check the flow slug');
-    }
     throw error;
   }
 }
 
+// For local development
+import { flowshapr } from '@flowshapr/client';
+
+async function executeLocalFlow() {
+  const result = await flowshapr.local.runFlow(
+    '${flow?.slug || 'your-flow-alias'}',
+    ${inputSchema.type === 'object'
+      ? `{\n    ${Object.keys(inputSchema.properties || {}).map(key =>
+          `${key}: "your-${key.toLowerCase()}-value"`
+        ).join(',\n    ')}\n  }`
+      : `"your-input-value"`
+    },
+    {
+      headers: { Authorization: 'Bearer your-api-key-here' }
+    }
+  );
+  return result;
+}
+
+// Using persistent client
+const client = flowshapr.createClient({
+  headers: { Authorization: 'Bearer your-api-key-here' },
+  baseUrl: 'https://app.flowshapr.ai' // defaults to this
+});
+
+const result = await client.runFlow('${flow?.slug || 'your-flow-alias'}', 'input');
+
 // Execute the flow
 executeFlow();`;
 
-  const curlSample = `# cURL Example
-curl -X POST "${flowEndpoint}" \\
+  const curlSample = `# cURL Example - Clean flow alias API
+# Endpoint: https://app.flowshapr.ai/api/flows/by-alias/{FLOW_ALIAS}/execute
+
+curl -X POST "https://app.flowshapr.ai/api/flows/by-alias/${flow?.slug || 'your-flow-alias'}/execute" \\
   -H "Authorization: Bearer your-api-key-here" \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify(
-    inputSchema.type === 'object' 
+    inputSchema.type === 'object'
       ? Object.keys(inputSchema.properties || {}).reduce((acc, key) => {
           acc[key] = `your-${key.toLowerCase()}-value`;
           return acc;
         }, {} as Record<string, string>)
-      : inputSchema.type === 'string' 
-        ? { input: "your-input-value" }
-        : "your-input-value",
+      : "your-input-value",
     null,
     2
-  ).replace(/\n/g, ' ')}'`;
+  ).replace(/\n/g, ' ')}'
 
-  const restApiSample = `# REST API Direct Call
-POST ${flowEndpoint}
+# For local development:
+# curl -X POST "http://localhost:3000/api/flows/by-alias/${flow?.slug || 'your-flow-alias'}/execute" \\`;
+
+  const restApiSample = `# REST API - Flow Alias Endpoint
+# Clean URL structure with flow aliases
+
+POST https://app.flowshapr.ai/api/flows/by-alias/${flow?.slug || 'your-flow-alias'}/execute
 
 Headers:
 Authorization: Bearer your-api-key-here
 Content-Type: application/json
 
-Request Body:
+Request Body (Direct input - Genkit compatible):
 ${JSON.stringify(
-  inputSchema.type === 'object' 
+  inputSchema.type === 'object'
     ? Object.keys(inputSchema.properties || {}).reduce((acc, key) => {
         acc[key] = `your-${key.toLowerCase()}-value`;
         return acc;
       }, {} as Record<string, string>)
-    : inputSchema.type === 'string' 
-      ? { input: "your-input-value" }
-      : "your-input-value",
+    : "your-input-value",
   null,
   2
 )}
 
-Response:
+Response (Direct output - Genkit compatible):
+"Generated response from your flow"
+
+# Or for complex outputs:
 {
-  "success": true,
-  "result": "Generated response from your flow",
-  "execution_id": "exec_123...",
-  "duration_ms": 1500
-}`;
+  "text": "Generated response",
+  "metadata": {...}
+}
+
+# Local Development:
+POST http://localhost:3000/api/flows/by-alias/${flow?.slug || 'your-flow-alias'}/execute`;
 
   const samples = [
     { 
@@ -320,15 +351,29 @@ Response:
             <h4 className="text-sm font-semibold text-base-content mb-2">Installation</h4>
             <div className="space-y-3">
               <div>
-                <div className="text-xs text-base-content/60 mb-1">JavaScript/TypeScript:</div>
+                <div className="text-xs text-base-content/60 mb-1">Option 1: Use Genkit Client (Official):</div>
                 <div className="bg-base-300 rounded p-2">
                   <div className="flex items-center justify-between">
-                    <code className="text-xs font-mono">npm install @flowshapr/sdk</code>
+                    <code className="text-xs font-mono">npm install genkit</code>
                     <button
-                      onClick={() => copyToClipboard('npm install @flowshapr/sdk', 'npm-install')}
+                      onClick={() => copyToClipboard('npm install genkit', 'genkit-install')}
                       className="btn btn-ghost btn-xs"
                     >
-                      {copiedStates['npm-install'] ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedStates['genkit-install'] ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-base-content/60 mb-1">Option 2: Use FlowShapr SDK (Built-in):</div>
+                <div className="bg-base-300 rounded p-2">
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs font-mono">import {`{ runFlow }`} from '@flowshapr/client';</code>
+                    <button
+                      onClick={() => copyToClipboard("import { runFlow } from '@flowshapr/client';", 'sdk-import')}
+                      className="btn btn-ghost btn-xs"
+                    >
+                      {copiedStates['sdk-import'] ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     </button>
                   </div>
                 </div>

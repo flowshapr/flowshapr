@@ -1,19 +1,19 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { FlowCanvasWrapper } from '@/features/flow-builder/components/FlowCanvas';
-import { Sidebar } from '@/features/flow-builder/components/Sidebar';
-import { VariablesPanel } from '@/features/flow-builder/components/VariablesPanel';
-import { SettingsPanel } from '@/features/flow-builder/components/SettingsPanel';
-import { SDKPanel } from '@/features/flow-builder/components/SDKPanel';
-import { CodeEditor } from '@/features/code-preview/components/CodeEditor';
-import { TestPanel } from '@/features/testing/views/TestPanel';
-import { ConsolePanel, type ConsoleEntry } from '@/features/flow-builder/views/ConsolePanel';
+import { FlowCanvasWrapper } from '@/components/flow-builder/components/FlowCanvas';
+import { Sidebar } from '@/components/flow-builder/components/Sidebar';
+import { VariablesPanel } from '@/components/flow-builder/components/VariablesPanel';
+import { SettingsPanel } from '@/components/flow-builder/components/SettingsPanel';
+import { SDKPanel } from '@/components/flow-builder/components/SDKPanel';
+import { CodeEditor } from '@/components/code-preview/components/CodeEditor';
+import { TestPanel } from '@/components/testing/views/TestPanel';
+import { ConsolePanel, type ConsoleEntry } from '@/components/flow-builder/views/ConsolePanel';
 import { FlowNode, FlowEdge, NodeType, GeneratedCode, ExecutionResult, InputNodeConfig, FlowVariable } from '@/types/flow';
 import { generateCode } from '@/lib/code-generator';
 import { generateId, debounce } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { getDefaultConfig, getNodeLabel } from '@/features/flow-builder/blocks/registry';
+import { getDefaultConfig, getNodeLabel } from '@/components/flow-builder/blocks/registry';
 import { Save, FolderOpen, Rocket } from 'lucide-react';
 import { SidebarList, SidebarListHeader, SidebarListItem } from '@/components/ui/SidebarList';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -416,9 +416,11 @@ export function FlowBuilderView({
   const handleExecuteFlow = useCallback(async (input: any): Promise<ExecutionResult> => {
     setIsExecuting(true);
     const startTime = analytics.trackExecutionStart(selectedFlow?.id || 'unknown');
-    
+
     try {
       if (!selectedFlow) throw new Error('No flow selected');
+
+      // Send wrapped format to maintain internal functionality while supporting both formats
       const body = {
         input,
         nodes,
@@ -433,6 +435,7 @@ export function FlowBuilderView({
       });
       let json: any = null;
       try { json = await resp.json(); } catch { /* fall back */ }
+
       if (!resp.ok && resp.status === 401) {
         // Fallback: call backend directly with credentials (browser will send cookies)
         const backendUrl = (process.env.NEXT_PUBLIC_BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -445,26 +448,48 @@ export function FlowBuilderView({
         });
         try { json = await resp.json(); } catch { /* ignore */ }
       }
+
       if (!resp.ok) {
-        const msg = json?.error?.message || json?.message || `Execution failed (${resp.status})`;
+        // Handle both Genkit format (direct error) and FlowShapr format (wrapped error)
+        const msg =
+          typeof json === 'string' ? json :
+          json?.error?.message || json?.error || json?.message ||
+          `Execution failed (${resp.status})`;
         pushConsole({ level: 'error', message: `Execution error: ${msg}`, details: json });
         throw new Error(msg);
       }
+
       pushConsole({ level: 'info', message: 'Execution completed successfully' });
-      const result = (json || { success: false, error: 'Empty response', traces: [] }) as ExecutionResult;
-      
+
+      // Handle both response formats:
+      // - Genkit format: direct result
+      // - FlowShapr format: wrapped result
+      let result: ExecutionResult;
+
+      if (json && typeof json === 'object' && 'success' in json) {
+        // FlowShapr wrapped format
+        result = json as ExecutionResult;
+      } else {
+        // Genkit direct format - convert to FlowShapr format for internal compatibility
+        result = {
+          success: true,
+          result: json,
+          traces: [], // Empty traces for now
+        };
+      }
+
       // Track successful execution
       analytics.trackExecutionEnd(selectedFlow.id, startTime, result.success);
-      
+
       return result;
     } catch (error) {
       const message = (error as Error).message;
       pushConsole({ level: 'error', message: `Execution failed: ${message}` });
-      
+
       // Track failed execution
       analytics.trackExecutionEnd(selectedFlow?.id || 'unknown', startTime, false);
       analytics.trackAppError(message, 'FlowExecution', 'high');
-      
+
       return { success: false, error: message, traces: [] };
     } finally {
       setIsExecuting(false);

@@ -1,0 +1,24 @@
+{
+  "name": "genkit-client-compatibility",
+  "version": "1.0.0",
+  "description": "Compatibility tests between Genkit client and FlowShapr endpoints",
+  "main": "lib/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node lib/index.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "tsx --watch src/index.ts",
+    "test": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@flowshapr/client": "^0.1.1",
+    "genkit": "^0.9.0",
+    "tsx": "^4.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^20.0.0"
+  },
+  "license": "ISC"
+}

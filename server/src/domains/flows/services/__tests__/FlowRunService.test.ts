@@ -29,7 +29,7 @@ jest.mock('../../../traces/services/TracesService', () => ({
   tracesService: mockTracesService,
 }));
 
-jest.mock('../../../../services/container-pool/ContainerPoolService', () => ({
+jest.mock('../../../../infrastructure/container-pool/ContainerPoolService', () => ({
   ContainerPoolService: jest.fn(() => mockContainerPoolInstance),
 }));
 
@@ -156,22 +156,15 @@ describe('FlowRunService', () => {
       mockTracesService.createTrace.mockResolvedValue(createMockTrace());
     });
 
-    it('should handle validation errors gracefully', async () => {
-      // Due to ES Modules limitations in Jest, dynamic imports may fail
-      // This tests that the service handles validation errors properly
+    it('should execute flow successfully', async () => {
       const result = await flowRunService.execute(executeParams);
 
       expect(mockFlowService.getFlowById).toHaveBeenCalledWith(executeParams.flowId, executeParams.userId);
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
-      });
+      expect(mockCodeGeneratorInstance.generate).toHaveBeenCalled();
+      expect(mockContainerPoolInstance.executeFlow).toHaveBeenCalled();
+      expect(mockTracesService.createTrace).toHaveBeenCalled();
+
+      expect(result).toEqual({ output: 'test output' });
     });
 
     it('should execute flow with provided nodes and edges', async () => {
@@ -184,79 +177,38 @@ describe('FlowRunService', () => {
 
       const result = await flowRunService.execute(paramsWithDefinition);
 
-      // Even with provided nodes/edges, the validation step still runs and may fail
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
-      });
+      expect(result).toEqual({ output: 'test output' });
     });
 
     it('should return 404 when flow not found and no nodes/edges provided', async () => {
       mockFlowService.getFlowById.mockResolvedValue(null);
 
-      const result = await flowRunService.execute(executeParams);
-
-      expect(result).toMatchObject({
-        status: 404,
-        body: {
-          success: false,
-          error: { message: 'Flow not found' },
-        },
-      });
+      await expect(flowRunService.execute(executeParams)).rejects.toThrow('Flow not found');
     });
 
     it('should handle validation errors', async () => {
-      // This test verifies that validation errors are handled properly
-      const result = await flowRunService.execute(executeParams);
+      // Mock validation to return errors
+      mockFlowValidator.validate.mockResolvedValue([
+        { nodeId: 'test-node', message: 'Test validation error' }
+      ]);
 
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
-      });
+      await expect(flowRunService.execute(executeParams)).rejects.toThrow('Flow validation failed');
     });
 
     it('should handle container executor timeout', async () => {
-      // Due to validation failing before container execution, this tests validation error handling
-      const result = await flowRunService.execute(executeParams);
+      mockContainerPoolInstance.executeFlow.mockRejectedValue(new Error('Container timeout'));
 
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
-      });
+      await expect(flowRunService.execute(executeParams)).rejects.toThrow('Container timeout');
     });
 
     it('should handle flow generation errors', async () => {
-      // Since validation fails before code generation, this tests validation error handling
-      const result = await flowRunService.execute(executeParams);
-
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
+      mockCodeGeneratorInstance.generate.mockReturnValue({
+        isValid: false,
+        code: '',
+        errors: ['Code generation failed']
       });
+
+      await expect(flowRunService.execute(executeParams)).rejects.toThrow('Code generation failed');
     });
   });
 
@@ -279,21 +231,11 @@ describe('FlowRunService', () => {
       });
     });
 
-    it('should handle streaming execution (validation error case)', async () => {
-      // Since validation fails before streaming execution, test the error handling
+    it('should handle streaming execution', async () => {
       const result = await flowRunService.execute(streamParams);
 
-      // Due to validation error, result is a regular response object, not an async generator
-      expect(result).toMatchObject({
-        status: 500,
-        body: {
-          success: false,
-          error: {
-            message: 'Validator error',
-          },
-          runtime: 'flowshapr',
-        },
-      });
+      // Streaming execution returns an async generator, not a direct result
+      expect(typeof result[Symbol.asyncIterator]).toBe('function');
     });
   });
 });

@@ -23,7 +23,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { nodeTypes, getNodeColor } from '@/features/flow-builder/blocks/registry';
+import { nodeTypes, getNodeColor } from '@/components/flow-builder/blocks/registry';
 import { DeletableEdge } from './edges/DeletableEdge';
 import { FlowNode, FlowEdge, NodeType, FlowNodeData } from '@/types/flow';
 import { generateId } from '@/lib/utils';

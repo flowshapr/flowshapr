@@ -101,7 +101,6 @@ export class AuthService {
 
       // For now, we'll skip password verification since we don't have a password field
       // This is temporary until we implement proper Better Auth
-      console.log("Login successful for:", user.email);
 
       // Create session
       const sessionId = this.generateSessionId();
@@ -139,7 +138,6 @@ export class AuthService {
   async signOut(sessionId: string): Promise<{ success: boolean }> {
     if (sessionId && sessions.has(sessionId)) {
       sessions.delete(sessionId);
-      console.log("Session cleared for:", sessionId);
     }
     return { success: true };
   }
@@ -160,8 +158,6 @@ export class AuthService {
       sessions.delete(sessionId);
       return null;
     }
-
-    console.log("Valid session found for user:", session.user.email);
 
     return {
       user: session.user,

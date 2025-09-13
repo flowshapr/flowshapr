@@ -19,7 +19,7 @@ async function main() {
   // Per request, use the alias "testlfow" (typo intentional to match request)
   const alias = 'my-test-flow-alias';
 
-  const client = new FlowshaprClient({ baseUrl, apiKey });
+  const client = new FlowShaprClient({ baseUrl, headers: { Authorization: `Bearer ${apiKey}` } });
 
   console.log(`Running flow by alias: ${alias}`);
   const input = 'Hello from SDK example!';

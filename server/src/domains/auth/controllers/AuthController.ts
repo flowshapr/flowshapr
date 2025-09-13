@@ -6,11 +6,7 @@ export class AuthController {
   async signUp(req: Request, res: Response): Promise<void> {
     try {
       const { name, email, password } = req.body;
-      console.log("Registration attempt:", { name, email });
-
       const result = await authService.signUp({ name, email, password });
-
-      console.log("User created successfully:", result.user);
 
       res.json({
         data: {
@@ -41,8 +37,6 @@ export class AuthController {
   async signIn(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
-      console.log("Login attempt:", { email });
-
       const result = await authService.signIn({ email, password });
 
       const response = {
@@ -55,8 +49,6 @@ export class AuthController {
           user: result.user
         }
       };
-
-      console.log("Sending login response:", JSON.stringify(response, null, 2));
 
       // Set session cookie for cross-origin requests
       res.cookie('sessionId', result.session!.id, {
@@ -100,14 +92,11 @@ export class AuthController {
   async signOut(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = req.cookies?.sessionId;
-      console.log("Sign out request for sessionId:", sessionId);
-
       const result = await authService.signOut(sessionId);
 
       // Clear cookie
       if (sessionId) {
         res.clearCookie('sessionId');
-        console.log("Session cleared for:", sessionId);
       }
 
       res.json({ data: result });
@@ -125,12 +114,9 @@ export class AuthController {
   async getSession(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = req.cookies?.sessionId;
-      console.log("Session check for sessionId:", sessionId);
-
       const sessionData = await authService.getSession(sessionId);
 
       if (!sessionData) {
-        console.log("No valid session found");
         res.json({ data: null });
         return;
       }

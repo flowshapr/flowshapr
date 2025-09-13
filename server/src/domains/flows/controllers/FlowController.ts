@@ -7,14 +7,10 @@ export class FlowController {
     try {
       const { name, alias, description, organizationId, teamId } = req.body;
       
-      console.log("Creating flow:", { name, alias, organizationId, teamId });
-
       const flow = await flowService.createFlow(
         { name, alias, description, organizationId, teamId },
         req.user!.id
       );
-
-      console.log("Flow created successfully:", flow);
 
       res.status(201).json({
         success: true,
@@ -352,13 +348,26 @@ export class FlowController {
 
   async executeFlow(req: Request, res: Response): Promise<void> {
     try {
-      console.log('🎯 FlowController: Starting flow execution for flow ID:', req.params.id);
       const { id } = req.params as any;
-      const { input, nodes, edges, metadata, connections } = req.body || {};
+
+      // Accept direct input (Genkit format) or wrapped input (FlowShapr format)
+      let input, nodes, edges, metadata, connections;
+
+      if (req.body && typeof req.body === 'object' && ('input' in req.body || 'nodes' in req.body || 'edges' in req.body)) {
+        // FlowShapr wrapped format (for internal use)
+        ({ input, nodes, edges, metadata, connections } = req.body);
+      } else {
+        // Genkit direct format
+        input = req.body;
+        nodes = undefined;
+        edges = undefined;
+        metadata = undefined;
+        connections = undefined;
+      }
+
       const { flowRunService } = await import('../services/FlowRunService.js');
-      
-      console.log('🎯 FlowController: Calling flowRunService.execute...');
-      const out = await flowRunService.execute({
+
+      const result = await flowRunService.execute({
         flowId: id,
         userId: req.user!.id,
         input,
@@ -370,42 +379,59 @@ export class FlowController {
         ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
       });
 
-      // Handle streaming response
-      if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
-        res.status(out.status).json(out.body);
-        console.log('🎯 FlowController: Response sent successfully');
-      } else {
-        // This should not happen in non-streaming mode, but handle it gracefully
-        console.log('🎯 FlowController: Unexpected response format, sending 500');
-        res.status(500).json({ success: false, error: { message: 'Unexpected response format' } });
-      }
+      // Return direct result (Genkit format)
+      res.json(result);
     } catch (error: any) {
       console.error('🎯 FlowController: Execute flow error:', error);
-      res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });
+
+      // Handle specific error types with appropriate HTTP status codes
+      if (error.message === 'Flow not found') {
+        res.status(404).json({ error: 'Flow not found' });
+      } else if (error.message === 'Flow validation failed') {
+        res.status(400).json({ error: 'Flow validation failed', issues: error.issues });
+      } else if (error.message === 'Code generation failed') {
+        res.status(400).json({ error: 'Code generation failed', errors: error.errors });
+      } else {
+        res.status(500).json({ error: error?.message || 'Execution failed' });
+      }
     }
   }
 
   async executeFlowByAlias(req: Request, res: Response): Promise<void> {
     try {
       const { alias } = req.params as any;
-      const { input, nodes, edges, metadata, connections } = req.body || {};
+
+      // Accept direct input (Genkit format) or wrapped input (FlowShapr format)
+      let input, nodes, edges, metadata, connections;
+
+      if (req.body && typeof req.body === 'object' && ('input' in req.body || 'nodes' in req.body || 'edges' in req.body)) {
+        // FlowShapr wrapped format (for internal use)
+        ({ input, nodes, edges, metadata, connections } = req.body);
+      } else {
+        // Genkit direct format
+        input = req.body;
+        nodes = undefined;
+        edges = undefined;
+        metadata = undefined;
+        connections = undefined;
+      }
 
       // Resolve flow by alias
       const flow = await flowService.getFlowByAlias(alias, req.user!.id);
       if (!flow) {
-        res.status(404).json({ success: false, error: { message: "Flow not found for alias" } });
+        res.status(404).json({ error: "Flow not found for alias" });
         return;
       }
 
       // If using token auth, ensure the token is scoped to this flow
       const token: any = (req as any).token;
       if (token?.flowId && token.flowId !== flow.id) {
-        res.status(403).json({ success: false, error: { message: 'Token not authorized for this flow' } });
+        res.status(403).json({ error: 'Token not authorized for this flow' });
         return;
       }
 
       const { flowRunService } = await import('../services/FlowRunService.js');
-      const out = await flowRunService.execute({
+      const result = await flowRunService.execute({
         flowId: flow.id,
         userId: req.user!.id,
         input,
@@ -417,14 +443,21 @@ export class FlowController {
         ipAddress: ((req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null) as any,
       });
 
-      if (typeof out === 'object' && out !== null && 'status' in out && 'body' in out) {
-        res.status(out.status).json(out.body);
-      } else {
-        res.status(500).json({ success: false, error: { message: 'Unexpected response format' } });
-      }
+      // Return direct result (Genkit format)
+      res.json(result);
     } catch (error: any) {
       console.error('Execute flow by alias error:', error);
-      res.status(500).json({ success: false, error: { message: error?.message || 'Execution failed' } });
+
+      // Handle specific error types with appropriate HTTP status codes
+      if (error.message === 'Flow not found') {
+        res.status(404).json({ error: 'Flow not found' });
+      } else if (error.message === 'Flow validation failed') {
+        res.status(400).json({ error: 'Flow validation failed', issues: error.issues });
+      } else if (error.message === 'Code generation failed') {
+        res.status(400).json({ error: 'Code generation failed', errors: error.errors });
+      } else {
+        res.status(500).json({ error: error?.message || 'Execution failed' });
+      }
     }
   }
 
