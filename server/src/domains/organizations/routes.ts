@@ -1,7 +1,6 @@
 import { Router, Response } from "express";
 import { z } from "zod";
 import { OrganizationService } from "./services/OrganizationService";
-import { requireAuth } from "../../shared/middleware/auth";
 import { validateBody, validateParams } from "../../shared/middleware/validation";
 import { createOrganizationSchema } from "../../shared/types/index";
 import type { ApiResponse } from "../../shared/types/index";
@@ -20,8 +19,8 @@ const updateOrganizationSchema = z.object({
   logoUrl: z.string().url().optional(),
 });
 
-// GET /organizations - Get user's organizations
-router.get("/", requireAuth, async (req, res: Response<ApiResponse>, next) => {
+// GET /organizations - Get user's organizations (authentication handled by global middleware)
+router.get("/", async (req, res: Response<ApiResponse>, next) => {
   try {
     const organizations = await organizationService.getUserOrganizations(req.user!.id);
     
@@ -37,7 +36,6 @@ router.get("/", requireAuth, async (req, res: Response<ApiResponse>, next) => {
 // POST /organizations - Create new organization
 router.post(
   "/",
-  requireAuth,
   validateBody(createOrganizationSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -60,7 +58,6 @@ router.post(
 // GET /organizations/:id - Get organization by ID
 router.get(
   "/:id",
-  requireAuth,
   validateParams(orgIdSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -86,7 +83,6 @@ router.get(
 // PUT /organizations/:id - Update organization
 router.put(
   "/:id",
-  requireAuth,
   validateParams(orgIdSchema),
   validateBody(updateOrganizationSchema),
   async (req, res: Response<ApiResponse>, next) => {
@@ -111,7 +107,6 @@ router.put(
 // DELETE /organizations/:id - Delete organization
 router.delete(
   "/:id",
-  requireAuth,
   validateParams(orgIdSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -130,7 +125,6 @@ router.delete(
 // POST /organizations/:id/transfer - Transfer organization ownership
 router.post(
   "/:id/transfer",
-  requireAuth,
   validateParams(orgIdSchema),
   validateBody(z.object({ newOwnerId: z.string().uuid() })),
   async (req, res: Response<ApiResponse>, next) => {

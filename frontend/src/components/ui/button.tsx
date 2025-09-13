@@ -5,10 +5,11 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', loading, ...props }, ref) => {
     return (
       <button
         className={cn(
@@ -25,6 +26,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             'btn-sm': size === 'sm',
             'btn-lg': size === 'lg',
             'btn-square btn-sm': size === 'icon',
+          },
+          {
+            'loading': loading,
           },
           className
         )}

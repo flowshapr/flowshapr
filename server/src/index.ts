@@ -15,6 +15,7 @@ import { userRoutes } from "./domains/users/routes";
 import { flowRoutes } from "./domains/flows/routes";
 import { telemetryRoutes } from "./domains/telemetry/routes";
 import { errorHandler, notFoundHandler } from "./shared/middleware/errorHandler";
+import { globalAuth } from "./shared/middleware/global-auth";
 import { flowRunService } from "./domains/flows/services/FlowRunService";
 import blocksRoutes from "./domains/blocks/routes";
 import { initializeServerBlocks } from "./domains/blocks";
@@ -102,6 +103,9 @@ app.use((req, res, next) => {
   req.cookies = cookies;
   next();
 });
+
+// Global authentication middleware - secure by default
+app.use(globalAuth);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

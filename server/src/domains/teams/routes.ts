@@ -1,7 +1,6 @@
 import { Router, Response } from "express";
 import { z } from "zod";
 import { TeamService } from "./services/TeamService";
-import { requireAuth } from "../../shared/middleware/auth";
 import { validateBody, validateParams } from "../../shared/middleware/validation";
 import { createTeamSchema, updateTeamMemberRoleSchema } from "../../shared/types/index";
 import type { ApiResponse } from "../../shared/types/index";
@@ -30,7 +29,6 @@ const orgIdQuerySchema = z.object({
 // GET /teams - Get user's teams or organization teams
 router.get(
   "/",
-  requireAuth,
   async (req, res: Response<ApiResponse>, next) => {
     try {
       const { organizationId } = req.query as { organizationId?: string };
@@ -55,7 +53,6 @@ router.get(
 // POST /teams - Create new team
 router.post(
   "/",
-  requireAuth,
   validateBody(createTeamSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -78,7 +75,6 @@ router.post(
 // GET /teams/:id - Get team by ID
 router.get(
   "/:id",
-  requireAuth,
   validateParams(teamIdSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -104,7 +100,6 @@ router.get(
 // PUT /teams/:id - Update team
 router.put(
   "/:id",
-  requireAuth,
   validateParams(teamIdSchema),
   validateBody(z.object({
     name: z.string().min(1).max(100).optional(),
@@ -128,7 +123,6 @@ router.put(
 // DELETE /teams/:id - Delete team
 router.delete(
   "/:id",
-  requireAuth,
   validateParams(teamIdSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -147,7 +141,6 @@ router.delete(
 // GET /teams/:id/members - Get team members
 router.get(
   "/:id/members",
-  requireAuth,
   validateParams(teamIdSchema),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -166,7 +159,6 @@ router.get(
 // POST /teams/:id/members - Add team member
 router.post(
   "/:id/members",
-  requireAuth,
   validateParams(teamIdSchema),
   validateBody(addMemberSchema),
   async (req, res: Response<ApiResponse>, next) => {
@@ -192,7 +184,6 @@ router.post(
 // DELETE /teams/:id/members/:userId - Remove team member
 router.delete(
   "/:id/members/:userId",
-  requireAuth,
   validateParams(teamIdSchema.merge(userIdSchema)),
   async (req, res: Response<ApiResponse>, next) => {
     try {
@@ -211,7 +202,6 @@ router.delete(
 // PUT /teams/:id/members/:userId - Update team member role
 router.put(
   "/:id/members/:userId",
-  requireAuth,
   validateParams(teamIdSchema.merge(userIdSchema)),
   validateBody(updateTeamMemberRoleSchema),
   async (req, res: Response<ApiResponse>, next) => {

@@ -370,8 +370,8 @@ export const flows = [generatedFlow];`;
     if (context.plugins.has('googleAI()')) {
       imports.push("import { googleAI } from '@genkit-ai/google-genai';");
     }
-    if (context.plugins.has('openai()')) {
-      imports.push("import { openai } from '@genkit-ai/compat-oai/openai';");
+    if (context.plugins.has('openAI()')) {
+      imports.push("import { openAI } from '@genkit-ai/compat-oai/openai';");
     }
     if (context.plugins.has('anthropic()')) {
       imports.push("import { anthropic } from 'genkitx-anthropic';");
@@ -393,8 +393,8 @@ export const flows = [generatedFlow];`;
     if (context.plugins.has('googleAI()')) {
       plugins.push('googleAI({ apiKey: process.env.GEMINI_API_KEY })');
     }
-    if (context.plugins.has('openai()')) {
-      plugins.push('openai({ apiKey: process.env.OPENAI_API_KEY })');
+    if (context.plugins.has('openAI()')) {
+      plugins.push('openAI({ apiKey: process.env.OPENAI_API_KEY })');
     }
     if (context.plugins.has('anthropic()')) {
       plugins.push('anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })');

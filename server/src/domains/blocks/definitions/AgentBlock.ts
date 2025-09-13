@@ -206,7 +206,7 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     if (provider === 'googleai') {
       context.plugins.add('googleAI()');
     } else if (provider === 'openai') {
-      context.plugins.add('openai()');
+      context.plugins.add('openAI()');
     } else if (provider === 'anthropic') {
       context.plugins.add('anthropic()');
       // Add required model import to context
@@ -231,7 +231,7 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     if (provider === 'googleai') {
       modelRef = `googleAI.model('${model}')`;
     } else if (provider === 'openai') {
-      modelRef = `openai.model('${model}')`;
+      modelRef = `openAI.model('${model}')`;
     } else if (provider === 'anthropic') {
       const modelConstant = getAnthropicModelConstant(model);
       modelRef = modelConstant;
@@ -262,7 +262,7 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     if (config.provider === 'googleai') {
       imports.push("import { googleAI } from '@genkit-ai/google-genai';");
     } else if (config.provider === 'openai') {
-      imports.push("import { openai } from '@genkit-ai/compat-oai/openai';");
+      imports.push("import { openAI } from '@genkit-ai/compat-oai/openai';");
     } else if (config.provider === 'anthropic') {
       // Helper function to map UI model names to Anthropic model constants
       const getAnthropicModelConstant = (modelName: string): string => {
@@ -298,7 +298,7 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     if (config.provider === 'googleai') {
       return ['googleAI()'];
     } else if (config.provider === 'openai') {
-      return ['openai()'];
+      return ['openAI()'];
     } else if (config.provider === 'anthropic') {
       return ['anthropic()'];
     }

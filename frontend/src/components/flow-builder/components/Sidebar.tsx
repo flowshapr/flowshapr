@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { clientBlockService } from '@/lib/blocks/client-service';
 import { BlockCategory, ClientBlockMetadata } from '@/lib/blocks/client-types';
 import { useBlocksStore } from '@/stores';
-import { Search, FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot } from 'lucide-react';
+import { FileText, Brain, Download, Wrench, Code, GitBranch, Square, Bot } from 'lucide-react';
 
 // Icon mapping function to convert server icon strings to React components
 const getIconComponent = (iconName: string) => {
@@ -26,9 +26,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onAddNode }: SidebarProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<BlockCategory | 'all'>('all');
-  
   // Use Zustand store for blocks
   const { blocks, loading, error, setBlocks, setLoading, setError } = useBlocksStore();
 
@@ -63,19 +60,8 @@ export function Sidebar({ onAddNode }: SidebarProps) {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  // Get available blocks and categories
-  const allBlocks = blocks.filter(block => block.isAvailable);
-  const categories = [...new Set(allBlocks.map(block => block.category))].sort();
-  
-  const filteredBlocks = allBlocks.filter(block => {
-    const matchesSearch = !searchQuery || 
-      block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      block.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || block.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
+  // Get available blocks
+  const availableBlocks = blocks.filter(block => block.isAvailable);
 
   const getBlockColor = (category: BlockCategory): string => {
     switch (category) {
@@ -143,51 +129,15 @@ export function Sidebar({ onAddNode }: SidebarProps) {
       <div className="p-4 border-b border-base-300">
         <h2 className="text-lg font-semibold text-base-content">Block Palette</h2>
         <p className="text-sm text-base-content/70 mt-1">Drag blocks to the canvas</p>
-        
-        {/* Search */}
-        <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/50" />
-          <input
-            type="text"
-            placeholder="Search blocks..."
-            className="input input-sm w-full pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
-        {/* Category Filter */}
-        <div className="mt-3">
-          <select 
-            className="select select-sm w-full"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as BlockCategory | 'all')}
-          >
-            <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {filteredBlocks.length === 0 ? (
+        {availableBlocks.length === 0 ? (
           <div className="text-center text-base-content/60 py-8">
-            <p className="text-sm">No blocks found</p>
-            {searchQuery && (
-              <button 
-                className="btn btn-ghost btn-xs mt-2"
-                onClick={() => setSearchQuery('')}
-              >
-                Clear search
-              </button>
-            )}
+            <p className="text-sm">No blocks available</p>
           </div>
         ) : (
-          filteredBlocks.map((block) => {
+          availableBlocks.map((block) => {
             const colorClass = getBlockColor(block.category);
 
             return (

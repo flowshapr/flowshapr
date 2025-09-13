@@ -1,13 +1,9 @@
 import { Router } from 'express';
 import { userController } from './controllers/UserController';
-import { requireAuth } from '../../shared/middleware/auth';
 import { validate } from '../../shared/middleware/validation';
 import { updateUserProfileSchema, getUserProfileSchema } from './validation/schemas';
 
 const router = Router();
-
-// Apply auth middleware to all routes
-router.use(requireAuth);
 
 // User profile routes
 // GET /api/users/me - Get current user's profile

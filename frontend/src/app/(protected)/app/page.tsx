@@ -9,23 +9,17 @@ export default function FlowBuilderApp() {
   const router = useRouter();
   const [flows, setFlows] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Temporarily bypass auth for UI development
-  const mockSession = {
-    user: {
-      id: "user_1756749003851_v6sdy99q9kf",
-      name: "Marcel Folaron", 
-      email: "marcel@leantime.io",
-      emailVerified: true
-    },
-    session: {
-      id: "session_temp",
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-    }
-  };
+
+  // Use real authentication
+  const { session, loading: authLoading } = useRequireAuth();
 
   // Load flows and redirect to first one
   useEffect(() => {
+    // Don't load flows until authentication is complete
+    if (authLoading || !session) {
+      return;
+    }
+
     const loadFlows = async () => {
       try {
         const response = await fetch('/api/flows');
@@ -49,11 +43,12 @@ export default function FlowBuilderApp() {
     };
 
     loadFlows();
-  }, [router]);
+  }, [router, session, authLoading]);
 
-  if (loading) {
+  // Show loading state while authentication or flows are loading
+  if (authLoading || loading) {
     return (
-      <AppLayout user={mockSession.user}>
+      <AppLayout user={session?.user}>
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2 text-base-content/70">
             <div className="w-6 h-6 border-2 border border-t-primary rounded-full animate-spin" />
@@ -64,8 +59,13 @@ export default function FlowBuilderApp() {
     );
   }
 
+  // If no session after loading, the useRequireAuth hook will handle redirect
+  if (!session) {
+    return null;
+  }
+
   return (
-    <AppLayout user={mockSession.user}>
+    <AppLayout user={session.user}>
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold text-base-content mb-2">

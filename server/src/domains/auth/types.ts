@@ -32,6 +32,7 @@ export interface AuthResponse {
 export interface SessionData {
   userId: string;
   user: AuthUser;
+  token: string;
   expiresAt: Date;
 }
 

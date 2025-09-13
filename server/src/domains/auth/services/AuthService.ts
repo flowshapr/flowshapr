@@ -103,23 +103,25 @@ export class AuthService {
       // For now, we'll skip password verification since we don't have a password field
       // This is temporary until we implement proper Better Auth
 
-      // Create session
+      // Create session with proper token generation
       const sessionId = this.generateSessionId();
+      const sessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
       const authUser = this.createAuthUser(user);
 
-      // Store session in memory
+      // Store session in memory with proper token
       sessions.set(sessionId, {
         userId: user.id,
         user: authUser,
+        token: sessionToken,
         expiresAt
       });
 
       const session: AuthSession = {
         id: sessionId,
         userId: user.id,
-        token: sessionId, // Use session ID as token for simplicity
+        token: sessionToken,
         expiresAt
       };
 

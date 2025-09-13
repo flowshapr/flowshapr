@@ -118,6 +118,12 @@ export class AuthController {
       const sessionData = await authService.getSession(sessionId);
 
       if (!sessionData) {
+        // Clear invalid session cookie if one exists
+        if (sessionId) {
+          res.clearCookie('sessionId');
+          // Also clear the uid cookie
+          res.clearCookie('uid');
+        }
         res.json({ data: null });
         return;
       }
@@ -128,6 +134,11 @@ export class AuthController {
       });
     } catch (error: any) {
       logError("Session check error:", error);
+      // Clear potentially corrupted session cookie
+      if (req.cookies?.sessionId) {
+        res.clearCookie('sessionId');
+        res.clearCookie('uid');
+      }
       res.json({ data: null });
     }
   }

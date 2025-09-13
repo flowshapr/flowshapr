@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { flowController } from "./controllers/FlowController";
 import { validateBody, validateParams } from "../../shared/middleware/validation";
-import { requireAuth } from "../../shared/middleware/auth";
 import { requireScope, rateLimitToken } from "../../shared/middleware/scope";
 import { tracesController } from "../traces/controllers/TracesController";
 import { connectionsController } from "../connections/controllers/ConnectionsController";
@@ -25,8 +24,7 @@ import {
 
 const router = Router();
 
-// Apply auth middleware to all routes
-router.use(requireAuth);
+// Authentication is handled by global auth middleware
 
 // GET /flows - List user's flows
 router.get(
