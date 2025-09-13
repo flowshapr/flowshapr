@@ -27,7 +27,7 @@ export default function InterruptBlock({ data, selected, id }: NodeProps) {
           <select
             value={config.interruptType || 'manual-response'}
             onChange={(e) => handleConfigChange('interruptType', e.target.value)}
-            className="select select-bordered select-xs w-full"
+            className="nodrag select select-bordered select-xs w-full"
           >
             <option value="manual-response">Manual Response</option>
             <option value="restartable">Restartable</option>
@@ -39,7 +39,7 @@ export default function InterruptBlock({ data, selected, id }: NodeProps) {
           <textarea
             value={config.message || 'Human review required'}
             onChange={(e) => handleConfigChange('message', e.target.value)}
-            className="textarea textarea-bordered textarea-xs w-full text-xs resize-none"
+            className="nodrag textarea textarea-bordered textarea-xs w-full text-xs resize-none"
             rows={3}
             placeholder="Please review the data and provide your response..."
           />
@@ -50,7 +50,7 @@ export default function InterruptBlock({ data, selected, id }: NodeProps) {
           <textarea
             value={config.responseSchema || ''}
             onChange={(e) => handleConfigChange('responseSchema', e.target.value)}
-            className="textarea textarea-bordered textarea-xs w-full text-xs font-mono resize-none"
+            className="nodrag textarea textarea-bordered textarea-xs w-full text-xs font-mono resize-none"
             rows={4}
             placeholder='{\n  "type": "object",\n  "properties": {\n    "approved": { "type": "boolean" },\n    "feedback": { "type": "string" }\n  }\n}'
           />
@@ -64,7 +64,7 @@ export default function InterruptBlock({ data, selected, id }: NodeProps) {
             max="3600000"
             value={config.timeout || ''}
             onChange={(e) => handleConfigChange('timeout', parseInt(e.target.value) || undefined)}
-            className="input input-bordered input-xs w-full text-xs"
+            className="nodrag input input-bordered input-xs w-full text-xs"
             placeholder="300000"
           />
         </div>
@@ -82,7 +82,7 @@ export default function InterruptBlock({ data, selected, id }: NodeProps) {
                     newResponses[index] = e.target.value;
                     handleArrayChange('allowedResponses', newResponses);
                   }}
-                  className="input input-bordered input-xs flex-1 text-xs"
+                  className="nodrag input input-bordered input-xs flex-1 text-xs"
                   placeholder="approve"
                 />
                 <button

@@ -25,7 +25,7 @@ export default function ConditionBlock({ data, selected, id }: NodeProps) {
             value={config.condition || ''}
             onChange={(e) => handleConfigChange('condition', e.target.value)}
             placeholder="data.score > 0.5"
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none font-mono"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none font-mono"
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -35,7 +35,7 @@ export default function ConditionBlock({ data, selected, id }: NodeProps) {
               type="text"
               value={config.trueLabel || 'Yes'}
               onChange={(e) => handleConfigChange('trueLabel', e.target.value)}
-              className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none"
+              className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none"
             />
           </div>
           <div>
@@ -44,7 +44,7 @@ export default function ConditionBlock({ data, selected, id }: NodeProps) {
               type="text"
               value={config.falseLabel || 'No'}
               onChange={(e) => handleConfigChange('falseLabel', e.target.value)}
-              className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none"
+              className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-yellow-300 focus:outline-none"
             />
           </div>
         </div>

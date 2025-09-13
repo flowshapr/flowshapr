@@ -78,7 +78,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
             <select
               value={selectedProvider}
               onChange={(e) => handleConfigChange('provider', e.target.value)}
-              className="select select-bordered select-xs w-full"
+              className="nodrag select select-bordered select-xs w-full"
             >
               {(['googleai','openai','anthropic'] as const).map((prov) => {
                 const status = providerStatus.find(p => p.provider === prov);
@@ -99,7 +99,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
           <select
             value={config.model || availableModels[0]}
             onChange={(e) => handleConfigChange('model', e.target.value)}
-            className="select select-bordered select-xs w-full"
+            className="nodrag select select-bordered select-xs w-full"
             disabled={!selectedHasKey || availableModels.length === 0}
           >
             {availableModels.map((m) => (
@@ -129,7 +129,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
           <select
             value={promptType}
             onChange={(e) => handleConfigChange('promptType', e.target.value)}
-            className="select select-bordered select-xs w-full"
+            className="nodrag select select-bordered select-xs w-full"
           >
             <option value="static">Static</option>
             <option value="library">From Library</option>
@@ -143,7 +143,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
               <textarea
                 value={config.systemPrompt || ''}
                 onChange={(e) => handleConfigChange('systemPrompt', e.target.value)}
-                className="textarea textarea-bordered textarea-xs w-full text-xs resize-none"
+                className="nodrag textarea textarea-bordered textarea-xs w-full text-xs resize-none"
                 rows={2}
               />
             </div>
@@ -158,7 +158,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
               <textarea
                 value={config.userPrompt || ''}
                 onChange={(e) => handleConfigChange('userPrompt', e.target.value)}
-                className="textarea textarea-bordered textarea-xs w-full text-xs resize-none"
+                className="nodrag textarea textarea-bordered textarea-xs w-full text-xs resize-none"
                 rows={3}
               />
             </div>
@@ -169,7 +169,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
             <select
               value={config.promptLibraryId || ''}
               onChange={(e) => handleConfigChange('promptLibraryId', e.target.value)}
-              className="select select-bordered select-xs w-full"
+              className="nodrag select select-bordered select-xs w-full"
             >
               <option value="">Select a prompt</option>
               {prompts.map((p) => (
@@ -193,7 +193,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                 max="2"
                 value={config.temperature ?? 0.7}
                 onChange={(e) => handleConfigChange('temperature', parseFloat(e.target.value) || 0.7)}
-                className="input input-bordered input-xs w-full text-xs"
+                className="nodrag input input-bordered input-xs w-full text-xs"
               />
             </div>
             
@@ -205,7 +205,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                 max="4096"
                 value={config.maxTokens ?? 1000}
                 onChange={(e) => handleConfigChange('maxTokens', parseInt(e.target.value) || 1000)}
-                className="input input-bordered input-xs w-full text-xs"
+                className="nodrag input input-bordered input-xs w-full text-xs"
               />
             </div>
           </div>
@@ -222,7 +222,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                   max="1"
                   value={config.topP ?? 1}
                   onChange={(e) => handleConfigChange('topP', parseFloat(e.target.value) || 1)}
-                  className="input input-bordered input-xs w-full text-xs"
+                  className="nodrag input input-bordered input-xs w-full text-xs"
                 />
               </div>
               
@@ -236,7 +236,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                     max="2"
                     value={config.frequencyPenalty ?? 0}
                     onChange={(e) => handleConfigChange('frequencyPenalty', parseFloat(e.target.value) || 0)}
-                    className="input input-bordered input-xs w-full text-xs"
+                    className="nodrag input input-bordered input-xs w-full text-xs"
                   />
                 </div>
               )}
@@ -253,7 +253,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                   max="100"
                   value={config.topK ?? 40}
                   onChange={(e) => handleConfigChange('topK', parseInt(e.target.value) || 40)}
-                  className="input input-bordered input-xs w-full text-xs"
+                  className="nodrag input input-bordered input-xs w-full text-xs"
                 />
               </div>
               
@@ -265,7 +265,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                   max="8"
                   value={config.candidateCount ?? 1}
                   onChange={(e) => handleConfigChange('candidateCount', parseInt(e.target.value) || 1)}
-                  className="input input-bordered input-xs w-full text-xs"
+                  className="nodrag input input-bordered input-xs w-full text-xs"
                 />
               </div>
             </div>
@@ -281,7 +281,7 @@ const AgentBlock = React.memo(function AgentBlock({ data, selected, id }: NodePr
                 max="2"
                 value={config.presencePenalty ?? 0}
                 onChange={(e) => handleConfigChange('presencePenalty', parseFloat(e.target.value) || 0)}
-                className="input input-bordered input-xs w-full text-xs"
+                className="nodrag input input-bordered input-xs w-full text-xs"
               />
             </div>
           )}

@@ -23,7 +23,7 @@ export default function OutputBlock({ data, selected, id }: NodeProps) {
           <select
             value={config.format || 'text'}
             onChange={(e) => handleConfigChange('format', e.target.value)}
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-red-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-red-300 focus:outline-none"
           >
             <option value="text">Text</option>
             <option value="json">JSON</option>
@@ -37,7 +37,7 @@ export default function OutputBlock({ data, selected, id }: NodeProps) {
             value={config.schema || ''}
             onChange={(e) => handleConfigChange('schema', e.target.value)}
             placeholder="Output schema definition..."
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-red-300 focus:outline-none resize-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-red-300 focus:outline-none resize-none"
             rows={2}
           />
         </div>

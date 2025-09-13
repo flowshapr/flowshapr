@@ -40,7 +40,7 @@ export default function InputBlock({ data, selected, id }: NodeProps) {
             onChange={(e) => handleConfigChange('description', e.target.value)}
             placeholder="Describe what input this flow expects..."
             rows={2}
-            className="textarea textarea-bordered textarea-xs w-full text-xs resize-none"
+            className="nodrag textarea textarea-bordered textarea-xs w-full text-xs resize-none"
           />
         </div>
 
