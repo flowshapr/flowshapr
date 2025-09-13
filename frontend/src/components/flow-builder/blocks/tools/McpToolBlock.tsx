@@ -28,7 +28,7 @@ export default function McpToolBlock({ data, selected, id }: NodeProps) {
             value={config.name || ''}
             onChange={(e) => handleChange('name', e.target.value)}
             placeholder="e.g. Leantime MCP"
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
           />
         </div>
 
@@ -41,7 +41,7 @@ export default function McpToolBlock({ data, selected, id }: NodeProps) {
             value={config.serverUrl || ''}
             onChange={(e) => handleChange('serverUrl', e.target.value)}
             placeholder="https://mcp.example.com"
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
           />
         </div>
 
@@ -54,7 +54,7 @@ export default function McpToolBlock({ data, selected, id }: NodeProps) {
             value={config.apiKey || ''}
             onChange={(e) => handleChange('apiKey', e.target.value)}
             placeholder="••••••••"
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
           />
         </div>
 
@@ -65,7 +65,7 @@ export default function McpToolBlock({ data, selected, id }: NodeProps) {
             value={(config.selectedTools || []).join(', ')}
             onChange={(e) => handleChange('selectedTools', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
             placeholder="e.g. create_task, list_projects"
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:ring-1 focus:ring-teal-300 focus:outline-none"
           />
         </div>
 

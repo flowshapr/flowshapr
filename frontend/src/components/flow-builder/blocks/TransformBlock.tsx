@@ -23,7 +23,7 @@ export default function TransformBlock({ data, selected, id }: NodeProps) {
           <select
             value={config.language || 'javascript'}
             onChange={(e) => handleConfigChange('language', e.target.value)}
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-orange-300 focus:outline-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-orange-300 focus:outline-none"
           >
             <option value="javascript">JavaScript</option>
             <option value="typescript">TypeScript</option>
@@ -40,7 +40,7 @@ export default function TransformBlock({ data, selected, id }: NodeProps) {
             value={config.code || ''}
             onChange={(e) => handleConfigChange('code', e.target.value)}
             placeholder={`// Transform the data\nreturn data;`}
-            className="w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-orange-300 focus:outline-none font-mono resize-none"
+            className="nodrag w-full px-2 py-1 text-xs rounded border border bg-base-100 focus:bg-base-100 focus:ring-1 focus:ring-orange-300 focus:outline-none font-mono resize-none"
             rows={3}
           />
         </div>
