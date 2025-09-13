@@ -123,7 +123,7 @@ export function FlowBuilderView({
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Autosave function
+  // Autosave function - server-only, no localStorage fallback
   const autosaveFlow = useCallback(async (nodes: FlowNode[], edges: FlowEdge[], version?: number) => {
     if (!selectedFlow || nodes.length === 0) return;
     if (flowLoading) return;
@@ -131,7 +131,7 @@ export function FlowBuilderView({
 
     try {
       setAutosaveStatus('saving');
-      
+
       const flowDefinitionData = {
         nodes,
         edges,
@@ -145,52 +145,38 @@ export function FlowBuilderView({
         }
       };
 
-      // First try API save, fall back to localStorage if it fails
-      try {
-        const response = await fetch(`/api/flows/${selectedFlow.id}/definition`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(flowDefinitionData),
-        });
+      // Save to backend API - no localStorage fallback since app requires internet
+      const response = await fetch(`/api/flows/${selectedFlow.id}/definition`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(flowDefinitionData),
+      });
 
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-        
-        // API save successful
-        setAutosaveStatus('saved');
-        setLastSaved(new Date());
-      } catch (apiError) {
-        console.warn('API autosave failed, using localStorage:', apiError);
-        
-        // Fallback to localStorage
-        const storageKey = `flow_${selectedFlow.id}`;
-        const flowData = {
-          ...flowDefinitionData,
-          flowInfo: {
-            id: selectedFlow.id,
-            name: selectedFlow.name,
-            description: selectedFlow.description,
-          },
-          savedAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem(storageKey, JSON.stringify(flowData));
-        
-        setAutosaveStatus('saved');
-        setLastSaved(new Date());
+      if (!response.ok) {
+        throw new Error(`Failed to save flow: ${response.status} ${response.statusText}`);
       }
-      
+
+      // API save successful
+      setAutosaveStatus('saved');
+      setLastSaved(new Date());
+
       // Reset to idle after 2 seconds
       setTimeout(() => setAutosaveStatus('idle'), 2000);
     } catch (error) {
-      console.error('Autosave failed completely:', error);
+      console.error('Autosave failed:', error);
       setAutosaveStatus('error');
+
+      // Add console entry to inform user of save failure
+      pushConsole({
+        level: 'error',
+        message: `Failed to save flow: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+
       setTimeout(() => setAutosaveStatus('idle'), 3000);
     }
-  }, [selectedFlow, viewport, startNodeId, apiKeys, flowLoading]);
+  }, [selectedFlow, viewport, startNodeId, apiKeys, flowLoading, connections, pushConsole]);
 
   // Debounced autosave
   const debouncedAutosave = useCallback(
@@ -236,81 +222,78 @@ export function FlowBuilderView({
     }
   }, [nodes, edges, debouncedAutosave, isDragging, flowLoading]);
 
-  // Load flow from backend when selectedFlow changes; fallback to localStorage
+  // Load flow from backend when selectedFlow changes - server-only, no localStorage fallback
   useEffect(() => {
     const load = async () => {
       if (!selectedFlow) {
         clearConnections();
         return;
       }
-      
+
       // Prevent duplicate loading - check if already loading
       if (flowLoading) {
         console.log('🔄 Flow already loading, skipping duplicate request');
         return;
       }
-      
+
       setFlowLoading(true);
       flowVersionRef.current += 1;
-      
+
       // Clear connections and prompts to avoid cross-flow bleed
       clearConnections();
       try {
         (window as any).__prompts = [];
         window.dispatchEvent(new CustomEvent('promptsChange', { detail: [] }));
       } catch {}
-      
-      // Try to load flow from API first
+
+      // Load flow from backend API - no localStorage fallback since app requires internet
       try {
         const resp = await fetch(`/api/flows/${selectedFlow.id}`, { cache: 'no-store' });
-        if (resp.ok) {
-          const json = await resp.json();
-          const flow = json?.data;
-          if (flow?.nodes && flow?.edges) {
-            setNodes(flow.nodes);
-            setEdges(flow.edges);
-            if (flow.metadata?.startNodeId) setStartNodeId(flow.metadata.startNodeId);
-            if (flow.metadata?.viewport && typeof flow.metadata.viewport.zoom === 'number') {
-              setViewport({ x: flow.metadata.viewport.x || 0, y: flow.metadata.viewport.y || 0, zoom: flow.metadata.viewport.zoom });
-            }
-            if (flow.metadata?.apiKeys) setApiKeys(flow.metadata.apiKeys);
-            
-            setFlowLoading(false);
-            // Load connections using Zustand store
-            await loadConnections(selectedFlow.id);
-            return;
-          }
+        if (!resp.ok) {
+          throw new Error(`Failed to load flow: ${resp.status} ${resp.statusText}`);
         }
-      } catch (e) {
-        console.warn('Failed to load flow from backend, falling back to localStorage');
-      }
-      
-      // Fallback to localStorage
-      try {
-        const storageKey = `flow_${selectedFlow.id}`;
-        const savedFlow = localStorage.getItem(storageKey);
-        if (savedFlow) {
-          const flowData = JSON.parse(savedFlow);
-          if (flowData.nodes && flowData.edges) {
-            setNodes(flowData.nodes);
-            setEdges(flowData.edges);
-            setLastSaved(new Date(flowData.savedAt || flowData.metadata?.lastModified));
-            if (flowData.metadata?.startNodeId) setStartNodeId(flowData.metadata.startNodeId);
-            const vp = flowData.metadata?.viewport || flowData.viewport;
-            if (vp && typeof vp.zoom === 'number') setViewport({ x: vp.x || 0, y: vp.y || 0, zoom: vp.zoom });
-            if (flowData.metadata?.apiKeys) setApiKeys(flowData.metadata.apiKeys);
+
+        const json = await resp.json();
+        const flow = json?.data;
+
+        if (flow?.nodes && flow?.edges) {
+          setNodes(flow.nodes);
+          setEdges(flow.edges);
+          if (flow.metadata?.startNodeId) setStartNodeId(flow.metadata.startNodeId);
+          if (flow.metadata?.viewport && typeof flow.metadata.viewport.zoom === 'number') {
+            setViewport({ x: flow.metadata.viewport.x || 0, y: flow.metadata.viewport.y || 0, zoom: flow.metadata.viewport.zoom });
           }
+          if (flow.metadata?.apiKeys) setApiKeys(flow.metadata.apiKeys);
+
+          // Load connections using Zustand store
+          await loadConnections(selectedFlow.id);
+        } else {
+          // Initialize with empty flow if no data found
+          setNodes([]);
+          setEdges([]);
+          await loadConnections(selectedFlow.id);
         }
-      } catch (err) {
-        console.error('Failed to load flow state:', err);
-      }
-      
-      setFlowLoading(false);
-      // Load connections using Zustand store - only call once at the end
-      try {
-        await loadConnections(selectedFlow.id);
-      } catch (err) {
-        console.error('Failed to load connections:', err);
+
+      } catch (error) {
+        console.error('Failed to load flow from backend:', error);
+
+        // Add console entry to inform user of load failure
+        pushConsole({
+          level: 'error',
+          message: `Failed to load flow: ${error instanceof Error ? error.message : 'Unknown error'}`
+        });
+
+        // Initialize with empty flow on error
+        setNodes([]);
+        setEdges([]);
+
+        try {
+          await loadConnections(selectedFlow.id);
+        } catch (connError) {
+          console.error('Failed to load connections:', connError);
+        }
+      } finally {
+        setFlowLoading(false);
       }
     };
     
@@ -318,7 +301,7 @@ export function FlowBuilderView({
     setNodes([]);
     setEdges([]);
     load();
-  }, [selectedFlow?.id, loadConnections, clearConnections]);
+  }, [selectedFlow?.id, loadConnections, clearConnections, pushConsole]);
 
   // Listen for node config changes
   useEffect(() => {
