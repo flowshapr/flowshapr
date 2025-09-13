@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { ExecutionConfig, ExecutionResult, ContainerExecutorConfig } from './types';
 import { ContainerManager } from './ContainerManager';
+import { logInfo, logError } from '../../shared/utils/logger';
 
 export class ContainerExecutor {
   private config: ContainerExecutorConfig;
@@ -28,13 +29,13 @@ export class ContainerExecutor {
   async initialize(): Promise<void> {
     // Build Docker image if it doesn't exist
     await this.buildDockerImage();
-    console.log(`📁 Container executor initialized for HTTP communication`);
+    logInfo(`📁 Container executor initialized for HTTP communication`);
   }
 
   async shutdown(): Promise<void> {
     // Shutdown container manager (this handles stopping containers)
     await this.containerManager.shutdown();
-    console.log(`🧹 Container executor shutdown completed`);
+    logInfo(`🧹 Container executor shutdown completed`);
   }
 
   getStatus() {
@@ -67,13 +68,13 @@ export class ContainerExecutor {
     this.containerManager.registerContainer(containerId, `flow-${executionId}`);
 
     try {
-      console.log(`🐳 Starting Genkit HTTP server container: ${containerId}`);
+      logInfo(`🐳 Starting Genkit HTTP server container: ${containerId}`);
 
       // Start container with HTTP server and execute via HTTP
       const result = await this.executeViaHttp(code, input, config, containerId, executionId);
       
       const duration = Date.now() - startTime;
-      console.log(`✅ Flow executed successfully via HTTP ${duration}ms`);
+      logInfo(`✅ Flow executed successfully via HTTP ${duration}ms`);
 
       return {
         success: true,
@@ -87,7 +88,7 @@ export class ContainerExecutor {
 
     } catch (error: any) {
       const duration = Date.now() - startTime;
-      console.error(`❌ Container execution failed in ${duration}ms:`, error.message);
+      logError(`❌ Container execution failed in ${duration}ms:`, error.message);
 
       return {
         success: false,
@@ -138,10 +139,10 @@ export class ContainerExecutor {
 
       child.on('close', (code) => {
         if (code === 0) {
-          console.log(`🐳 Docker image ${this.config.imageName} built successfully`);
+          logInfo(`🐳 Docker image ${this.config.imageName} built successfully`);
           resolve();
         } else {
-          console.error(`❌ Failed to build Docker image: ${error}`);
+          logError(`❌ Failed to build Docker image: ${error}`);
           reject(new Error(`Docker build failed: ${error}`));
         }
       });
@@ -227,7 +228,7 @@ export class ContainerExecutor {
     // Add image name
     dockerArgs.push(this.config.imageName);
 
-    console.log(`🔒 Starting HTTP server container on port ${containerPort}: ${containerId}`);
+    logInfo(`🔒 Starting HTTP server container on port ${containerPort}: ${containerId}`);
     this.containerManager.updateContainerStatus(containerId, 'creating');
 
     return new Promise((resolve, reject) => {
@@ -241,13 +242,13 @@ export class ContainerExecutor {
       child.stdout?.on('data', (data) => {
         const text = data.toString();
         output += text;
-        console.log(`[Container ${containerId}] ${text.trim()}`);
+        logInfo(`[Container ${containerId}] ${text.trim()}`);
       });
 
       child.stderr?.on('data', (data) => {
         const text = data.toString();
         error += text;
-        console.error(`[Container ${containerId} ERROR] ${text.trim()}`);
+        logError(`[Container ${containerId} ERROR] ${text.trim()}`);
       });
 
       child.on('close', (code) => {
@@ -286,12 +287,12 @@ export class ContainerExecutor {
         
         if (response.ok) {
           const health = await response.json() as any;
-          console.log(`✅ Container ${containerId} is ready: ${health.status}`);
+          logInfo(`✅ Container ${containerId} is ready: ${health.status}`);
           return;
         }
       } catch (error) {
         // Container not ready yet, continue waiting
-        console.log(`🔄 Waiting for container ${containerId} (attempt ${attempt}/${maxAttempts})...`);
+        logInfo(`🔄 Waiting for container ${containerId} (attempt ${attempt}/${maxAttempts})...`);
       }
       
       if (attempt === maxAttempts) {
@@ -342,7 +343,7 @@ export class ContainerExecutor {
       });
 
       child.on('close', () => {
-        console.log(`🛑 Container ${containerId} stopped`);
+        logInfo(`🛑 Container ${containerId} stopped`);
         resolve();
       });
 

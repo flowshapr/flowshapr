@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/errors";
 import type { ApiResponse } from "../types/index";
+import { logError } from "../utils/logger";
 
 export function errorHandler(
   error: Error,
@@ -8,7 +9,7 @@ export function errorHandler(
   res: Response<ApiResponse>,
   next: NextFunction
 ) {
-  console.error('Error:', error);
+  logError('Error:', error);
 
   if (error instanceof AppError) {
     return res.status(error.statusCode).json({

@@ -4,6 +4,7 @@ import { AgentBlockDefinition } from './definitions/AgentBlock';
 import { OutputBlockDefinition } from './definitions/OutputBlock';
 import { ToolBlockDefinition } from './definitions/ToolBlock';
 import { ConditionBlockDefinition } from './definitions/ConditionBlock';
+import { logInfo } from '../../shared/utils/logger';
 
 /**
  * Initialize all server-side block definitions
@@ -16,7 +17,7 @@ export function initializeServerBlocks() {
   serverBlockRegistry.register(ToolBlockDefinition);
   serverBlockRegistry.register(ConditionBlockDefinition);
 
-  console.log('🚀 Server blocks initialized:', serverBlockRegistry.getStats());
+  logInfo('🚀 Server blocks initialized:', serverBlockRegistry.getStats());
 }
 
 export { serverBlockRegistry } from './registry';

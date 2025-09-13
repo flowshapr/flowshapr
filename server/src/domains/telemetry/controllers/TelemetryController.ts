@@ -12,7 +12,6 @@ export class TelemetryController {
   async createTrace(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       logInfo('📊 [Telemetry] Received trace data:', JSON.stringify(req.body, null, 2));
-      console.log('📊 [Telemetry] Received trace data:', JSON.stringify(req.body, null, 2));
       
       // Save the trace using our service
       await telemetryService.saveTrace(req.body);
@@ -22,7 +21,7 @@ export class TelemetryController {
       
       res.status(200).send('OK');
     } catch (error) {
-      console.error('❌ [Telemetry] Error saving trace:', error);
+      logError('❌ [Telemetry] Error saving trace:', error);
       next(error);
     }
   }
@@ -31,7 +30,7 @@ export class TelemetryController {
   async getTrace(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { traceId } = req.params;
-      console.log(`🔍 [Telemetry] Getting trace: ${traceId}`);
+      logInfo(`🔍 [Telemetry] Getting trace: ${traceId}`);
       
       const trace = await telemetryService.getTrace(traceId);
       if (!trace) {
@@ -40,7 +39,7 @@ export class TelemetryController {
       }
       res.json(trace);
     } catch (error) {
-      console.error('❌ [Telemetry] Error getting trace:', error);
+      logError('❌ [Telemetry] Error getting trace:', error);
       next(error);
     }
   }
@@ -52,12 +51,12 @@ export class TelemetryController {
       const continuationToken = req.query.continuationToken as string | undefined;
       const filter = req.query.filter as string | undefined;
       
-      console.log(`📋 [Telemetry] Listing traces: limit=${limit}, continuationToken=${continuationToken}, filter=${filter}`);
+      logInfo(`📋 [Telemetry] Listing traces: limit=${limit}, continuationToken=${continuationToken}, filter=${filter}`);
       
       const result = await telemetryService.listTraces(limit, continuationToken, filter);
       res.json(result);
     } catch (error) {
-      console.error('❌ [Telemetry] Error listing traces:', error);
+      logError('❌ [Telemetry] Error listing traces:', error);
       next(error);
     }
   }
@@ -69,7 +68,7 @@ export class TelemetryController {
       await telemetryService.saveTrace(trace);
       res.status(200).send();
     } catch (error) {
-      console.error('Error saving trace:', error);
+      logError('Error saving trace:', error);
       res.status(500).json({ 
         error: error instanceof Error ? error.message : 'Failed to save trace' 
       });

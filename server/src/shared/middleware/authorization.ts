@@ -5,6 +5,7 @@ import { db } from '../../infrastructure/database/connection';
 import * as schema from '../../infrastructure/database/schema';
 import { eq, and } from 'drizzle-orm';
 import { UnauthorizedError } from '../utils/errors';
+import { logError } from '../utils/logger';
 
 // Extend Express Request to include ability
 declare global {
@@ -36,7 +37,7 @@ export async function loadUserAbilities(req: Request, res: Response, next: NextF
 
     next();
   } catch (error) {
-    console.error('Error loading user abilities:', error);
+    logError('Error loading user abilities:', error);
     next(error);
   }
 }
@@ -154,7 +155,7 @@ async function getUserCompleteContext(userId: string) {
       })),
     };
   } catch (error) {
-    console.error('Error getting user context:', error);
+    logError('Error getting user context:', error);
     return null;
   }
 }

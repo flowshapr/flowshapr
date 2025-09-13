@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { flowService } from "../services/FlowService";
 import { ConflictError, NotFoundError } from "../../../shared/utils/errors";
+import { logError } from "../../../shared/utils/logger";
 
 export class FlowController {
   async createFlow(req: Request, res: Response): Promise<void> {
@@ -18,7 +19,7 @@ export class FlowController {
         message: "Flow created successfully"
       });
     } catch (error: any) {
-      console.error("Create flow error:", error);
+      logError("Create flow error:", error);
 
       if (error instanceof ConflictError) {
         res.status(error.statusCode).json({
@@ -62,7 +63,7 @@ export class FlowController {
         data: flow
       });
     } catch (error: any) {
-      console.error("Get flow error:", error);
+      logError("Get flow error:", error);
       
       res.status(500).json({
         success: false,
@@ -102,7 +103,7 @@ export class FlowController {
         }
       });
     } catch (error: any) {
-      console.error("Get user flows error:", error);
+      logError("Get user flows error:", error);
       
       res.status(500).json({
         success: false,
@@ -131,7 +132,7 @@ export class FlowController {
         message: "Flow updated successfully"
       });
     } catch (error: any) {
-      console.error("Update flow error:", error);
+      logError("Update flow error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({
@@ -164,7 +165,7 @@ export class FlowController {
         message: "Flow deleted successfully"
       });
     } catch (error: any) {
-      console.error("Delete flow error:", error);
+      logError("Delete flow error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({
@@ -203,7 +204,7 @@ export class FlowController {
         message: "Flow member added successfully"
       });
     } catch (error: any) {
-      console.error("Add flow member error:", error);
+      logError("Add flow member error:", error);
 
       if (error instanceof ConflictError) {
         res.status(error.statusCode).json({
@@ -251,7 +252,7 @@ export class FlowController {
         message: "Flow member role updated successfully"
       });
     } catch (error: any) {
-      console.error("Update flow member role error:", error);
+      logError("Update flow member role error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({
@@ -284,7 +285,7 @@ export class FlowController {
         message: "Flow member removed successfully"
       });
     } catch (error: any) {
-      console.error("Remove flow member error:", error);
+      logError("Remove flow member error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({
@@ -324,7 +325,7 @@ export class FlowController {
         message: "Flow definition saved successfully"
       });
     } catch (error: any) {
-      console.error("Save flow definition error:", error);
+      logError("Save flow definition error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({
@@ -382,7 +383,7 @@ export class FlowController {
       // Return direct result (Genkit format)
       res.json(result);
     } catch (error: any) {
-      console.error('🎯 FlowController: Execute flow error:', error);
+      logError('🎯 FlowController: Execute flow error:', error);
 
       // Handle specific error types with appropriate HTTP status codes
       if (error.message === 'Flow not found') {
@@ -446,7 +447,7 @@ export class FlowController {
       // Return direct result (Genkit format)
       res.json(result);
     } catch (error: any) {
-      console.error('Execute flow by alias error:', error);
+      logError('Execute flow by alias error:', error);
 
       // Handle specific error types with appropriate HTTP status codes
       if (error.message === 'Flow not found') {
@@ -478,7 +479,7 @@ export class FlowController {
         message: "Flow published successfully"
       });
     } catch (error: any) {
-      console.error("Publish flow error:", error);
+      logError("Publish flow error:", error);
 
       if (error instanceof NotFoundError) {
         res.status(error.statusCode).json({

@@ -4,6 +4,7 @@ import { PromptsController } from '../PromptsController';
 import { promptsService } from '../../services/PromptsService';
 import { flowService } from '../../../flows/services/FlowService';
 import { ValidationError, NotFoundError, ForbiddenError } from '../../../../shared/utils/errors';
+import * as logger from '../../../../shared/utils/logger';
 
 // Mock the services
 jest.mock('../../services/PromptsService');
@@ -308,19 +309,19 @@ describe('PromptsController', () => {
     });
 
     it('should handle all error types correctly', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const logErrorSpy = jest.spyOn(logger, 'logError').mockImplementation();
       (flowService.getFlowById as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await controller.exportForFlow(mockRequest as Request, mockResponse as Response);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error exporting prompt:', expect.any(Error));
+      expect(logErrorSpy).toHaveBeenCalledWith('Error exporting prompt:', expect.any(Error));
       expect(mockStatus).toHaveBeenCalledWith(500);
       expect(mockJson).toHaveBeenCalledWith({
         success: false,
         error: { message: 'Failed to export prompt', code: 'INTERNAL_ERROR' },
       });
 
-      consoleSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 });

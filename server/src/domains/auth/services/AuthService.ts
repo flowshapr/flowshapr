@@ -3,6 +3,7 @@ import * as schema from "../../../infrastructure/database/schema/index";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { ConflictError, UnauthorizedError } from "../../../shared/utils/errors";
+import { logError } from "../../../shared/utils/logger";
 import { 
   SignUpData, 
   SignInData, 
@@ -75,7 +76,7 @@ export class AuthService {
       if (error instanceof ConflictError) {
         throw error;
       }
-      console.error("Registration error:", error);
+      logError("Registration error:", error);
       throw new Error("Registration failed. Please try again.");
     }
   }
@@ -130,7 +131,7 @@ export class AuthService {
       if (error instanceof UnauthorizedError) {
         throw error;
       }
-      console.error("Login error:", error);
+      logError("Login error:", error);
       throw new UnauthorizedError("Invalid email or password");
     }
   }

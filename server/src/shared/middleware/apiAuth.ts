@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { auth } from "../../infrastructure/auth/auth";
 import { UnauthorizedError } from "../utils/errors";
 import type { AuthenticatedUser, RequestContext } from "../types/index";
+import { logWarn } from "../utils/logger";
 
 declare global {
   namespace Express {
@@ -62,7 +63,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
   requireAuth(req, res, (error) => {
     if (error) {
       // Log the error but don't fail the request
-      console.warn('Optional auth failed:', error.message);
+      logWarn('Optional auth failed:', error.message);
     }
     next();
   });

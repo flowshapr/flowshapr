@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import { logInfo, logError } from '../../shared/utils/logger';
 
 export interface ContainerInfo {
   id: string;
@@ -130,7 +131,7 @@ export class ContainerManager extends EventEmitter {
               networkIO: stats.NetIO ? this.parseNetworkIO(stats.NetIO) : undefined
             });
           } catch (error) {
-            console.error(`Failed to parse container stats for ${id}:`, error);
+            logError(`Failed to parse container stats for ${id}:`, error);
             resolve(null);
           }
         } else {
@@ -157,9 +158,9 @@ export class ContainerManager extends EventEmitter {
         const success = code === 0;
         if (success) {
           this.updateContainerStatus(id, 'stopped');
-          console.log(`🛑 Force stopped container: ${id}`);
+          logInfo(`🛑 Force stopped container: ${id}`);
         } else {
-          console.error(`❌ Failed to force stop container: ${id}`);
+          logError(`❌ Failed to force stop container: ${id}`);
         }
         resolve(success);
       });
@@ -182,7 +183,7 @@ export class ContainerManager extends EventEmitter {
     for (const container of containersToCleanup) {
       const age = Date.now() - container.createdAt.getTime();
       if (age > this.maxContainerAge) {
-        console.log(`🧹 Cleaning up old container: ${container.id}`);
+        logInfo(`🧹 Cleaning up old container: ${container.id}`);
         this.unregisterContainer(container.id);
       }
     }
@@ -194,7 +195,7 @@ export class ContainerManager extends EventEmitter {
   async stopAllContainers(): Promise<void> {
     const runningContainers = this.getContainersByStatus('running');
     
-    console.log(`🛑 Stopping ${runningContainers.length} running containers...`);
+    logInfo(`🛑 Stopping ${runningContainers.length} running containers...`);
     
     const stopPromises = runningContainers.map(container => 
       this.forceStopContainer(container.id)
@@ -240,7 +241,7 @@ export class ContainerManager extends EventEmitter {
             this.emit('containerStatsUpdated', container, stats);
           }
         } catch (error) {
-          console.error(`Failed to get stats for container ${container.id}:`, error);
+          logError(`Failed to get stats for container ${container.id}:`, error);
         }
       }
     }, this.statsIntervalMs);
@@ -250,7 +251,7 @@ export class ContainerManager extends EventEmitter {
       await this.cleanupStoppedContainers();
     }, this.cleanupIntervalMs);
 
-    console.log('📊 Container monitoring started');
+    logInfo('📊 Container monitoring started');
   }
 
   /**
@@ -267,14 +268,14 @@ export class ContainerManager extends EventEmitter {
       this.cleanupInterval = undefined;
     }
 
-    console.log('📊 Container monitoring stopped');
+    logInfo('📊 Container monitoring stopped');
   }
 
   /**
    * Shutdown the container manager
    */
   async shutdown(): Promise<void> {
-    console.log('🔄 Shutting down container manager...');
+    logInfo('🔄 Shutting down container manager...');
     
     this.stopMonitoring();
     await this.stopAllContainers();
@@ -284,7 +285,7 @@ export class ContainerManager extends EventEmitter {
     
     await this.cleanupStoppedContainers();
     
-    console.log('✅ Container manager shutdown complete');
+    logInfo('✅ Container manager shutdown complete');
   }
 
   private parseMemoryUsage(memUsage: string): number {

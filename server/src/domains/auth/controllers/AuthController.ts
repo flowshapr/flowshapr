@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { authService } from "../services/AuthService";
 import { ConflictError, UnauthorizedError } from "../../../shared/utils/errors";
+import { logError } from "../../../shared/utils/logger";
 
 export class AuthController {
   async signUp(req: Request, res: Response): Promise<void> {
@@ -14,7 +15,7 @@ export class AuthController {
         }
       });
     } catch (error: any) {
-      console.error("Registration error:", error);
+      logError("Registration error:", error);
 
       if (error instanceof ConflictError) {
         res.status(error.statusCode).json({
@@ -69,7 +70,7 @@ export class AuthController {
 
       res.json(response);
     } catch (error: any) {
-      console.error("Login error:", error);
+      logError("Login error:", error);
 
       if (error instanceof UnauthorizedError) {
         res.status(error.statusCode).json({
@@ -101,7 +102,7 @@ export class AuthController {
 
       res.json({ data: result });
     } catch (error: any) {
-      console.error("Sign out error:", error);
+      logError("Sign out error:", error);
       res.status(500).json({
         error: {
           message: "Sign out failed. Please try again.",
@@ -126,7 +127,7 @@ export class AuthController {
         data: sessionData
       });
     } catch (error: any) {
-      console.error("Session check error:", error);
+      logError("Session check error:", error);
       res.json({ data: null });
     }
   }

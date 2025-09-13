@@ -6,6 +6,7 @@ import { CodeGeneratorService } from '../../blocks/services/CodeGeneratorService
 import { BlockInstance, FlowEdge, FlowVariable } from '../../blocks/types';
 import { flowValidator } from './FlowValidator';
 import { connectionsService } from '../../connections/services/ConnectionsService';
+import { logWarn } from '../../../shared/utils/logger';
 
 type ExecuteInput = {
   flowId: string;
@@ -177,7 +178,7 @@ export class FlowRunService {
             setTimeout(() => reject(new Error('Trace persistence timeout')), 5000)
           )
         ]).catch(e => {
-          console.warn('Trace persist failed:', (e as any)?.message || e);
+          logWarn('Trace persist failed:', (e as any)?.message || e);
         });
       }
 
@@ -212,7 +213,7 @@ export class FlowRunService {
           setTimeout(() => reject(new Error('Trace persistence timeout')), 5000)
         )
       ]).catch(e => {
-        console.warn('Trace persist failed:', (e as any)?.message || e);
+        logWarn('Trace persist failed:', (e as any)?.message || e);
       });
     }
 

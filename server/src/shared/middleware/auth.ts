@@ -7,6 +7,7 @@ import { hashToken } from "../utils/crypto";
 import { eq } from "drizzle-orm";
 import { UnauthorizedError } from "../utils/errors";
 import type { AuthenticatedUser, RequestContext } from "../types/index";
+import { logWarn, logDebug } from "../utils/logger";
 
 declare global {
   namespace Express {
@@ -71,7 +72,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         }
       } catch (error) {
         // If our API token check fails, we'll try session-based next
-        console.warn('API token check failed:', (error as any)?.message || error);
+        logWarn('API token check failed:', (error as any)?.message || error);
       }
 
       // If not our API token, try Better Auth bearer session as a fallback
@@ -94,7 +95,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             authMethod = 'token';
           }
         } catch (err) {
-          console.warn('Better Auth bearer session check failed:', (err as any)?.message || err);
+          logWarn('Better Auth bearer session check failed:', (err as any)?.message || err);
         }
       }
     }
@@ -137,7 +138,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
             authMethod = 'session';
           }
         } catch (error) {
-          console.warn('Session authentication failed:', error);
+          logWarn('Session authentication failed:', error);
         }
       }
     }
@@ -169,7 +170,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
     await requireAuth(req, res, (error) => {
       if (error) {
         // Log the error but don't fail the request
-        console.debug('Optional auth failed:', error.message);
+        logDebug('Optional auth failed:', error.message);
       }
       next(); // Always continue, regardless of auth success/failure
     });

@@ -131,7 +131,7 @@ export class PromptsController {
       });
       return;
     }
-    console.error('Error updating prompt:', e);
+    logError('Error updating prompt:', e);
     res.status(500).json({ success: false, error: { message: 'Failed to update prompt', code: 'INTERNAL_ERROR' } });
   }
 }
@@ -171,7 +171,7 @@ export class PromptsController {
       });
       return;
     }
-    console.error('Error deleting prompt:', e);
+    logError('Error deleting prompt:', e);
     res.status(500).json({ success: false, error: { message: 'Failed to delete prompt', code: 'INTERNAL_ERROR' } });
   }
 }
@@ -233,7 +233,7 @@ export class PromptsController {
       });
       return;
     }
-    console.error('Error exporting prompt:', e);
+    logError('Error exporting prompt:', e);
     res.status(500).json({ success: false, error: { message: 'Failed to export prompt', code: 'INTERNAL_ERROR' } });
   }
 }

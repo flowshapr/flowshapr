@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { BlocksService } from '../services/BlocksService';
+import { logError, logInfo, logDebug } from '../../../shared/utils/logger';
 
 export class BlocksController {
   private blocksService: BlocksService;
@@ -23,7 +24,7 @@ export class BlocksController {
         }
       });
     } catch (error) {
-      console.error('Error fetching blocks metadata:', error);
+      logError('Error fetching blocks metadata:', error);
       res.status(500).json({
         error: {
           message: 'Failed to fetch blocks metadata',
@@ -63,7 +64,7 @@ export class BlocksController {
         }
       });
     } catch (error) {
-      console.error('Error validating blocks:', error);
+      logError('Error validating blocks:', error);
       res.status(500).json({
         error: {
           message: 'Failed to validate blocks',
@@ -81,14 +82,14 @@ export class BlocksController {
     try {
       const { blocks, edges, variables } = req.body;
 
-      console.log('🔍 Server received code generation request:', {
+      logInfo('🔍 Server received code generation request:', {
         blocksCount: Array.isArray(blocks) ? blocks.length : 'not array',
         edgesCount: Array.isArray(edges) ? edges.length : 'not array',
         variablesCount: Array.isArray(variables) ? variables.length : 'not array'
       });
 
       if (Array.isArray(blocks) && blocks.length > 0) {
-        console.log('🔍 First block structure:', {
+        logInfo('🔍 First block structure:', {
           id: blocks[0].id,
           blockType: blocks[0].blockType,
           hasConfig: !!blocks[0].config,
@@ -97,7 +98,7 @@ export class BlocksController {
       }
 
       if (!Array.isArray(blocks) || !Array.isArray(edges)) {
-        console.log('❌ Invalid input - blocks or edges not arrays');
+        logInfo('❌ Invalid input - blocks or edges not arrays');
         return res.status(400).json({
           error: {
             message: 'Blocks and edges must be arrays',
@@ -108,7 +109,7 @@ export class BlocksController {
 
       const result = this.blocksService.generateCode(blocks, edges, variables || []);
 
-      console.log('🔍 Generation result:', {
+      logInfo('🔍 Generation result:', {
         isValid: result.isValid,
         hasCode: !!result.code,
         errorsCount: result.errors.length,
@@ -116,7 +117,7 @@ export class BlocksController {
       });
 
       if (!result.isValid) {
-        console.log('❌ Code generation failed with errors:', result.errors);
+        logInfo('❌ Code generation failed with errors:', result.errors);
         return res.status(400).json({
           error: {
             message: 'Code generation failed',
@@ -127,12 +128,12 @@ export class BlocksController {
         });
       }
 
-      console.log('✅ Code generation successful');
+      logInfo('✅ Code generation successful');
       res.json({
         data: result
       });
     } catch (error) {
-      console.error('❌ Error generating code:', error);
+      logError('❌ Error generating code:', error);
       res.status(500).json({
         error: {
           message: 'Failed to generate code',
@@ -151,7 +152,7 @@ export class BlocksController {
       const stats = this.blocksService.getStats();
       res.json({ data: stats });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      logError('Error fetching stats:', error);
       res.status(500).json({
         error: {
           message: 'Failed to fetch stats',

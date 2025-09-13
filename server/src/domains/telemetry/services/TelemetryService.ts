@@ -1,5 +1,6 @@
 import path from 'path';
 import { LocalFileTraceStore } from './LocalFileTraceStore';
+import { logInfo, logError } from '../../../shared/utils/logger';
 
 export class TelemetryService {
   private traceStore: LocalFileTraceStore;
@@ -7,14 +8,14 @@ export class TelemetryService {
   constructor() {
     // Use project root for trace storage
     const projectRoot = path.resolve(process.cwd());
-    console.log("Project Root", projectRoot);
+    logInfo("Project Root", projectRoot);
     this.traceStore = new LocalFileTraceStore(projectRoot);
-    this.traceStore.init().catch(console.error);
+    this.traceStore.init().catch(logError);
   }
 
   async saveTrace(trace: any): Promise<void> {
     const traceId = trace.traceId || trace.id || `trace_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    console.log("TraceId", traceId);
+    logInfo("TraceId", traceId);
     await this.traceStore.save(traceId, trace);
   }
 

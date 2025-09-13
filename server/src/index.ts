@@ -1,5 +1,6 @@
 // Load environment variables FIRST before any other imports
 import { ENV } from "./config/env";
+import { logError } from "./shared/utils/logger";
 
 import express from "express";
 import cors from "cors";
@@ -163,7 +164,7 @@ app.listen(PORT, async () => {
     initializeServerBlocks();
     console.log('✅ Server blocks ready');
   } catch (error: any) {
-    console.error('❌ Failed to initialize blocks:', error.message);
+    logError('❌ Failed to initialize blocks:', error.message);
   }
   
   // Initialize process executor for flow execution
@@ -172,7 +173,7 @@ app.listen(PORT, async () => {
     await flowRunService.initialize();
     console.log('✅ Process executor ready for flow execution');
   } catch (error: any) {
-    console.error('❌ Failed to initialize process executor:', error.message);
+    logError('❌ Failed to initialize process executor:', error.message);
     console.log('⚠️  Flow execution will attempt to initialize on first use');
   }
   
@@ -189,7 +190,7 @@ process.on("SIGINT", async () => {
     await flowRunService.shutdown();
     console.log('✅ Process executor shut down');
   } catch (error: any) {
-    console.error('❌ Error during process executor shutdown:', error.message);
+    logError('❌ Error during process executor shutdown:', error.message);
   }
   
   process.exit(0);
@@ -202,7 +203,7 @@ process.on("SIGTERM", async () => {
     await flowRunService.shutdown();
     console.log('✅ Process executor shut down');
   } catch (error: any) {
-    console.error('❌ Error during process executor shutdown:', error.message);
+    logError('❌ Error during process executor shutdown:', error.message);
   }
   
   process.exit(0);

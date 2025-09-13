@@ -4,6 +4,7 @@ import * as os from 'os';
 import { EventEmitter } from 'events';
 import { spawn } from 'child_process';
 import * as crypto from 'crypto';
+import { logInfo, logError, logWarn } from '../../shared/utils/logger';
 
 export interface ContainerPoolConfig {
   poolSize: number;
@@ -84,22 +85,22 @@ export class ContainerPoolService extends EventEmitter {
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🏊 Initializing Container Pool Service...');
-    console.log(`   Pool Size: ${this.config.poolSize}`);
-    console.log(`   Work Timeout: ${this.config.workTimeout}ms`);
+    logInfo('🏊 Initializing Container Pool Service...');
+    logInfo(`   Pool Size: ${this.config.poolSize}`);
+    logInfo(`   Work Timeout: ${this.config.workTimeout}ms`);
 
     // Try environment variable configuration first
     if (this.config.workerUrls && this.config.workerUrls.length > 0) {
-      console.log('🔗 Using worker URLs from environment variables');
+      logInfo('🔗 Using worker URLs from environment variables');
       await this.initializeFromUrls(this.config.workerUrls);
     } else {
       // Fallback to Docker discovery
-      console.log('🔍 No worker URLs found, attempting Docker discovery...');
+      logInfo('🔍 No worker URLs found, attempting Docker discovery...');
       const dockerAvailable = await this.checkDockerAvailability();
       if (!dockerAvailable) {
-        console.warn('⚠️  Docker not available and no worker URLs configured');
-        console.log('⚠️  Container pool will be initialized but no workers will be available');
-        console.log('💡 Set EXECUTOR_URLS or GENKIT_WORKER_URLS environment variable to configure workers');
+        logWarn('⚠️  Docker not available and no worker URLs configured');
+        logInfo('⚠️  Container pool will be initialized but no workers will be available');
+        logInfo('💡 Set EXECUTOR_URLS or GENKIT_WORKER_URLS environment variable to configure workers');
         this.isInitialized = true;
         return;
       }
@@ -110,9 +111,9 @@ export class ContainerPoolService extends EventEmitter {
     this.startHealthChecking();
     
     this.isInitialized = true;
-    console.log('✅ Container Pool Service initialized');
-    console.log(`   Discovered ${this.containers.length} workers`);
-    console.log(`   Healthy workers: ${this.containers.filter(c => c.isHealthy).length}`);
+    logInfo('✅ Container Pool Service initialized');
+    logInfo(`   Discovered ${this.containers.length} workers`);
+    logInfo(`   Healthy workers: ${this.containers.filter(c => c.isHealthy).length}`);
   }
 
   async shutdown(): Promise<void> {
@@ -121,7 +122,7 @@ export class ContainerPoolService extends EventEmitter {
     }
     
     this.isInitialized = false;
-    console.log('🏊 Container Pool Service shut down');
+    logInfo('🏊 Container Pool Service shut down');
   }
 
   getStatus() {
@@ -164,7 +165,7 @@ export class ContainerPoolService extends EventEmitter {
       };
     }
 
-    console.log(`🏊 Executing flow in container: ${container.name} (${executionId})`);
+    logInfo(`🏊 Executing flow in container: ${container.name} (${executionId})`);
     
     // Mark container as busy
     container.isBusy = true;
@@ -181,7 +182,7 @@ export class ContainerPoolService extends EventEmitter {
 
       container.executions++;
       const duration = Date.now() - startTime;
-      console.log(`✅ Flow executed successfully in ${duration}ms`);
+      logInfo(`✅ Flow executed successfully in ${duration}ms`);
 
       return {
         success: true,
@@ -196,7 +197,7 @@ export class ContainerPoolService extends EventEmitter {
 
     } catch (error: any) {
       const duration = Date.now() - startTime;
-      console.error(`❌ Container pool execution failed in ${duration}ms:`, error.message);
+      logError(`❌ Container pool execution failed in ${duration}ms:`, error.message);
 
       return {
         success: false,
@@ -215,8 +216,8 @@ export class ContainerPoolService extends EventEmitter {
   }
 
   private async initializeFromUrls(urls: string[]): Promise<void> {
-    console.log(`🔗 Initializing ${urls.length} workers from URLs:`);
-    urls.forEach(url => console.log(`   - ${url}`));
+    logInfo(`🔗 Initializing ${urls.length} workers from URLs:`);
+    urls.forEach(url => logInfo(`   - ${url}`));
     
     this.containers = urls.map((url, index) => ({
       id: `worker-${index + 1}`,
@@ -229,19 +230,19 @@ export class ContainerPoolService extends EventEmitter {
     }));
 
     // Initial health check
-    console.log('🏥 Running initial health checks...');
+    logInfo('🏥 Running initial health checks...');
     await this.checkAllContainerHealth();
   }
 
   private async discoverContainers(): Promise<void> {
-    console.log('🔍 Discovering containers from docker-compose...');
+    logInfo('🔍 Discovering containers from docker-compose...');
     
     try {
       // Get running containers matching our pattern
       const containers = await this.getDockerComposeContainers();
       
-      console.log(`🔍 Found ${containers.length} matching containers:`);
-      containers.forEach(c => console.log(`   - ${c.name} (${c.id})`));
+      logInfo(`🔍 Found ${containers.length} matching containers:`);
+      containers.forEach(c => logInfo(`   - ${c.name} (${c.id})`));
       
       this.containers = containers.map(container => ({
         id: container.id,
@@ -253,13 +254,13 @@ export class ContainerPoolService extends EventEmitter {
         executions: 0
       }));
 
-      console.log(`🔍 Mapped to ${this.containers.length} pool containers`);
+      logInfo(`🔍 Mapped to ${this.containers.length} pool containers`);
 
       // Initial health check
-      console.log('🏥 Running initial health checks...');
+      logInfo('🏥 Running initial health checks...');
       await this.checkAllContainerHealth();
     } catch (error) {
-      console.error('❌ Container discovery failed:', error);
+      logError('❌ Container discovery failed:', error);
       throw error;
     }
   }
@@ -432,7 +433,7 @@ export class ContainerPoolService extends EventEmitter {
       await this.checkAllContainerHealth();
     }, this.config.healthCheckInterval);
     
-    console.log('💊 Health checking started');
+    logInfo('💊 Health checking started');
   }
 
   private async checkAllContainerHealth(): Promise<void> {
@@ -442,11 +443,11 @@ export class ContainerPoolService extends EventEmitter {
         
         if (container.isHealthy !== isHealthy) {
           container.isHealthy = isHealthy;
-          console.log(`💊 Container ${container.name} health changed: ${isHealthy ? 'healthy' : 'unhealthy'}`);
+          logInfo(`💊 Container ${container.name} health changed: ${isHealthy ? 'healthy' : 'unhealthy'}`);
           this.emit('containerHealthChanged', container);
         }
       } catch (error) {
-        console.warn(`⚠️  Health check failed for ${container.name}:`, (error as Error).message);
+        logWarn(`⚠️  Health check failed for ${container.name}:`, (error as Error).message);
         container.isHealthy = false;
       }
     }

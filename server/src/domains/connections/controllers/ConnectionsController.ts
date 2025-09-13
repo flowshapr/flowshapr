@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { connectionsService } from '../services/ConnectionsService';
 import { flowService } from '../../flows/services/FlowService';
+import { logError } from '../../../shared/utils/logger';
 
 export class ConnectionsController {
   async listByFlow(req: Request, res: Response): Promise<void> {
@@ -23,7 +24,7 @@ export class ConnectionsController {
       const created = await connectionsService.createForFlow(id, req.user!.id, req.body || {});
       res.status(201).json({ success: true, data: created });
     } catch (e) {
-      console.error('Create connection error:', (e as any)?.message || e);
+      logError('Create connection error:', (e as any)?.message || e);
       res.status(500).json({ success: false, error: { message: 'Failed to create connection', details: (e as any)?.message || String(e) } });
     }
   }

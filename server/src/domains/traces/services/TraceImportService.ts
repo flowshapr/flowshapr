@@ -1,4 +1,5 @@
 import { tracesService } from './TracesService';
+import { logError, logInfo, logWarn } from '../../../shared/utils/logger';
 
 export interface GenkitTraceData {
   traceId: string;
@@ -101,14 +102,14 @@ export class TraceImportService {
       };
 
       // Debug log the trace data before inserting
-      console.log('[TraceImport] About to insert trace with ID:', traceData.id);
-      console.log('[TraceImport] Trace data keys:', Object.keys(traceData));
+      logInfo('[TraceImport] About to insert trace with ID:', traceData.id);
+      logInfo('[TraceImport] Trace data keys:', Object.keys(traceData));
 
       await tracesService.createTrace(traceData);
-      console.log('✅ [TraceImport] Successfully imported Genkit trace:', executionId);
+      logInfo('✅ [TraceImport] Successfully imported Genkit trace:', executionId);
       
     } catch (error) {
-      console.error('❌ [TraceImport] Failed to import Genkit trace:', error);
+      logError('❌ [TraceImport] Failed to import Genkit trace:', error);
       throw error;
     }
   }
@@ -160,12 +161,12 @@ export class TraceImportService {
     try {
       const response = await fetch(`${genkitServerUrl}/api/traces`);
       if (!response.ok) {
-        console.warn('[TraceImport] Failed to fetch traces from Genkit server:', response.status);
+        logWarn('[TraceImport] Failed to fetch traces from Genkit server:', response.status);
         return;
       }
 
       const responseData = await response.json();
-      console.log('[TraceImport] Response format:', responseData);
+      logInfo('[TraceImport] Response format:', responseData);
       
       // Handle different possible response formats - could be trace IDs or full traces
       let traces: GenkitTraceData[] = [];
@@ -174,29 +175,29 @@ export class TraceImportService {
       } else if ((responseData as any).traces && Array.isArray((responseData as any).traces)) {
         traces = ((responseData as any).traces as any[]).filter((item: any) => typeof item === 'object' && item.traceId);
       } else {
-        console.warn('[TraceImport] Unexpected response format from Genkit server');
+        logWarn('[TraceImport] Unexpected response format from Genkit server');
         return;
       }
 
-      console.log(`[TraceImport] Found ${traces.length} traces to import`);
+      logInfo(`[TraceImport] Found ${traces.length} traces to import`);
       
       for (const traceData of traces) {
         try {
-          console.log(`[TraceImport] DEBUG - Full trace data for ${traceData.traceId}:`, JSON.stringify(traceData, null, 2));
+          logInfo(`[TraceImport] DEBUG - Full trace data for ${traceData.traceId}:`, JSON.stringify(traceData, null, 2));
           
           // Extract flowId from trace attributes or use a default
           const flowId = traceData.attributes?.flowId || 'unknown';
           
           await this.importGenkitTrace(traceData, flowId);
-          console.log(`[TraceImport] Successfully imported trace ${traceData.traceId}`);
+          logInfo(`[TraceImport] Successfully imported trace ${traceData.traceId}`);
         } catch (error) {
-          console.error('[TraceImport] Failed to import trace:', traceData.traceId, error);
+          logError('[TraceImport] Failed to import trace:', { traceId: traceData.traceId, error });
           // Continue with other traces even if one fails
         }
       }
       
     } catch (error) {
-      console.error('[TraceImport] Error polling Genkit traces:', error);
+      logError('[TraceImport] Error polling Genkit traces:', error);
     }
   }
 }

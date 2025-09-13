@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { logError } from '../../../shared/utils/logger';
 
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
@@ -89,7 +90,7 @@ export class LocalFileTraceStore {
         continuationToken: nextToken
       };
     } catch (error) {
-      console.error('Error listing traces:', error);
+      logError('Error listing traces:', error);
       return { traces: [] };
     }
   }
@@ -117,7 +118,7 @@ export class LocalFileTraceStore {
 
       await writeFile(indexFile, JSON.stringify(index, null, 2));
     } catch (error) {
-      console.error('Error updating index:', error);
+      logError('Error updating index:', error);
     }
   }
 
@@ -137,14 +138,14 @@ export class LocalFileTraceStore {
           const traceFile = path.join(this.tracesDir, `${traceId}.json`);
           await fs.promises.unlink(traceFile);
         } catch (error) {
-          console.error(`Error removing trace ${traceId}:`, error);
+          logError(`Error removing trace ${traceId}:`, error);
         }
       }
 
       // Rebuild index
       await this.rebuildIndex();
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      logError('Error during cleanup:', error);
     }
   }
 
@@ -169,7 +170,7 @@ export class LocalFileTraceStore {
 
       await writeFile(indexFile, JSON.stringify(newIndex, null, 2));
     } catch (error) {
-      console.error('Error rebuilding index:', error);
+      logError('Error rebuilding index:', error);
     }
   }
 }
