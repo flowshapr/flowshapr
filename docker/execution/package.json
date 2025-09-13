@@ -8,6 +8,7 @@
     "genkit": "latest",
     "@genkit-ai/google-genai": "latest",
     "@genkit-ai/compat-oai": "latest",
+    "genkitx-anthropic": "latest",
     "zod": "latest"
   }
 }

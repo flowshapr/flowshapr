@@ -252,7 +252,6 @@ export const flows = [generatedFlow];`;
     // Add context setup
     statements.push('// Flow execution context');
     statements.push('const ctx = { input };');
-    statements.push('const v = (path) => path.split(\'.\').reduce((obj, key) => (obj == null ? undefined : obj[key]), ctx);');
     statements.push('');
 
     for (let i = 0; i < executionOrder.length; i++) {
@@ -375,7 +374,7 @@ export const flows = [generatedFlow];`;
       imports.push("import { openai } from '@genkit-ai/compat-oai/openai';");
     }
     if (context.plugins.has('anthropic()')) {
-      imports.push("import { anthropic } from '@genkit-ai/compat-oai/anthropic';");
+      imports.push("import { anthropic } from 'genkitx-anthropic';");
     }
     if (context.plugins.has('mcp()')) {
       imports.push("import { mcp } from '@genkit-ai/mcp';");

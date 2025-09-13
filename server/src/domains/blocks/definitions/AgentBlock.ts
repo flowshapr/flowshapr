@@ -55,7 +55,11 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
         { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Advanced reasoning' },
         { value: 'gpt-4o-mini', label: 'GPT-4o Mini', description: 'Cost-effective GPT-4' },
         { value: 'gpt-4o', label: 'GPT-4o', description: 'Latest GPT-4 model' },
-        { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', description: 'Anthropic\'s latest model' }
+        { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', description: 'Latest Claude model' },
+        { value: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku', description: 'Fast Claude model' },
+        { value: 'claude-3-opus', label: 'Claude 3 Opus', description: 'Most capable Claude model' },
+        { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet', description: 'Balanced Claude model' },
+        { value: 'claude-3-haiku', label: 'Claude 3 Haiku', description: 'Fast Claude model' }
       ]
     },
     {
@@ -186,6 +190,18 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
   generateCode: (config: AgentBlockConfig, context: CodeGenerationContext, inputVar: string, outputVar: string) => {
     const { provider, model, promptType, systemPrompt, userPrompt, temperature, maxTokens, responseFormat, jsonSchema } = config;
 
+    // Helper function to map UI model names to Anthropic model constants
+    const getAnthropicModelConstant = (modelName: string): string => {
+      const modelMapping: Record<string, string> = {
+        'claude-3-5-sonnet-20241022': 'claude35Sonnet',
+        'claude-3-5-haiku': 'claude35Haiku',
+        'claude-3-opus': 'claude3Opus',
+        'claude-3-sonnet': 'claude3Sonnet',
+        'claude-3-haiku': 'claude3Haiku'
+      };
+      return modelMapping[modelName] || 'claude35Sonnet'; // Default fallback
+    };
+
     // Add provider plugin to context
     if (provider === 'googleai') {
       context.plugins.add('googleAI()');
@@ -193,6 +209,9 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
       context.plugins.add('openai()');
     } else if (provider === 'anthropic') {
       context.plugins.add('anthropic()');
+      // Add required model import to context
+      const modelConstant = getAnthropicModelConstant(model);
+      context.imports.add(`import { ${modelConstant} } from 'genkitx-anthropic';`);
     }
 
     let promptCode = '';
@@ -207,14 +226,15 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
       promptCode = `await getPromptFromLibrary('${config.promptLibraryId}', ${inputVar})`;
     }
 
-    // Get correct provider reference
-    let providerRef = '';
+    // Get correct model reference
+    let modelRef = '';
     if (provider === 'googleai') {
-      providerRef = 'googleAI';
+      modelRef = `googleAI.model('${model}')`;
     } else if (provider === 'openai') {
-      providerRef = 'openai';
+      modelRef = `openai.model('${model}')`;
     } else if (provider === 'anthropic') {
-      providerRef = 'anthropic';
+      const modelConstant = getAnthropicModelConstant(model);
+      modelRef = modelConstant;
     }
 
     const configOptions = [];
@@ -231,7 +251,7 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     const configStr = configOptions.length > 0 ? `,\n      config: {\n        ${configOptions.join(',\n        ')}\n      }` : '';
 
     return `const ${outputVar}Response = await ai.generate({
-      model: ${providerRef}.model('${model}'),
+      model: ${modelRef},
       prompt: ${promptCode}${configStr}
     });
     const ${outputVar} = ${responseFormat === 'json' ? `${outputVar}Response.output` : `(typeof ${outputVar}Response.text === 'function' ? ${outputVar}Response.text() : ${outputVar}Response.text || ${outputVar}Response.output || '')`};`;
@@ -244,7 +264,20 @@ export const AgentBlockDefinition: ServerBlockDefinition = {
     } else if (config.provider === 'openai') {
       imports.push("import { openai } from '@genkit-ai/compat-oai/openai';");
     } else if (config.provider === 'anthropic') {
-      imports.push("import { anthropic } from 'genkitx-anthropic';");
+      // Helper function to map UI model names to Anthropic model constants
+      const getAnthropicModelConstant = (modelName: string): string => {
+        const modelMapping: Record<string, string> = {
+          'claude-3-5-sonnet-20241022': 'claude35Sonnet',
+          'claude-3-5-haiku': 'claude35Haiku',
+          'claude-3-opus': 'claude3Opus',
+          'claude-3-sonnet': 'claude3Sonnet',
+          'claude-3-haiku': 'claude3Haiku'
+        };
+        return modelMapping[modelName] || 'claude35Sonnet'; // Default fallback
+      };
+
+      const modelConstant = getAnthropicModelConstant(config.model);
+      imports.push(`import { anthropic, ${modelConstant} } from 'genkitx-anthropic';`);
     }
     return imports;
   },
