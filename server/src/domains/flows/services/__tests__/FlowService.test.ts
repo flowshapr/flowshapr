@@ -18,7 +18,24 @@ jest.mock('../../../../infrastructure/database/connection', () => ({
 // Mock the crypto utils
 jest.mock('../../../../shared/utils/crypto', () => ({
   generateId: jest.fn(() => 'mock-id'),
-  generateSlug: jest.fn(() => 'mock-slug'),
+  generateSlug: jest.fn(() => 'test-flow'),
+}));
+
+// Mock authorization functions
+const mockRequireUserAbility = jest.fn();
+const mockGetUserCompleteContext = jest.fn();
+
+jest.mock('../../../../shared/authorization/service-guard', () => ({
+  requireUserAbility: mockRequireUserAbility,
+  AuthorizationError: jest.fn().mockImplementation((message) => {
+    const error = new Error(message);
+    error.name = 'AuthorizationError';
+    return error;
+  }),
+}));
+
+jest.mock('../../../../shared/middleware/authorization', () => ({
+  getUserCompleteContext: mockGetUserCompleteContext,
 }));
 
 // Now import the service and utilities
@@ -38,11 +55,31 @@ describe('FlowService', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Setup authorization mocks
+    mockRequireUserAbility.mockResolvedValue(undefined); // Allow all operations by default
+    mockGetUserCompleteContext.mockResolvedValue({
+      user: { id: 'user-123', email: 'test@example.com', name: 'Test User', emailVerified: false },
+      organizationId: 'org-123',
+      organizationRole: 'owner',
+      teamRoles: [],
+    });
     mockDb.select.mockReturnValue({
       from: jest.fn().mockReturnValue({
         where: jest.fn().mockReturnValue({
           limit: jest.fn().mockResolvedValue([]),
+          orderBy: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              offset: jest.fn().mockResolvedValue([]),
+            }),
+          }),
         }),
+        orderBy: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            offset: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+        limit: jest.fn().mockResolvedValue([]),
       }),
     });
     mockDb.insert.mockReturnValue({
@@ -66,7 +103,6 @@ describe('FlowService', () => {
   describe('createFlow', () => {
     const validFlowData = {
       name: 'Test Flow',
-      alias: 'test-flow',
       description: 'A test flow',
       organizationId: 'org-123',
       teamId: 'team-123',
@@ -91,7 +127,7 @@ describe('FlowService', () => {
 
       expect(result).toMatchObject({
         name: validFlowData.name,
-        alias: validFlowData.alias,
+        alias: 'test-flow-mock-', // Auto-generated alias (mock-id truncated to 5 chars)
         description: validFlowData.description,
         organizationId: validFlowData.organizationId,
         status: 'draft',
@@ -102,19 +138,33 @@ describe('FlowService', () => {
       });
     });
 
-    it('should throw ConflictError when alias already exists', async () => {
-      // Mock existing alias found
+    it('should handle alias collision by retrying with different ID', async () => {
+      // Mock existing alias found on first attempt, empty on second
+      let callCount = 0;
       mockDb.select.mockReturnValue({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([mockFlow]),
+            limit: jest.fn().mockImplementation(() => {
+              callCount++;
+              return callCount === 1 ? Promise.resolve([mockFlow]) : Promise.resolve([]);
+            }),
           }),
         }),
       });
 
-      await expect(
-        flowService.createFlow(validFlowData, mockUser.id)
-      ).rejects.toThrow(ConflictError);
+      // Mock successful insert
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockResolvedValue(undefined),
+      });
+
+      const result = await flowService.createFlow(validFlowData, mockUser.id);
+
+      expect(result).toMatchObject({
+        name: validFlowData.name,
+        alias: 'test-flow-mock-', // Auto-generated alias (mock-id truncated to 5 chars)
+      });
+      // Should have tried twice for alias generation
+      expect(callCount).toBe(2);
     });
 
     it('should handle database constraint violation', async () => {
@@ -195,16 +245,17 @@ describe('FlowService', () => {
     });
 
     it('should set member role as viewer when user is not the creator', async () => {
-      const flowWithoutMembership = {
+      const flowInSameOrg = {
         ...mockFlow,
         createdBy: 'different-user-id', // Different from mockUser.id
+        organizationId: 'org-123', // Same organization as user
         members: [],
       };
 
       mockDb.select.mockReturnValue({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([flowWithoutMembership]),
+            limit: jest.fn().mockResolvedValue([flowInSameOrg]),
           }),
         }),
       });
@@ -217,20 +268,21 @@ describe('FlowService', () => {
 
   describe('getFlowByAlias', () => {
     it('should return flow when found by alias', async () => {
-      const flowWithMembers = {
+      const flowWithSameOrg = {
         ...mockFlow,
+        organizationId: 'org-123', // Same organization as user
         members: [{ userId: mockUser.id, role: 'editor' }],
       };
 
       mockDb.select.mockReturnValue({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([flowWithMembers]),
+            limit: jest.fn().mockResolvedValue([flowWithSameOrg]),
           }),
         }),
       });
 
-      const result = await flowService.getFlowByAlias(mockFlow.alias, mockFlow.organizationId, mockUser.id);
+      const result = await flowService.getFlowByAlias(mockFlow.alias, mockUser.id);
 
       expect(result).toMatchObject({
         alias: mockFlow.alias,
@@ -404,16 +456,20 @@ describe('FlowService', () => {
 
   describe('getUserFlows', () => {
     it('should return user flows with pagination', async () => {
-      const mockFlows = [mockFlow, createMockFlow()];
+      const mockFlows = [
+        { ...mockFlow, createdBy: mockUser.id, organizationId: 'org-123' },
+        { ...createMockFlow(), createdBy: mockUser.id, organizationId: 'org-123' }
+      ];
+
+      const mockQuery = {
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockResolvedValue(mockFlows),
+      };
 
       mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          orderBy: jest.fn().mockReturnValue({
-            limit: jest.fn().mockReturnValue({
-              offset: jest.fn().mockResolvedValue(mockFlows),
-            }),
-          }),
-        }),
+        from: jest.fn().mockReturnValue(mockQuery),
       });
 
       const result = await flowService.getUserFlows(mockUser.id, { limit: 10, offset: 0 });
@@ -421,7 +477,7 @@ describe('FlowService', () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
         id: mockFlow.id,
-        memberRole: 'viewer', // mockUser.id is different from mockFlow.createdBy
+        memberRole: 'owner', // mockUser.id is the creator
       });
     });
 

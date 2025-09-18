@@ -73,7 +73,6 @@ export function SettingsPanel({ selectedFlow }: SettingsPanelProps) {
 function GeneralSettingsTab({ selectedFlow }: { selectedFlow?: any }) {
   const [form, setForm] = useState({
     name: selectedFlow?.name || '',
-    slug: selectedFlow?.slug || '',
     description: selectedFlow?.description || ''
   });
   const [saving, setSaving] = useState(false);
@@ -82,7 +81,6 @@ function GeneralSettingsTab({ selectedFlow }: { selectedFlow?: any }) {
     if (selectedFlow) {
       setForm({
         name: selectedFlow.name || '',
-        slug: selectedFlow.slug || '',
         description: selectedFlow.description || ''
       });
     }
@@ -100,7 +98,6 @@ function GeneralSettingsTab({ selectedFlow }: { selectedFlow?: any }) {
         },
         body: JSON.stringify({
           name: form.name.trim(),
-          slug: form.slug.trim(),
           description: form.description.trim()
         })
       });
@@ -147,17 +144,18 @@ function GeneralSettingsTab({ selectedFlow }: { selectedFlow?: any }) {
 
           <div>
             <label className="block text-sm font-medium text-base-content/70 mb-2">
-              Flow Alias (URL slug)
+              Flow Alias (Auto-Generated)
             </label>
             <input
               type="text"
-              className="input input-bordered w-full font-mono"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-              placeholder="enter-flow-alias"
+              className="input input-bordered w-full font-mono bg-base-200"
+              value={selectedFlow?.alias || ''}
+              readOnly
+              placeholder="alias-will-be-generated"
             />
-            <div className="text-xs text-base-content/60 mt-1">
-              This will be used in the public URL: flowshapr.ai/flows/{form.slug || 'your-alias'}
+            <div className="text-xs text-base-content/60 mt-1 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 bg-primary rounded-full"></span>
+              This alias was automatically generated and cannot be changed. Used in SDK calls: flowshapr.ai/flows/{selectedFlow?.alias || 'your-alias'}
             </div>
           </div>
 
@@ -178,7 +176,7 @@ function GeneralSettingsTab({ selectedFlow }: { selectedFlow?: any }) {
             <button
               className="btn btn-primary"
               onClick={handleSave}
-              disabled={saving || !form.name.trim() || !form.slug.trim()}
+              disabled={saving || !form.name.trim()}
             >
               {saving ? (
                 <>

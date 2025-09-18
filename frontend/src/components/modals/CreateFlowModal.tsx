@@ -5,36 +5,33 @@ import { X } from 'lucide-react';
 interface CreateFlowModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateFlow: (flowData: { name: string; alias: string; description?: string }) => void;
+  onCreateFlow: (flowData: { name: string; description?: string }) => void;
   organizationId?: string;
 }
 
-export function CreateFlowModal({ 
-  isOpen, 
-  onClose, 
-  onCreateFlow, 
-  organizationId 
+export function CreateFlowModal({
+  isOpen,
+  onClose,
+  onCreateFlow,
+  organizationId
 }: CreateFlowModalProps) {
   const [name, setName] = useState('');
-  const [alias, setAlias] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !alias.trim()) return;
+    if (!name.trim()) return;
 
     setIsSubmitting(true);
     try {
       await onCreateFlow({
         name: name.trim(),
-        alias: alias.trim(),
         description: description.trim() || undefined,
       });
-      
+
       // Reset form and close
       setName('');
-      setAlias('');
       setDescription('');
       onClose();
     } catch (error) {
@@ -78,23 +75,14 @@ export function CreateFlowModal({
               />
             </div>
             
-            <div>
-              <label htmlFor="flowAlias" className="block text-sm font-medium text-base-content mb-2">
-                Flow Alias *
-              </label>
-              <input
-                id="flowAlias"
-                type="text"
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                placeholder="e.g., my-flow-alias"
-                required
-                pattern="[a-z0-9-_]+"
-                title="Only lowercase letters, numbers, hyphens, and underscores allowed"
-              />
-              <p className="mt-1 text-xs text-base-content/60">
-                Unique identifier for SDK calls. Only lowercase letters, numbers, hyphens, and underscores allowed.
+            <div className="bg-base-200 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                <span className="text-sm font-medium text-base-content">Auto-Generated Flow Alias</span>
+              </div>
+              <p className="text-xs text-base-content/70">
+                A unique URL-friendly alias will be automatically generated from your flow name for SDK access.
+                For example: "Customer Support Bot" → "customer-support-bot-a7b3c"
               </p>
             </div>
             
@@ -124,7 +112,7 @@ export function CreateFlowModal({
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || !alias.trim() || isSubmitting}
+              disabled={!name.trim() || isSubmitting}
             >
               {isSubmitting ? 'Creating...' : 'Create Flow'}
             </Button>

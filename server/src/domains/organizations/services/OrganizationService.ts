@@ -129,6 +129,44 @@ export class OrganizationService {
     return Array.from(orgMap.values());
   }
 
+  /**
+   * Ensures a user has at least one organization, creating a default one if needed
+   * Returns the organizationId to use for operations
+   */
+  async ensureUserHasOrganization(userId: string): Promise<string> {
+    if (!db) {
+      throw new Error("Database connection not available");
+    }
+
+    // Check if user already has any organization
+    const existingOrgs = await this.getUserOrganizations(userId);
+
+    if (existingOrgs.length > 0) {
+      // Return the first organization ID
+      return existingOrgs[0].id;
+    }
+
+    // Get user info to create personalized organization
+    const { user } = await import("../../../infrastructure/database/schema/index");
+    const userResult = await db
+      .select({ name: user.name })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    const userName = userResult[0]?.name || "User";
+
+    // Create default organization
+    const newOrg = await this.createOrganization({
+      name: `${userName}'s Organization`,
+      slug: generateSlug(`${userName}-org`),
+      description: `Default organization for ${userName}`,
+      ownerId: userId,
+    });
+
+    return newOrg.id;
+  }
+
   async updateOrganization(
     id: string,
     data: Partial<Pick<Organization, "name" | "description" | "logoUrl">>,

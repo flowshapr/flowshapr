@@ -46,11 +46,6 @@ const flowEdgeSchema = z.object({
 // Create flow schema
 export const createFlowSchema = z.object({
   name: nameSchema,
-  alias: z.string()
-    .min(2, "Alias must be at least 2 characters long")
-    .max(50, "Alias must be less than 50 characters")
-    .regex(/^[a-z0-9-_]+$/, "Alias can only contain lowercase letters, numbers, hyphens, and underscores")
-    .transform(alias => alias.toLowerCase().trim()),
   description: descriptionSchema,
   organizationId: z.string().min(1, "Organization ID is required").optional(),
   teamId: z.string().optional(),
@@ -60,17 +55,10 @@ export const createFlowSchema = z.object({
 export const updateFlowSchema = z.object({
   name: nameSchema.optional(),
   description: descriptionSchema,
-  alias: z
-    .string()
-    .min(2, "Alias must be at least 2 characters long")
-    .max(50, "Alias must be less than 50 characters")
-    .regex(/^[a-z0-9-_]+$/, "Alias can only contain lowercase letters, numbers, hyphens, and underscores")
-    .transform(alias => alias.toLowerCase().trim())
-    .optional(),
   status: z.enum(["draft", "published", "archived"]).optional(),
   config: z.any().optional(), // execution configuration
   deploymentSettings: z.any().optional(), // deployment-specific settings
-});;
+});
 
 // Save flow definition schema
 export const saveFlowDefinitionSchema = z.object({

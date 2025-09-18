@@ -6,10 +6,10 @@ import { logError } from "../../../shared/utils/logger";
 export class FlowController {
   async createFlow(req: Request, res: Response): Promise<void> {
     try {
-      const { name, alias, description, organizationId, teamId } = req.body;
-      
+      const { name, description, organizationId, teamId } = req.body;
+
       const flow = await flowService.createFlow(
-        { name, alias, description, organizationId, teamId },
+        { name, description, organizationId, teamId },
         req.user!.id
       );
 

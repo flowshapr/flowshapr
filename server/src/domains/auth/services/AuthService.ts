@@ -4,12 +4,12 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { ConflictError, UnauthorizedError } from "../../../shared/utils/errors";
 import { logError } from "../../../shared/utils/logger";
-import { 
-  SignUpData, 
-  SignInData, 
-  AuthUser, 
-  AuthSession, 
-  AuthResponse, 
+import {
+  SignUpData,
+  SignInData,
+  AuthUser,
+  AuthSession,
+  AuthResponse,
   SessionData
 } from "../types";
 
@@ -24,6 +24,14 @@ export class AuthService {
 
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  }
+
+  private generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 50) + '-' + Math.random().toString(36).substring(2, 8);
   }
 
   private createAuthUser(user: any): AuthUser {
@@ -69,8 +77,31 @@ export class AuthService {
         })
         .returning();
 
+      const authUser = this.createAuthUser(newUser[0]);
+
+      // Create session automatically after registration
+      const sessionId = this.generateSessionId();
+      const sessionToken = `token_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      // Store session in memory with proper token
+      sessions.set(sessionId, {
+        userId: authUser.id,
+        user: authUser,
+        token: sessionToken,
+        expiresAt
+      });
+
+      const session: AuthSession = {
+        id: sessionId,
+        userId: authUser.id,
+        token: sessionToken,
+        expiresAt
+      };
+
       return {
-        user: this.createAuthUser(newUser[0])
+        user: authUser,
+        session
       };
     } catch (error: any) {
       if (error instanceof ConflictError) {

@@ -9,11 +9,35 @@ export class AuthController {
       const { name, email, password } = req.body;
       const result = await authService.signUp({ name, email, password });
 
-      res.json({
+      const response = {
         data: {
+          session: {
+            id: result.session!.id,
+            userId: result.user.id,
+            token: result.session!.token
+          },
           user: result.user
         }
+      };
+
+      // Set session cookie for cross-origin requests (same as signIn)
+      res.cookie('sessionId', result.session!.id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
       });
+      // Also set a lightweight uid cookie (non-httpOnly) to allow session reconstruction after dev restarts
+      res.cookie('uid', result.user.id, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+      });
+
+      res.json(response);
     } catch (error: any) {
       logError("Registration error:", error);
 

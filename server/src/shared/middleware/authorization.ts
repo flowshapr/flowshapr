@@ -103,7 +103,7 @@ export async function checkUserAbility(userId: string, action: Actions, subject:
 /**
  * Get complete user context with all roles from database
  */
-async function getUserCompleteContext(userId: string) {
+export async function getUserCompleteContext(userId: string) {
   if (!db) {
     throw new Error('Database not available');
   }

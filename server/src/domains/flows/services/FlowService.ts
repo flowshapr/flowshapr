@@ -3,48 +3,57 @@ import { db } from "../../../infrastructure/database/connection";
 import * as schema from "../../../infrastructure/database/schema/index";
 import { generateId, generateSlug } from "../../../shared/utils/crypto";
 import { ConflictError, NotFoundError, ForbiddenError } from "../../../shared/utils/errors";
+import { requireUserAbility, AuthorizationError } from "../../../shared/authorization/service-guard";
+import { getUserCompleteContext } from "../../../shared/middleware/authorization";
 import { Flow, FlowMember } from "../types";
+import { OrganizationService } from "../../organizations/services/OrganizationService";
 
 export class FlowService {
-  private async getOrCreateDefaultOrganization(userId: string): Promise<string> {
+  private async generateUniqueAlias(name: string, organizationId: string): Promise<string> {
     if (!db) {
       throw new Error("Database connection not available");
     }
 
-    // Check if user already has a default organization
-    const existingOrgs = await db
-      .select({ id: schema.organization.id })
-      .from(schema.organization)
-      .where(
-        and(
-          eq(schema.organization.ownerId, userId),
-          eq(schema.organization.name, "Personal")
-        )
-      )
-      .limit(1);
+    const baseSlug = generateSlug(name);
 
-    if (existingOrgs.length > 0) {
-      return existingOrgs[0].id;
+    // Generate a short random ID (5 chars)
+    const shortId = generateId().substring(0, 5);
+    let alias = `${baseSlug}-${shortId}`;
+
+    // Check uniqueness and retry if needed
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await db
+        .select({ id: schema.flow.id })
+        .from(schema.flow)
+        .where(
+          and(
+            eq(schema.flow.alias, alias),
+            eq(schema.flow.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (existing.length === 0) {
+        return alias;
+      }
+
+      // Generate new ID and try again
+      const newId = generateId().substring(0, 5);
+      alias = `${baseSlug}-${newId}`;
+      attempts++;
     }
 
-    // Create a default personal organization
-    const orgId = generateId();
-    const orgSlug = `personal-${userId.slice(0, 8)}`;
-    
-    await db.insert(schema.organization).values({
-      id: orgId,
-      name: "Personal",
-      slug: orgSlug,
-      description: "Personal workspace",
-      ownerId: userId,
-    });
+    throw new Error("Unable to generate unique alias after 10 attempts");
+  }
 
-    return orgId;
+  private async getOrCreateDefaultOrganization(userId: string): Promise<string> {
+    const organizationService = new OrganizationService();
+    return await organizationService.ensureUserHasOrganization(userId);
   }
   async createFlow(
     data: {
       name: string;
-      alias: string;
       description?: string;
       organizationId?: string;
       teamId?: string;
@@ -61,28 +70,19 @@ export class FlowService {
       // Get or create organization
       const organizationId = data.organizationId || await this.getOrCreateDefaultOrganization(createdBy);
 
-      // Check if alias is unique within the organization
-      const aliasCheck = await db
-        .select()
-        .from(schema.flow)
-        .where(
-          and(
-            eq(schema.flow.alias, data.alias),
-            eq(schema.flow.organizationId, organizationId)
-          )
-        )
-        .limit(1);
+      console.log(`[DEBUG] Creating flow "${data.name}" for user ${createdBy} in organization ${organizationId}`);
 
-      if (aliasCheck.length > 0) {
-        throw new ConflictError(`Flow with alias '${data.alias}' already exists in this organization`);
-      }
+      // Auto-generate unique alias
+      const alias = await this.generateUniqueAlias(data.name, organizationId);
+
+      console.log(`[DEBUG] Generated alias: ${alias} for organization: ${organizationId}`);
 
       // Create the initial flow (flows are top-level)
       const flowId = generateId();
       const newFlow = {
         id: flowId,
         name: data.name,
-        alias: data.alias,
+        alias: alias,
         description: data.description,
         version: "1.0.0",
         isLatest: true,
@@ -106,6 +106,15 @@ export class FlowService {
         memberRole: "owner",
       };
     } catch (error: any) {
+      console.error(`[DEBUG] Flow creation error:`, {
+        errorCode: error.code,
+        errorMessage: error.message,
+        flowName: data.name,
+        userId: createdBy,
+        organizationId: data.organizationId,
+        error: error
+      });
+
       if (error.code === '23505') { // Unique constraint violation
         throw new ConflictError("Flow with this name already exists in the organization");
       }
@@ -116,6 +125,12 @@ export class FlowService {
   async getFlowById(flowId: string, userId: string): Promise<Flow | null> {
     if (!db) {
       throw new Error("Database connection not available");
+    }
+
+    // Get user's complete context to determine access rights
+    const userContext = await getUserCompleteContext(userId);
+    if (!userContext) {
+      throw new Error("Unable to determine user permissions");
     }
 
     const result = await db
@@ -144,6 +159,18 @@ export class FlowService {
     if (result.length === 0) return null;
 
     const row = result[0] as any;
+
+    // SECURITY: Check if user has access to this flow
+    const isOwner = row.createdBy === userId;
+    const isInUserOrganization = userContext.organizationId && row.organizationId === userContext.organizationId;
+    
+    if (!isOwner && !isInUserOrganization) {
+      throw new AuthorizationError("You don't have permission to access this flow");
+    }
+
+    // Authorization check at the service level
+    await requireUserAbility(userId, 'read', 'Flow', { id: flowId });
+
     const memberRole = row.createdBy === userId ? 'owner' : 'viewer';
     const slug = generateSlug(row.name);
 
@@ -162,6 +189,12 @@ export class FlowService {
   async getFlowByAlias(alias: string, userId: string): Promise<Flow | null> {
     if (!db) {
       throw new Error("Database connection not available");
+    }
+
+    // Get user's complete context to determine access rights
+    const userContext = await getUserCompleteContext(userId);
+    if (!userContext) {
+      throw new Error("Unable to determine user permissions");
     }
 
     const result = await db
@@ -190,6 +223,18 @@ export class FlowService {
     if (result.length === 0) return null;
 
     const row = result[0] as any;
+
+    // SECURITY: Check if user has access to this flow
+    const isOwner = row.createdBy === userId;
+    const isInUserOrganization = userContext.organizationId && row.organizationId === userContext.organizationId;
+    
+    if (!isOwner && !isInUserOrganization) {
+      throw new AuthorizationError("You don't have permission to access this flow");
+    }
+
+    // Authorization check at the service level
+    await requireUserAbility(userId, 'read', 'Flow', { id: row.id });
+
     const memberRole = row.createdBy === userId ? 'owner' : 'viewer';
     const slug = generateSlug(row.name);
 
@@ -219,10 +264,38 @@ export class FlowService {
       throw new Error("Database connection not available");
     }
 
-    // Apply filters
+    // Add authorization check - user must be able to read flows
+    await requireUserAbility(userId, 'read', 'Flow');
+
+    // Get user's complete context to determine access rights
+    const userContext = await getUserCompleteContext(userId);
+    if (!userContext) {
+      throw new Error("Unable to determine user permissions");
+    }
+
+    // Apply filters with proper authorization
     const conditions = [];
 
+    // SECURITY: Filter flows to only include those the user can access
+    // Users can see flows they created OR flows in organizations they own
+    const accessConditions = [
+      eq(schema.flow.createdBy, userId) // Flows created by user
+    ];
+
+    // Add organization access if user owns an organization
+    if (userContext.organizationId) {
+      accessConditions.push(eq(schema.flow.organizationId, userContext.organizationId));
+    }
+
+    // Apply the access filter (user must match at least one condition)
+    conditions.push(or(...accessConditions));
+
+    // Additional filters requested by user
     if (options.organizationId) {
+      // Ensure user can only filter within organizations they have access to
+      if (userContext.organizationId !== options.organizationId) {
+        throw new AuthorizationError("You don't have access to this organization");
+      }
       conditions.push(eq(schema.flow.organizationId, options.organizationId));
     }
 
@@ -284,7 +357,6 @@ export class FlowService {
     updateData: {
       name?: string;
       description?: string;
-      alias?: string;
       status?: "draft" | "published" | "archived";
       config?: any;
       deploymentSettings?: any;
@@ -305,33 +377,13 @@ export class FlowService {
       throw new ForbiddenError("You don't have permission to update this flow");
     }
 
-    // Check if alias is unique within the organization (if being updated)
-    if (updateData.alias && updateData.alias !== existingFlow.alias) {
-      const existingAliasFlows = await db
-        .select({ id: schema.flow.id })
-        .from(schema.flow)
-        .where(
-          and(
-            eq(schema.flow.alias, updateData.alias),
-            eq(schema.flow.organizationId, existingFlow.organizationId),
-            ne(schema.flow.id, flowId)
-          )
-        )
-        .limit(1);
-
-      if (existingAliasFlows.length > 0) {
-        throw new Error("Flow alias must be unique within the organization");
-      }
-    }
-
-    // Prepare update object with only provided fields
+    // Prepare update object with only provided fields (alias is immutable)
     const updateFields: any = {
       updatedAt: new Date(),
     };
 
     if (updateData.name !== undefined) updateFields.name = updateData.name;
     if (updateData.description !== undefined) updateFields.description = updateData.description;
-    if (updateData.alias !== undefined) updateFields.alias = updateData.alias;
     if (updateData.status !== undefined) updateFields.status = updateData.status;
     if (updateData.config !== undefined) updateFields.config = updateData.config;
     if (updateData.deploymentSettings !== undefined) updateFields.deploymentSettings = updateData.deploymentSettings;
