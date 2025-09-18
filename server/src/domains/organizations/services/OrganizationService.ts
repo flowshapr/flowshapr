@@ -147,7 +147,7 @@ export class OrganizationService {
     }
 
     // Get user info to create personalized organization
-    const { user } = await import("../../../infrastructure/database/schema/index");
+    const { user } = await import("../../../infrastructure/database/schema/index.js");
     const userResult = await db
       .select({ name: user.name })
       .from(user)
