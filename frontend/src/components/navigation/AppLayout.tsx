@@ -84,7 +84,7 @@ export function AppLayout({ user, children }: AppLayoutProps) {
     console.log('showCreateModal state should now be:', true);
   };
 
-  const handleCreateFlowSubmit = async (flowData: { name: string; alias: string; description?: string }) => {
+  const handleCreateFlowSubmit = async (flowData: { name: string; description?: string }) => {
     try {
       console.log('Creating flow with data:', flowData);
       
